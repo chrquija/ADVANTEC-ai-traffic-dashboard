@@ -661,7 +661,7 @@ with tab1:
                 # ---------- Layout: wide content + sticky right rail ----------
                 main_col_t1, right_col_t1 = st.columns([7, 3.5], gap="large")
 
-                # Right rail (sticky map)
+                # Right rail (map code)
                 with right_col_t1:
                     st.markdown('<div id="od-map-anchor"></div>', unsafe_allow_html=True)
                     st.markdown("##### Corridor Map", help="Stays visible while you scroll the analysis on the left.")
