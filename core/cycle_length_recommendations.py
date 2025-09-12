@@ -423,13 +423,18 @@ def render_cycle_length_section(raw: pd.DataFrame, key_prefix: str = "cycle") ->
         )
 
     # A tiny in-app explainer right below the controls
-    with st.expander("How this calculator works", expanded=False):
+    with st.expander("How to use calculator", expanded=False):
         st.markdown(
             """
-**Current System Cycle** sets the cycle you’re running today; the app compares each
-hour’s recommended cycle to this setting and labels it **OPTIMAL / INCREASE / REDUCE**.
+**In the sidebar**.
+**Step 1:** Select your intersection
+**Step 2:** Choose your Custom Date Range of one specific day
+**Step 3:** Select your Direction [Northbound or Southbound]
+**Step 4:** Search
 
-**Time Period** filters which hours of the day are included (AM, Midday, PM, or All Day).
+
+**Time Period** Filters which hours of the day are included (AM, Midday, PM, or All Day).
+**Current System Cycle** Choose your Corridors Current Cycle Length. 
             """
         )
 
