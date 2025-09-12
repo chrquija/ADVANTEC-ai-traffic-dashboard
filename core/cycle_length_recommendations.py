@@ -244,7 +244,7 @@ def _sec_value(label: str) -> int:
 # -------------------------
 def render_howto_sidebar() -> None:
     """Sidebar expander with the exact workflow steps you provided."""
-    with st.sidebar.expander("ℹ️ How to run this analysis (4 steps)", expanded=False):
+    with st.sidebar.expander("ℹ️ How to use Cycle Length Calculator (4 steps)", expanded=False):
         st.markdown(
             """
 **Step 1. Select Intersection**  
@@ -422,21 +422,7 @@ def render_cycle_length_section(raw: pd.DataFrame, key_prefix: str = "cycle") ->
             key=f"{key_prefix}_theme",
         )
 
-    # A tiny in-app explainer right below the controls
-    with st.expander("How to use calculator", expanded=False):
-        st.markdown(
-            """
-**In the sidebar**.
-**Step 1:** Select your intersection
-**Step 2:** Choose your Custom Date Range of one specific day
-**Step 3:** Select your Direction [Northbound or Southbound]
-**Step 4:** Search
 
-
-**Time Period** Filters which hours of the day are included (AM, Midday, PM, or All Day).
-**Current System Cycle** Choose your Corridors Current Cycle Length. 
-            """
-        )
 
     # Resolve palettes & patterns from theme
     CYCLE_COLORS, STATUS_COLORS, PATTERN_MAP = _get_palettes(theme_choice)
