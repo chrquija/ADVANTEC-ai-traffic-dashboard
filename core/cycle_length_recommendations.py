@@ -323,7 +323,7 @@ def render_cycle_length_section(raw: pd.DataFrame, key_prefix: str = "cycle") ->
         'display:flex; align-items:center; justify-content:center; box-shadow: inset 0 0 0 1px rgba(255,255,255,.15);">'
         '<span style="font-size:20px;">🔁</span></div>'
         '<div style="font-size:2.1rem; font-weight:800; letter-spacing:.2px; line-height:1.1;">'
-        'Cycle Length Calculator For CVAG</div></div>'
+        'Cycle Length Recommendations for CVAG</div></div>'
         '<div style="display:flex; flex-wrap:wrap; gap:8px 10px; margin:12px 0 6px;">'
         '<span style="display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; '
         'background: rgba(255,255,255,.16); font-weight:700; font-size:.95rem; '
