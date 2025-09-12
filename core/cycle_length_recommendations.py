@@ -3,6 +3,7 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+from typing import Optional
 
 # -------------------------
 # Time-period filter (AM/MD/PM/ALL)
@@ -152,7 +153,7 @@ def _inject_kpi_css():
   --kpi-pill: rgba(255,255,255,.65);
 }
 
-/* ---------- Dark mode overrides (common attributes) ---------- */
+/* ---------- Dark mode overrides ---------- */
 html.dark, [data-theme="dark"], [data-base-theme="dark"], body[data-theme="dark"]{
   --legend-bg: rgba(255,255,255,.08);
   --legend-border: rgba(255,255,255,.18);
@@ -165,22 +166,6 @@ html.dark, [data-theme="dark"], [data-base-theme="dark"], body[data-theme="dark"
   --kpi-muted: rgba(255,255,255,.82);
   --kpi-shadow: 0 10px 26px rgba(0,0,0,.35);
   --kpi-pill: rgba(255,255,255,.10);
-}
-
-/* Fallback for environments that only expose prefers-color-scheme */
-@media (prefers-color-scheme: dark){
-  :root{
-    --legend-bg: rgba(255,255,255,.08);
-    --legend-border: rgba(255,255,255,.18);
-    --legend-title: #ffffff;
-
-    --kpi-bg: rgba(255,255,255,.07);
-    --kpi-border: rgba(255,255,255,.22);
-    --kpi-text: #ffffff;
-    --kpi-title: #ffffff;
-    --kpi-muted: rgba(255,255,255,.82);
-    --kpi-pill: rgba(255,255,255,.10);
-  }
 }
 
 /* ---------- Legend block ---------- */
@@ -255,10 +240,99 @@ def _sec_value(label: str) -> int:
 
 
 # -------------------------
+# Help / onboarding
+# -------------------------
+def render_howto_sidebar() -> None:
+    """Sidebar expander with the exact workflow steps you provided."""
+    with st.sidebar.expander("ℹ️ How to run this analysis (4 steps)", expanded=False):
+        st.markdown(
+            """
+**Step 1. Select Intersection**  
+Pick the corridor/intersection you want to analyze.
+
+**Step 2. Date Range → Custom**  
+Choose a **single specific day**.
+
+**Step 3. Granularity → Direction**  
+Select **Northbound** or **Southbound**.
+
+**Step 4. Hit Search**  
+The calculator below will use your selections.
+            """
+        )
+
+
+def _build_header_html(
+    intersection_label: str,
+    direction_label: str,
+    start_label: str,
+    end_label: str,
+    time_period_label: str,
+    current_cycle: str,
+) -> str:
+    """Header with gradient + right-aligned pill for Current Cycle."""
+    return f"""
+<div style="background: linear-gradient(135deg, #2b77e5 0%, #19c3e6 100%);
+            border-radius: 16px; padding: 22px 24px 20px; color: #fff;
+            box-shadow: 0 10px 26px rgba(25,115,210,.25); margin: 8px 0 16px;">
+  <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+    <div style="display:flex; align-items:center; gap:12px;">
+      <div style="width:40px; height:40px; border-radius:10px; background: rgba(255,255,255,.18);
+                  display:flex; align-items:center; justify-content:center;
+                  box-shadow: inset 0 0 0 1px rgba(255,255,255,.15);">
+        <span style="font-size:20px;">🔁</span>
+      </div>
+      <div style="font-size:2.1rem; font-weight:800; letter-spacing:.2px; line-height:1.1;">
+        Cycle Length Recommendations for CVAG
+      </div>
+    </div>
+    <span title="Current cycle used for comparison"
+          style="display:inline-flex; align-items:center; gap:6px; padding:8px 12px;
+                 border-radius:999px; background: rgba(255,255,255,.18);
+                 font-weight:800; font-size:.95rem;
+                 box-shadow: inset 0 0 0 1px rgba(255,255,255,.18);">
+      ⚙️ Current Cycle: {current_cycle}
+    </span>
+  </div>
+
+  <div style="display:flex; flex-wrap:wrap; gap:8px 10px; margin:12px 0 6px;">
+    <span style="display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px;
+                 background: rgba(255,255,255,.16); font-weight:700; font-size:.95rem;
+                 box-shadow: inset 0 0 0 1px rgba(255,255,255,.18);">
+      <span style="opacity:.9;">Intersection:</span><span style="opacity:1;">{intersection_label}</span>
+    </span>
+    <span style="display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px;
+                 background: rgba(255,255,255,.16); font-weight:700; font-size:.95rem;
+                 box-shadow: inset 0 0 0 1px rgba(255,255,255,.18);">
+      <span style="opacity:.9;">Direction:</span><span style="opacity:1;">{direction_label}</span>
+    </span>
+    <span style="display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px;
+                 background: rgba(255,255,255,.16); font-weight:700; font-size:.95rem;
+                 box-shadow: inset 0 0 0 1px rgba(255,255,255,.18);">
+      <span style="opacity:.9;">Time Period:</span><span style="opacity:1;">{time_period_label}</span>
+    </span>
+    <span style="display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px;
+                 background: rgba(255,255,255,.16); font-weight:700; font-size:.95rem;
+                 box-shadow: inset 0 0 0 1px rgba(255,255,255,.18);">
+      <span style="opacity:.9;">Study Type:</span><span style="opacity:1;">Hourly Analysis</span>
+    </span>
+  </div>
+
+  <div style="display:flex; align-items:center; gap:8px; margin-top:2px;">
+    <span style="width:24px; height:24px; border-radius:8px; background: rgba(255,255,255,.18);
+                 display:inline-flex; align-items:center; justify-content:center; font-size:13px;
+                 box-shadow: inset 0 0 0 1px rgba(255,255,255,.16);">📅</span>
+    <span style="font-size:1.05rem; font-weight:600; opacity:.95;">{start_label} — {end_label}</span>
+  </div>
+</div>
+"""
+
+
+# -------------------------
 # KPI-card HTML
 # -------------------------
 def _kpi_card(title: str, value_html: str, delta_text: str, tone: str = "neutral",
-              foot1: str | None = None, foot2: str | None = None) -> str:
+              foot1: Optional[str] = None, foot2: Optional[str] = None) -> str:
     tone = tone if tone in {"good", "warn", "bad", "neutral"} else "neutral"
     foot1_html = f'<div class="cvag-kpi-foot">{foot1}</div>' if foot1 else ""
     foot2_html = f'<div class="cvag-kpi-foot">{foot2}</div>' if foot2 else ""
@@ -278,6 +352,9 @@ def _kpi_card(title: str, value_html: str, delta_text: str, tone: str = "neutral
 # -------------------------
 def render_cycle_length_section(raw: pd.DataFrame, key_prefix: str = "cycle") -> None:
     """Render the Cycle Length Recommendations section with theme-aware styles."""
+    # Sidebar "how to" (safe to call even if parent already has sidebar items)
+    render_howto_sidebar()
+
     if raw is None or raw.empty:
         st.info("No hourly volume data available for cycle length recommendations.")
         return
@@ -285,10 +362,10 @@ def render_cycle_length_section(raw: pd.DataFrame, key_prefix: str = "cycle") ->
         st.info("Required columns not found: 'local_datetime', 'total_volume'.")
         return
 
-    # ✅ Make styles available BEFORE any HTML so colors work immediately
+    # Make styles available BEFORE any HTML so colors work immediately
     _inject_kpi_css()
 
-    # ---- Context values for header ----
+    # ---- Context values for header (static bits) ----
     raw = raw.copy()
     raw["local_datetime"] = pd.to_datetime(raw["local_datetime"], errors="coerce")
 
@@ -313,47 +390,19 @@ def render_cycle_length_section(raw: pd.DataFrame, key_prefix: str = "cycle") ->
     else:
         direction_label = "N/A"
 
-    # ---- Header ----
-    header_html = (
-        '<div style="background: linear-gradient(135deg, #2b77e5 0%, #19c3e6 100%); border-radius: 16px; '
-        'padding: 22px 24px 20px; color: #fff; box-shadow: 0 10px 26px rgba(25,115,210,.25); '
-        'margin: 8px 0 16px; text-align: left;">'
-        '<div style="display:flex; align-items:center; gap:12px;">'
-        '<div style="width:40px; height:40px; border-radius:10px; background: rgba(255,255,255,.18); '
-        'display:flex; align-items:center; justify-content:center; box-shadow: inset 0 0 0 1px rgba(255,255,255,.15);">'
-        '<span style="font-size:20px;">🔁</span></div>'
-        '<div style="font-size:2.1rem; font-weight:800; letter-spacing:.2px; line-height:1.1;">'
-        'Cycle Length Recommendations for CVAG</div></div>'
-        '<div style="display:flex; flex-wrap:wrap; gap:8px 10px; margin:12px 0 6px;">'
-        '<span style="display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; '
-        'background: rgba(255,255,255,.16); font-weight:700; font-size:.95rem; '
-        'box-shadow: inset 0 0 0 1px rgba(255,255,255,.18);"><span style="opacity:.9;">Intersection:</span>'
-        f'<span style="opacity:1;">{intersection_label}</span></span>'
-        '<span style="display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; '
-        'background: rgba(255,255,255,.16); font-weight:700; font-size:.95rem; '
-        'box-shadow: inset 0 0 0 1px rgba(255,255,255,.18);"><span style="opacity:.9;">Direction:</span>'
-        f'<span style="opacity:1;">{direction_label}</span></span>'
-        '<span style="display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; '
-        'background: rgba(255,255,255,.16); font-weight:700; font-size:.95rem; '
-        'box-shadow: inset 0 0 0 1px rgba(255,255,255,.18);"><span style="opacity:.9;">Study Type:</span>'
-        '<span style="opacity:1;">Hourly Analysis</span></span></div>'
-        '<div style="display:flex; align-items:center; gap:8px; margin-top:2px;">'
-        '<span style="width:24px; height:24px; border-radius:8px; background: rgba(255,255,255,.18); '
-        'display:inline-flex; align-items:center; justify-content:center; font-size:13px; '
-        'box-shadow: inset 0 0 0 1px rgba(255,255,255,.16);">📅</span>'
-        f'<span style="font-size:1.05rem; font-weight:600; opacity:.95;">{start_label} — {end_label}</span>'
-        '</div></div>'
-    )
-    st.markdown(header_html, unsafe_allow_html=True)
+    # Placeholder so we can render the header AFTER we know current_cycle/time period
+    header_slot = st.empty()
 
-    # Controls
+    # -------------------------
+    # Controls (user selections)
+    # -------------------------
     c1, c2, c3 = st.columns([2, 1.6, 1.5])
     with c1:
         time_period = st.selectbox(
             "🕐 Time Period",
             ["AM (05:00-10:00)", "MD (11:00-15:00)", "PM (16:00-20:00)", "All Day"],
             index=0,
-            help="Analyze AM, Midday, PM, or All Day periods",
+            help="Filter to AM, Midday, PM, or all hours.",
             key=f"{key_prefix}_period",
         )
     with c2:
@@ -361,7 +410,7 @@ def render_cycle_length_section(raw: pd.DataFrame, key_prefix: str = "cycle") ->
             "⚙️ Current System Cycle",
             CYCLE_ORDER[::-1],  # 140, 130, 120, 110, Free
             index=0,
-            help="Cycle used currently; compared against recommendations",
+            help="Sets the corridor's **current** cycle length used for comparison.",
             key=f"{key_prefix}_current",
         )
     with c3:
@@ -369,8 +418,19 @@ def render_cycle_length_section(raw: pd.DataFrame, key_prefix: str = "cycle") ->
             "🎨 Color Theme",
             ["Colorblind Safe", "High Contrast", "Greens → Red", "Monochrome + Accents"],
             index=0,
-            help="Pick a palette that's easy to read for presentations and printouts",
+            help="Pick a palette that's easy to read for presentations and printouts.",
             key=f"{key_prefix}_theme",
+        )
+
+    # A tiny in-app explainer right below the controls
+    with st.expander("How this calculator works", expanded=False):
+        st.markdown(
+            """
+**Current System Cycle** sets the cycle you’re running today; the app compares each
+hour’s recommended cycle to this setting and labels it **OPTIMAL / INCREASE / REDUCE**.
+
+**Time Period** filters which hours of the day are included (AM, Midday, PM, or All Day).
+            """
         )
 
     # Resolve palettes & patterns from theme
@@ -384,8 +444,23 @@ def render_cycle_length_section(raw: pd.DataFrame, key_prefix: str = "cycle") ->
     selected_period = period_map[time_period]
     period_data = raw if selected_period == "ALL" else filter_by_period(raw, "local_datetime", selected_period)
     if period_data.empty:
+        # Render the header (with current cycle bubble) even if no data to show
+        header_slot.markdown(
+            _build_header_html(
+                intersection_label, direction_label, start_label, end_label, time_period, current_cycle
+            ),
+            unsafe_allow_html=True,
+        )
         st.warning("⚠️ No data available for the selected time period.")
         return
+
+    # Now that we know the user's choices, render the header with the bubble
+    header_slot.markdown(
+        _build_header_html(
+            intersection_label, direction_label, start_label, end_label, time_period, current_cycle
+        ),
+        unsafe_allow_html=True,
+    )
 
     # Hour window label for KPIs
     period_windows = {"AM": "05:00–10:00", "MD": "11:00–15:00", "PM": "16:00–20:00", "ALL": "00:00–23:00"}
@@ -477,7 +552,6 @@ def render_cycle_length_section(raw: pd.DataFrame, key_prefix: str = "cycle") ->
         )
         for tr in fig.data:
             tr.update(marker_line_color="rgba(0,0,0,0.30)", marker_line_width=0.7)
-            # Optional hatching for extra accessibility
             if tr.name in PATTERN_MAP:
                 tr.update(marker_pattern=dict(shape=PATTERN_MAP[tr.name], size=4, solidity=0.25, fillmode="overlay"))
 
