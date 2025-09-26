@@ -1,181 +1,415 @@
-# core/acyclica_traveltime_analysis.py
+# Python
 import streamlit as st
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
+
+# Plotly for chart helpers
+import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-import sys
-import os
 
-from sidebar_functions import (
-    get_acyclica_df,
-    process_traffic_data,
-    compute_perf_kpis_interpretable,  # ok to keep
-    render_badge,
-    performance_chart,                 # ok to keep
-    date_range_preset_controls,
-    get_performance_rating,            # ok to keep
+
+# ------------------------------------------------------------------
+# Helpers
+# ------------------------------------------------------------------
+def _fix_raw_url(url: str) -> str:
+    """
+    GitHub RAW URLs must be:
+      https://raw.githubusercontent.com/<user>/<repo>/<branch>/<path>
+    Some links used '/refs/heads/main/'. This converts them.
+    """
+    return url.replace("/refs/heads/", "/")
+
+
+def _safe_to_datetime(df: pd.DataFrame, col: str) -> pd.DataFrame:
+    if col in df.columns:
+        df[col] = pd.to_datetime(df[col], errors="coerce")
+    return df
+
+
+def _normalize_acyclica_headers(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Tolerant column normalizer for Acyclica CSVs.
+    """
+    if df is None or df.empty:
+        return df
+    lowmap = {c: "".join(str(c).strip().split()).lower() for c in df.columns}
+    df = df.rename(columns=lowmap)
+    canon = {
+        "localdatetime": "local_datetime",
+        "corridorid": "corridor_id",
+        "direction": "direction",
+        "metric": "metric",
+        "strength": "Strength",
+        "firsts": "Firsts",
+        "lasts": "Lasts",
+        "minimum": "Minimum",
+        "maximum": "Maximum",
+    }
+    for src, tgt in canon.items():
+        if src in df.columns:
+            df = df.rename(columns={src: tgt})
+    return df
+
+
+# =========================
+# Data loading
+# =========================
+
+# Iteris ClearGuide Data
+@st.cache_data
+def load_traffic_data():
+    """
+    Load and combine all corridor traffic data from GitHub (Iteris-style).
+    Auto-fixes bad RAW URL pattern.
+    """
+    data_sources = {
+        "Avenue 52 → Calle Tampico": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/1_2_LONG_NSB_Ave52_CalleTampico_WashSt_1hr_septojuly.csv",
+        "Calle Tampico → Village Shopping Ctr": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/2_3_LONG_NSB_CalleTampico_VillageShoppingCtr_WashSt_1hr_septojuly.csv",
+        "Village Shopping Ctr → Avenue 50": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/3_4_LONG_NSB_VillageShoppingCtr_Avenue50_WashSt_1hr_septojuly.csv",
+        "Avenue 50 → Sagebrush Ave": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/4_5_LONG_NSB_Ave50_SagebrushAve_WashSt_1hr_septojuly.csv",
+        "Sagebrush Ave → Eisenhower Dr": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/5_6_LONG_NSB_SagebrushAve_EisenhowerDr_WashSt_1hr_septojuly.csv",
+        "Eisenhower Dr → Avenue 48": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/6_7_LONG_NSB_EisenhowerDr_Avenue48_WashSt_1hr_septojuly.csv",
+        "Avenue 48 → Avenue 47": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/7_8_LONG_NSB_Ave48_Ave47_WashSt_1hr_septojuly.csv",
+        "Avenue 47 → Point Happy Simon": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/8_9_LONG_NSB_Ave47_PointHappySimon_WashSt_1hr_septojuly.csv",
+        "Point Happy Simon → Hwy 111": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/9_10_LONG_NSB_PointHappySimon_WashSt_1hr_septojuly.csv",
+    }
+
+    all_data = []
+    for segment_name, url in data_sources.items():
+        url = _fix_raw_url(url)
+        try:
+            df = pd.read_csv(url)
+            df["segment_name"] = segment_name
+            all_data.append(df)
+        except Exception as e:
+            st.error(f"Error loading {segment_name}: {e}")
+
+    if not all_data:
+        return pd.DataFrame()
+
+    combined_df = pd.concat(all_data, ignore_index=True)
+    combined_df["local_datetime"] = pd.to_datetime(combined_df["local_datetime"], errors="coerce")
+    combined_df = combined_df.dropna(subset=["local_datetime"]).sort_values("local_datetime").reset_index(drop=True)
+    return combined_df
+
+
+# Kinetic mobility data
+@st.cache_data
+def load_volume_data():
+    """
+    Load consolidated volume data for all Washington Street intersections.
+    Auto-fixes bad RAW URL pattern.
+    """
+    volume_url = _fix_raw_url(
+        "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/VOLUME/KMOB_LONG/LONG_MASTER_Avenue52_to_Avenue47_1hr_NS_VOLUME_OctoberTOJune.csv"
+    )
+
+    try:
+        volume_df = pd.read_csv(volume_url)
+        volume_df["local_datetime"] = pd.to_datetime(volume_df["local_datetime"], errors="coerce")
+        volume_df = volume_df.dropna(subset=["local_datetime"]).sort_values("local_datetime").reset_index(drop=True)
+
+        # Create proper intersection names from intersection_id
+        volume_df["intersection_name"] = (
+            volume_df["intersection_id"]
+            .str.replace("_", " ", regex=False)
+            .str.replace("Washington St and ", "Washington St & ", regex=False)
+            .str.replace(" and ", " & ", regex=False)
+        )
+
+        # Create a sorting order for intersections (from south to north along Washington St)
+        intersection_order = {
+            "Washington St & Avenue52": 1,
+            "Washington St & Calle Tampico": 2,
+            "Washington St & Village Shop Ctr": 3,
+            "Washington St & Avenue50": 4,
+            "Washington St & Sagebrush Ave": 5,
+            "Washington St & Eisenhower": 6,
+            "Washington St & Ave48": 7,
+            "Washington St & Ave47": 8,
+        }
+
+        volume_df["sort_order"] = volume_df["intersection_name"].map(intersection_order).fillna(999)
+        volume_df = volume_df.sort_values("sort_order").drop("sort_order", axis=1)
+        return volume_df
+
+    except Exception as e:
+        st.error(f"Error loading volume data: {e}")
+        return pd.DataFrame()
+
+
+# -------------------------
+# Acyclica (Long + Wide)
+# -------------------------
+ACYCLICA_URL = _fix_raw_url(
+    "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/MASTER_Acyclica_Traveltime_speed.csv"
 )
 
-# Ensure we can import from Prediction package
-sys.path.append(os.path.dirname(os.path.dirname(__file__)))
-from Prediction.timeline_scrubber import render_gradient_header
-from Prediction.incident_detection import render_incident_detection_section
-
-
-# ---------------------------
-# Safe loader for Acyclica DF
-# ---------------------------
-def _safe_get_acyclica_df() -> pd.DataFrame:
+@st.cache_data(show_spinner=False)
+def load_acyclica_data() -> pd.DataFrame:
+    """
+    Load Acyclica travel time & speed in LONG format.
+    Returns a cleaned DataFrame or raises RuntimeError on failure.
+    Columns (normalized):
+      local_datetime, corridor_id, direction, metric, Strength, Firsts, Lasts, Minimum, Maximum
+    """
     try:
-        return get_acyclica_df()
-    except Exception:
-        try:
-            from sidebar_functions import get_acyclica_long_df, acyclica_long_to_hourly
-        except Exception:
-            return pd.DataFrame()
+        df = pd.read_csv(ACYCLICA_URL)
+    except Exception as e:
+        raise RuntimeError(f"Error loading Acyclica data: {e}")
 
-        long_df = get_acyclica_long_df()
-        if long_df is None or long_df.empty:
-            return pd.DataFrame()
+    if df is None or df.empty:
+        raise RuntimeError("Acyclica CSV is empty.")
 
-        if "direction" in long_df.columns:
-            long_df["direction"] = long_df["direction"].astype(str).str.strip().str.upper()
+    # Normalize headers
+    df = _normalize_acyclica_headers(df)
 
-        try:
-            wide = acyclica_long_to_hourly(long_df)
-        except Exception:
-            return pd.DataFrame()
+    required = ["local_datetime","corridor_id","direction","metric","Strength","Firsts","Lasts","Minimum","Maximum"]
+    missing = [c for c in required if c not in df.columns]
+    if missing:
+        raise RuntimeError(f"Acyclica CSV missing required columns: {', '.join(missing)}")
 
-        if wide is None or wide.empty:
-            return pd.DataFrame()
+    # Types & cleanup
+    df["local_datetime"] = pd.to_datetime(df["local_datetime"], errors="coerce")
+    df = df.dropna(subset=["local_datetime"])
+    for c in ["Strength","Firsts","Lasts","Minimum","Maximum"]:
+        df[c] = pd.to_numeric(df[c], errors="coerce")
 
-        if "local_datetime" in wide.columns:
-            wide["local_datetime"] = pd.to_datetime(wide["local_datetime"], errors="coerce")
-            wide = wide.dropna(subset=["local_datetime"])
-        return wide
+    # Metric and direction normalization:
+    # - remove spaces/underscores and non-letters
+    # - lowercase to stable keys: 'speed', 'traveltime'
+    df["metric"] = (
+        df["metric"]
+        .astype(str)
+        .str.strip()
+        .str.replace(r"[^A-Za-z]+", "", regex=True)
+        .str.lower()
+    )
+    df["direction"] = df["direction"].astype(str).str.strip().str.upper()
+
+    df = df.sort_values(["local_datetime","direction","metric"]).reset_index(drop=True)
+    return df
 
 
-# ---------------------------
-# KPI computation (speed‑focused)
-# ---------------------------
-def compute_acyclica_kpis(df: pd.DataFrame, low_speed_threshold: float) -> dict:
+@st.cache_data(show_spinner=False)
+def acyclica_long_to_hourly(df_long: pd.DataFrame) -> pd.DataFrame:
+    """
+    Convert long → wide for KPI/plots.
+    Output columns:
+      local_datetime, corridor_id, direction, average_traveltime, average_speed
+    """
+    if df_long is None or df_long.empty:
+        return pd.DataFrame()
+
+    piv = (
+        df_long.pivot_table(
+            index=["local_datetime","corridor_id","direction"],
+            columns="metric",
+            values="Strength",
+            aggfunc="mean",
+        )
+        .reset_index()
+    )
+
+    # Normalize pivoted column labels then rename to canonical names
+    piv.columns = [str(c).lower() for c in piv.columns]
+    piv = piv.rename(columns={"traveltime": "average_traveltime", "speed": "average_speed"})
+
+    # Ensure presence
+    for col in ["average_traveltime","average_speed"]:
+        if col not in piv.columns:
+            piv[col] = np.nan
+
+    piv["local_datetime"] = pd.to_datetime(piv["local_datetime"], errors="coerce")
+    piv = piv.dropna(subset=["local_datetime"]).sort_values(["local_datetime","direction"]).reset_index(drop=True)
+    return piv
+
+
+# =========================
+# Small data getters
+# =========================
+@st.cache_data(show_spinner=False)
+def get_corridor_df() -> pd.DataFrame:
+    df = load_traffic_data()
+    if df is None or len(df) == 0:
+        return pd.DataFrame()
+    df = _safe_to_datetime(df.copy(), "local_datetime")
+    needed = {"segment_name", "average_delay", "average_traveltime", "average_speed", "direction"}
+    missing = needed - set(df.columns)
+    if missing:
+        st.warning(f"Traffic dataset is missing columns: {', '.join(missing)}")
+    return df
+
+
+@st.cache_data(show_spinner=False)
+def get_volume_df() -> pd.DataFrame:
+    df = load_volume_data()
+    if df is None or len(df) == 0:
+        return pd.DataFrame()
+    df = _safe_to_datetime(df.copy(), "local_datetime")
+    needed = {"intersection_name", "total_volume", "direction"}
+    missing = needed - set(df.columns)
+    if missing:
+        st.warning(f"Volume dataset is missing columns: {', '.join(missing)}")
+    return df
+
+
+@st.cache_data(show_spinner=False)
+def get_acyclica_long_df() -> pd.DataFrame:
+    """Long-format Acyclica (for Incident/Peak/Event detection)."""
+    return load_acyclica_data()
+
+
+@st.cache_data(show_spinner=False)
+def get_acyclica_df() -> pd.DataFrame:
+    """
+    Wide-format Acyclica for KPI/plots:
+      local_datetime, corridor_id, direction, average_traveltime, average_speed
+    """
+    long_df = load_acyclica_data()
+    if long_df is None or len(long_df) == 0:
+        return pd.DataFrame()
+    wide = acyclica_long_to_hourly(long_df)
+    return _safe_to_datetime(wide.copy(), "local_datetime")
+
+
+def get_performance_rating(score: float):
+    if score > 80:
+        return " Excellent", "badge-excellent"
+    if score > 60:
+        return " Good", "badge-good"
+    if score > 40:
+        return " Fair", "badge-fair"
+    if score > 20:
+        return " Poor", "badge-poor"
+    return " Critical", "badge-critical"
+
+
+# =========================
+# Interpretable KPI helpers (for non-Acyclica Delay/TT tabs)
+# =========================
+def _coerce_num(s: pd.Series) -> pd.Series:
+    return pd.to_numeric(s, errors="coerce")
+
+
+def compute_perf_kpis_interpretable(df: pd.DataFrame, high_delay_threshold: float) -> dict:
+    """
+    Compute five interpretable KPIs for Iteris-style (wide) data.
+    """
     if df is None or df.empty:
         return {
             "avg_tt": {"value": 0.0, "unit": "min", "score": 50.0, "help": "Average Travel Time"},
             "planning_time": {"value": 0.0, "unit": "min", "score": 50.0, "help": "Planning Time (95th)"},
             "buffer_index": {"value": 0.0, "unit": "%", "score": 50.0, "help": "Buffer Index"},
             "reliability": {"value": 0.0, "unit": "%", "score": 50.0, "help": "Reliability Index"},
-            "low_speed_freq": {"value": 0.0, "unit": "%", "score": 50.0, "help": "Low Speed Frequency"},
+            "congestion_freq": {"value": 0.0, "unit": "%", "score": 50.0, "help": "Congestion Frequency"},
         }
 
-    for col in ["average_speed", "average_traveltime", "average_delay"]:
-        if col in df.columns:
-            df[col] = pd.to_numeric(df[col], errors="coerce")
+    for c in ("average_delay", "average_traveltime", "average_speed"):
+        if c in df:
+            df[c] = _coerce_num(df[c])
 
-    avg_tt = float(df["average_traveltime"].mean()) if "average_traveltime" in df.columns and df["average_traveltime"].notna().any() else 0.0
-    p95_tt = float(df["average_traveltime"].quantile(0.95)) if "average_traveltime" in df.columns and df["average_traveltime"].notna().any() else 0.0
+    avg_tt = float(np.nanmean(df["average_traveltime"])) if "average_traveltime" in df else 0.0
+
+    if "average_traveltime" in df and df["average_traveltime"].notna().any():
+        p95_tt = float(np.nanpercentile(df["average_traveltime"].dropna(), 95))
+    else:
+        p95_tt = 0.0
+
     buffer_index = ((p95_tt - avg_tt) / avg_tt * 100.0) if avg_tt > 0 else 0.0
 
-    if avg_tt > 0 and "average_traveltime" in df.columns:
-        std_tt = float(df["average_traveltime"].std())
-        cv_tt = (std_tt / avg_tt * 100.0) if std_tt > 0 else 0.0
+    if avg_tt > 0 and "average_traveltime" in df:
+        cv_tt = float(np.nanstd(df["average_traveltime"])) / avg_tt * 100.0
     else:
         cv_tt = 0.0
     reliability = max(0.0, 100.0 - cv_tt)
 
-    if "average_speed" in df.columns and df["average_speed"].notna().any():
-        total_hours = int(df["average_speed"].count())
-        low_speed_hours = int((df["average_speed"] < low_speed_threshold).sum())
-        low_speed_freq = (low_speed_hours / total_hours * 100.0) if total_hours > 0 else 0.0
+    if "average_delay" in df and df["average_delay"].notna().any():
+        total_hours = int(df["average_delay"].count())
+        cong_hours = int((df["average_delay"] > high_delay_threshold).sum())
+        cong_freq = (cong_hours / total_hours * 100.0) if total_hours > 0 else 0.0
     else:
-        low_speed_freq, low_speed_hours, total_hours = 0.0, 0, 0
+        cong_freq, cong_hours, total_hours = 0.0, 0, 0
 
-    def _minmax_score(series: pd.Series, val: float, invert: bool = True) -> float:
+    def _minmax_score(series: pd.Series, val: float) -> float:
         series = pd.to_numeric(series, errors="coerce").dropna()
         if len(series) < 2:
             return 50.0
         mn, mx = float(series.min()), float(series.max())
         if mx <= mn:
             return 50.0
-        frac = (val - mn) / (mx - mn)
-        return float(max(0.0, min(100.0, 100.0 * ((1.0 - frac) if invert else frac))))
+        frac = (val - mn) / (mx - mn)  # lower is better
+        return float(max(0.0, min(100.0, 100.0 * (1.0 - frac))))
 
-    if "average_traveltime" in df.columns and df["average_traveltime"].notna().any():
-        score_avg_tt = _minmax_score(df["average_traveltime"], avg_tt, invert=True)
-        score_plan = _minmax_score(df["average_traveltime"], p95_tt, invert=True)
+    if "average_traveltime" in df and df["average_traveltime"].notna().any():
+        score_avg_tt = _minmax_score(df["average_traveltime"], avg_tt)
+        score_plan = _minmax_score(df["average_traveltime"], p95_tt)
     else:
         score_avg_tt = score_plan = 50.0
 
     score_buffer = float(max(0.0, 100.0 - min(max(buffer_index, 0.0), 100.0)))
     score_reliability = float(max(0.0, min(100.0, reliability)))
-    score_low_speed = float(max(0.0, min(100.0, 100.0 - low_speed_freq)))
+    score_congestion = float(max(0.0, min(100.0, 100.0 - cong_freq)))
 
     return {
         "avg_tt": {
             "value": avg_tt,
             "unit": "min",
             "score": score_avg_tt,
-            "help": "Average Travel Time\n\nThe typical trip time for your current filters. mean(travel_time).",
+            "help": "Average Travel Time (mean of hourly trip times).",
         },
         "planning_time": {
             "value": p95_tt,
             "unit": "min",
             "score": score_plan,
-            "help": "Planning Time (95th): 95th-percentile of hourly trip times.",
+            "help": "Planning Time (95th percentile).",
         },
         "buffer_index": {
             "value": buffer_index,
             "unit": "%",
             "score": score_buffer,
-            "help": "Buffer Index = (P95 − mean) / mean × 100%.",
+            "help": "Buffer Index = (P95 − mean) / mean × 100.",
         },
         "reliability": {
             "value": reliability,
             "unit": "%",
             "score": score_reliability,
-            "help": "Reliability Index = 100 − CV% of travel time (higher is better).",
+            "help": "Reliability Index = 100 − CV%.",
         },
-        "low_speed_freq": {
-            "value": low_speed_freq,
+        "congestion_freq": {
+            "value": cong_freq,
             "unit": "%",
-            "score": score_low_speed,
-            "extra": f"Hours < {low_speed_threshold:.0f}mph: {low_speed_hours}/{total_hours}",
-            "help": f"Percent of hours with average speed below {low_speed_threshold:.0f} mph.",
+            "score": score_congestion,
+            "extra": f"Hours > {high_delay_threshold:.0f}s: {cong_hours}/{total_hours}",
+            "help": "Share of hours with delay above the threshold.",
         },
     }
 
 
-# ---------------------------
-# Charts (speed / travel time)
-# ---------------------------
-def speed_performance_chart(data: pd.DataFrame, metric_type: str = "speed"):
+def render_badge(score: float) -> str:
+    label, css = get_performance_rating(score)
+    return f'<span class="performance-badge {css}">{label}</span>'
+
+
+# =========================
+# Chart helpers
+# =========================
+def performance_chart(data: pd.DataFrame, metric_type: str = "delay"):
     if data.empty:
         return None
-
-    for col in ["average_speed", "average_traveltime", "average_delay"]:
-        if col in data.columns:
-            data[col] = pd.to_numeric(data[col], errors="coerce")
-
     metric_type = metric_type.lower().strip()
-    if metric_type == "speed":
-        y_col, title, color = "average_speed", "Traffic Speed Analysis", "#2ecc71"
-        y_label = "Average Speed (mph)"
-        dist_x_label = "Average Speed (mph)"
+    if metric_type == "delay":
+        y_col, title, color = "average_delay", "Traffic Delay Analysis", "#e74c3c"
+        y_label = "Average Delay (seconds)"
+        dist_x_label = "Average Delay (seconds)"
     else:
         y_col, title, color = "average_traveltime", "Travel Time Analysis", "#3498db"
         y_label = "Average Travel Time (minutes)"
         dist_x_label = "Average Travel Time (minutes)"
 
-    if y_col not in data.columns or data[y_col].isna().all():
-        st.warning(f"No data available for {y_col}")
-        return None
-
     dd = data.dropna(subset=["local_datetime", y_col]).sort_values("local_datetime")
-    if dd.empty:
-        st.warning(f"No valid data for {metric_type} analysis")
-        return None
 
     fig = make_subplots(
         rows=2, cols=1,
@@ -218,408 +452,252 @@ def speed_performance_chart(data: pd.DataFrame, metric_type: str = "speed"):
     fig.update_yaxes(title_text=y_label, row=1, col=1)
     fig.update_xaxes(title_text=dist_x_label, row=2, col=1)
     fig.update_yaxes(title_text="Frequency (Number of Hours)", row=2, col=1)
+
     return fig
 
 
-# ---------------------------
-# Main analysis section (center panel)
-# ---------------------------
-def render_acyclica_section(acyclica_df: pd.DataFrame, aggregation_level: str = "Daily"):
-    """
-    Render the Acyclica travel time analysis in the MAIN page.
-    `aggregation_level` controls how `process_traffic_data` groups the data.
-    """
-    if acyclica_df is None or acyclica_df.empty:
-        st.error("❌ Failed to load Acyclica data. Please check your data sources.")
-        return
+def volume_charts(
+    data: pd.DataFrame,
+    theoretical_link_capacity_vph: int,
+    high_volume_threshold_vph: int,
+):
+    if data.empty:
+        return None, None, None
+    dd = data.dropna(subset=["local_datetime", "total_volume", "intersection_name"]).copy()
+    dd.sort_values("local_datetime", inplace=True)
 
-    # Data preview
-    with st.expander("🔍 Data Preview (First 5 rows)", expanded=False):
-        st.write("**Available columns:**", list(acyclica_df.columns))
-        st.dataframe(acyclica_df.head(), use_container_width=True)
-        st.write("**Data shape:**", acyclica_df.shape)
-        if "local_datetime" in acyclica_df.columns:
-            st.write("**Date range:**", acyclica_df["local_datetime"].min(), "to", acyclica_df["local_datetime"].max())
-
-    # Ensure required columns exist and are properly typed
-    required_cols = ["local_datetime", "average_traveltime", "average_speed"]
-    missing_cols = [col for col in required_cols if col not in acyclica_df.columns]
-    if missing_cols:
-        st.error(f"❌ Missing required columns in Acyclica data: {', '.join(missing_cols)}")
-        return
-
-    try:
-        acyclica_df["local_datetime"] = pd.to_datetime(acyclica_df["local_datetime"], errors="coerce")
-        acyclica_df = acyclica_df.dropna(subset=["local_datetime"])
-
-        for col in ["average_traveltime", "average_speed", "average_delay"]:
-            if col in acyclica_df.columns:
-                acyclica_df[col] = pd.to_numeric(acyclica_df[col], errors="coerce")
-
-        if "segment_name" not in acyclica_df.columns:
-            if "corridor_id" in acyclica_df.columns and "direction" in acyclica_df.columns:
-                acyclica_df["segment_name"] = (
-                    acyclica_df["corridor_id"].astype(str) + " (" + acyclica_df["direction"].astype(str) + ")"
-                )
-            elif "corridor_id" in acyclica_df.columns:
-                acyclica_df["segment_name"] = acyclica_df["corridor_id"].astype(str)
-            else:
-                acyclica_df["segment_name"] = "Washington Street"
-    except Exception as e:
-        st.error(f"❌ Error processing Acyclica data: {str(e)}")
-        return
-
-    # Header
-    render_gradient_header(
-        title="Travel Time Analysis: Acyclica Data",
-        subtitle_left="🚗 Same comprehensive analytics as Iteris ClearGuide + Speed-focused insights",
-        icon="⚡"
+    # 1) Trend by intersection
+    fig1 = px.line(
+        dd,
+        x="local_datetime",
+        y="total_volume",
+        color="intersection_name",
+        title=" Traffic Volume Trends by Intersection",
+        labels={"total_volume": "Volume (vehicles/hour)", "local_datetime": "Date/Time"},
+        template="plotly_white",
+    )
+    fig1.update_layout(
+        height=500,
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
     )
 
-    # Determine bounds for local date picker in the main area
-    if "local_datetime" in acyclica_df.columns:
-        min_date_ts = acyclica_df["local_datetime"].min()
-        max_date_ts = acyclica_df["local_datetime"].max()
-    else:
-        min_date_ts = datetime.today() - timedelta(days=7)
-        max_date_ts = datetime.today()
+    # 2) Distribution + Hourly heatmap
+    fig2 = make_subplots(
+        rows=2,
+        cols=1,
+        subplot_titles=("Volume Distribution by Intersection", "Hourly Avg Volume Heatmap"),
+        vertical_spacing=0.12,
+    )
 
-    try:
-        min_date = pd.to_datetime(min_date_ts, errors="coerce").date()
-        max_date = pd.to_datetime(max_date_ts, errors="coerce").date()
-        if min_date > max_date:
-            min_date, max_date = max_date, min_date
-        if min_date == max_date:
-            max_date = max_date + timedelta(days=1)
-    except Exception:
-        min_date = (datetime.today().date() - timedelta(days=30))
-        max_date = datetime.today().date()
+    # Box plots
+    for name, g in dd.groupby("intersection_name", sort=False):
+        fig2.add_trace(go.Box(y=g["total_volume"], name=name, boxpoints="outliers"), row=1, col=1)
 
-    st.markdown("#### 📅 Analysis Period")
-    try:
-        date_range = date_range_preset_controls(min_date, max_date, key_prefix="acyclica")
-    except Exception:
-        st.session_state.pop("acyclica_range", None)
-        date_range = (max(min_date, max_date - timedelta(days=30)), max_date)
-        st.info("Date range was reset to a safe default for this dataset.")
+    dd["hour"] = dd["local_datetime"].dt.hour
+    hourly_avg = dd.groupby(["hour", "intersection_name"], as_index=False)["total_volume"].mean()
+    hourly_pivot = hourly_avg.pivot(index="intersection_name", columns="hour", values="total_volume").sort_index()
 
-    if not date_range or len(date_range) != 2:
-        st.warning("⚠️ Please select both start and end dates to proceed.")
-        return
+    fig2.add_trace(
+        go.Heatmap(
+            z=hourly_pivot.values,
+            x=hourly_pivot.columns,
+            y=hourly_pivot.index,
+            colorscale="Blues",
+            showscale=True,
+            colorbar=dict(title="Avg Volume (vph)"),
+        ),
+        row=2, col=1,
+    )
+    fig2.update_layout(
+        height=800,
+        title=" Volume Distribution & Capacity Analysis",
+        template="plotly_white",
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+    )
 
-    # Apply grouping/aggregation as selected
-    try:
-        filtered_data = process_traffic_data(
-            acyclica_df,
-            date_range,
-            aggregation_level  # <-- now uses the sidebar choice
-        )
-    except Exception as e:
-        st.error(f"❌ Error processing data: {str(e)}")
-        filtered_data = pd.DataFrame()
+    # 3) Peak hour by intersection
+    hourly_volume = dd.groupby(["hour", "intersection_name"], as_index=False)["total_volume"].mean()
+    fig3 = px.line(
+        hourly_volume,
+        x="hour",
+        y="total_volume",
+        color="intersection_name",
+        title=" Average Hourly Volume Patterns",
+        labels={"total_volume": "Average Volume (vph)", "hour": "Hour of Day"},
+        template="plotly_white",
+    )
+    fig3.add_hline(
+        y=theoretical_link_capacity_vph,
+        line_dash="dash",
+        line_color="red",
+        annotation_text=f"Theoretical Capacity ({theoretical_link_capacity_vph:,} vph)",
+    )
+    fig3.add_hline(
+        y=high_volume_threshold_vph,
+        line_dash="dot",
+        line_color="orange",
+        annotation_text=f"High Volume Threshold ({high_volume_threshold_vph:,} vph)",
+    )
+    fig3.update_layout(
+        height=500,
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)",
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+    )
 
-    if filtered_data.empty:
-        st.warning("⚠️ No Acyclica data available for the selected date range.")
-        return
+    return fig1, fig2, fig3
 
-    total_records = len(filtered_data)
-    data_span = (date_range[1] - date_range[0]).days + 1
 
-    for c in ["average_traveltime", "average_speed"]:
-        if c in filtered_data.columns:
-            filtered_data[c] = pd.to_numeric(filtered_data[c], errors="coerce")
+# =========================
+# Date range UI helper
+# =========================
+def date_range_preset_controls(min_date: datetime.date, max_date: datetime.date, key_prefix: str):
+    """
+    Presets that default to Last 30 Days on first load, persist in session_state,
+    and won't clobber custom picks.
+    """
+    k_range = f"{key_prefix}_range"
 
-    # KPIs
-    st.subheader("🚦 KPI's (Key Performance Indicators)")
-    st.info("✨ **Acyclica Advantage**: Speed-based congestion analysis instead of delay-based")
+    if k_range not in st.session_state:
+        default_start = max(min_date, max_date - timedelta(days=30))
+        st.session_state[k_range] = (default_start, max_date)
 
-    LOW_SPEED_THRESHOLD = 25.0  # mph
-    try:
-        k = compute_acyclica_kpis(filtered_data, LOW_SPEED_THRESHOLD)
-    except Exception as e:
-        st.error(f"❌ Error computing KPIs: {str(e)}")
-        return
-
-    buffer_minutes = max(0.0, k["planning_time"]["value"] - k["avg_tt"]["value"])
-    buffer_help = "Extra minutes to leave earlier so you arrive on time 95% of the time.\nFormula: Planning Time (95th) − Average Travel Time."
-
-    c1, c2, c3, c4, c5 = st.columns(5)
+    c1, c2, c3 = st.columns(3)
     with c1:
-        st.metric("🎯 Reliability Index", f"{k['reliability']['value']:.0f}{k['reliability']['unit']}", help=k['reliability']['help'])
-        st.markdown(render_badge(k['reliability']['score']), unsafe_allow_html=True)
+        if st.button(" Last 7 Days", key=f"{key_prefix}_7d"):
+            st.session_state[k_range] = (max(min_date, max_date - timedelta(days=7)), max_date)
     with c2:
-        st.metric("🐌 Low Speed Frequency", f"{k['low_speed_freq']['value']:.1f}{k['low_speed_freq']['unit']}", help=k['low_speed_freq']['help'])
-        st.caption(k['low_speed_freq'].get('extra', ''))
-        st.markdown(render_badge(k['low_speed_freq']['score']), unsafe_allow_html=True)
+        if st.button(" Last 30 Days", key=f"{key_prefix}_30d"):
+            st.session_state[k_range] = (max(min_date, max_date - timedelta(days=30)), max_date)
     with c3:
-        st.metric("⏱️ Average Travel Time", f"{k['avg_tt']['value']:.1f} {k['avg_tt']['unit']}", help=k['avg_tt']['help'])
-        st.markdown(render_badge(k['avg_tt']['score']), unsafe_allow_html=True)
-    with c4:
-        st.metric("📈 Planning Time (95th Percentile)", f"{k['planning_time']['value']:.1f} {k['planning_time']['unit']}", help=k['planning_time']['help'])
-        st.markdown(render_badge(k['planning_time']['score']), unsafe_allow_html=True)
-    with c5:
-        st.metric("🧭 Buffer Time (leave this much earlier)", f"{buffer_minutes:.1f} min", help=buffer_help)
-        st.markdown(render_badge(k['buffer_index']['score']), unsafe_allow_html=True)
+        if st.button(" Full Range", key=f"{key_prefix}_full"):
+            st.session_state[k_range] = (min_date, max_date)
 
-    # Trends
-    if len(filtered_data) > 1:
-        st.subheader("📈 Performance Trends")
-        st.info("✨ **Acyclica Advantage**: Speed analysis shows traffic flow efficiency")
+    custom = st.date_input(
+        "Custom Date Range",
+        value=st.session_state[k_range],
+        min_value=min_date,
+        max_value=max_date,
+        key=f"{key_prefix}_custom",
+    )
+    if custom != st.session_state[k_range]:
+        st.session_state[k_range] = custom
 
-        v1, v2 = st.columns(2)
-        with v1:
-            try:
-                sc = speed_performance_chart(filtered_data, "speed")
-                if sc:
-                    st.plotly_chart(sc, use_container_width=True)
-            except Exception as e:
-                st.error(f"Error creating speed chart: {str(e)}")
-        with v2:
-            try:
-                tc = speed_performance_chart(filtered_data, "travel")
-                if tc:
-                    st.plotly_chart(tc, use_container_width=True)
-            except Exception as e:
-                st.error(f"Error creating travel time chart: {str(e)}")
-
-    # Bottleneck analysis
-    st.subheader("🚨 Speed-Based Bottleneck Analysis")
-    st.info("✨ **Acyclica Advantage**: Identifies bottlenecks using speed patterns instead of delay")
-
-    if not filtered_data.empty:
-        try:
-            group_cols = ["segment_name"]
-            if "direction" in filtered_data.columns:
-                group_cols.append("direction")
-
-            analysis_df = filtered_data.groupby(group_cols).agg(
-                average_speed_mean=("average_speed", "mean"),
-                average_speed_min=("average_speed", "min"),
-                average_traveltime_mean=("average_traveltime", "mean"),
-                average_traveltime_max=("average_traveltime", "max"),
-                n=("average_speed", "count"),
-            ).reset_index()
-
-            if "direction" not in analysis_df.columns:
-                analysis_df["direction"] = "All"
-
-            def _norm_speed(s):
-                s = pd.to_numeric(s, errors="coerce")
-                s_clean = s.dropna()
-                if len(s_clean) == 0:
-                    return pd.Series(np.zeros(len(s)), index=s.index)
-                mn, mx = s_clean.min(), s_clean.max()
-                if mx > mn:
-                    return (s - mn) / (mx - mn)
-                return pd.Series(np.zeros(len(s)), index=s.index)
-
-            speed_score = (1.0 - _norm_speed(analysis_df["average_speed_mean"])) * 50
-            min_speed_score = (1.0 - _norm_speed(analysis_df["average_speed_min"])) * 30
-            travel_time_score = _norm_speed(analysis_df["average_traveltime_max"]) * 20
-
-            analysis_df["Bottleneck_Score"] = (speed_score + min_speed_score + travel_time_score).round(1)
-
-            bins = [-0.1, 20, 40, 60, 80, 200]
-            labels = ["🟢 Excellent", "🔵 Good", "🟡 Fair", "🟠 Poor", "🔴 Critical"]
-            analysis_df["🎯 Performance Rating"] = pd.cut(analysis_df["Bottleneck_Score"], bins=bins, labels=labels)
-
-            final = analysis_df.rename(columns={
-                "average_speed_mean": "Avg Speed (mph)",
-                "average_speed_min": "Min Speed (mph)",
-                "average_traveltime_mean": "Avg Time (min)",
-                "average_traveltime_max": "Peak Time (min)",
-                "direction": "Dir",
-                "n": "Obs",
-            }).sort_values("Bottleneck_Score", ascending=False)
-
-            st.dataframe(
-                final.head(15),
-                use_container_width=True,
-                column_config={
-                    "Bottleneck_Score": st.column_config.NumberColumn(
-                        "🚨 Speed Impact Score",
-                        help="Speed-based composite (0–100); higher = worse performance",
-                        format="%.1f",
-                    ),
-                },
-            )
-
-            st.download_button(
-                "⬇️ Download Acyclica Analysis (CSV)",
-                data=filtered_data.to_csv(index=False).encode("utf-8"),
-                file_name="acyclica_analysis.csv",
-                mime="text/csv",
-            )
-
-        except Exception as e:
-            st.error(f"❌ Error in speed-based analysis: {str(e)}")
-
-    # Summary
-    with st.expander("📊 Data Summary"):
-        st.write(f"**Total Records Analyzed:** {total_records:,}")
-        st.write(f"**Date Range:** {date_range[0]} to {date_range[1]} ({data_span} days)")
-        if "average_speed" in filtered_data.columns and filtered_data["average_speed"].notna().any():
-            st.write(f"**Average Speed:** {filtered_data['average_speed'].mean():.1f} mph")
-        if "average_traveltime" in filtered_data.columns and filtered_data["average_traveltime"].notna().any():
-            st.write(f"**Average Travel Time:** {filtered_data['average_traveltime'].mean():.1f} minutes")
-
-        if "direction" in filtered_data.columns:
-            try:
-                dir_summary = filtered_data.groupby("direction").agg({
-                    "average_speed": "mean",
-                    "average_traveltime": "mean"
-                }).round(2)
-                st.write("**By Direction:**")
-                st.dataframe(dir_summary)
-            except Exception as e:
-                st.error(f"Error creating direction summary: {str(e)}")
+    return st.session_state[k_range]
 
 
-# ---------------------------
-# Wrapper that adds context line
-# ---------------------------
-def render_acyclica_section_with_settings(data, corridor, direction, aggregation):
-    if data.empty:
-        st.warning("⚠️ No data available for the selected filters. Try adjusting your date range or direction filter.")
-        return
-
-    st.info(f"📊 **Analysis Context**: {corridor} | {direction} | {aggregation} Aggregation")
-    render_acyclica_section(data, aggregation_level=aggregation)
-
-
-# ---------------------------
-# TAB 3 ENTRY POINT
-# ---------------------------
-def render_tab3_analysis():
+# =========================
+# Processing
+# =========================
+def process_traffic_data(df, date_range, granularity, time_filter=None, start_hour=None, end_hour=None):
     """
-    Tab 3 renderer: sidebar only collects inputs; the main page renders content.
+    Process traffic data based on date range and granularity selections.
+    Works for:
+      - Corridor/TT/Speed wide data (with or without 'segment_name')
+      - Volume data (intersection_id)
     """
-    # Load data BEFORE sidebar so any errors display in the main area
-    try:
-        acyclica_df = _safe_get_acyclica_df()
-    except Exception as e:
-        st.error(f"Error loading Acyclica data: {e}")
-        st.stop()
+    df = df.copy()
+    df["local_datetime"] = pd.to_datetime(df["local_datetime"])
 
-    if acyclica_df is None or acyclica_df.empty:
-        st.error("❌ Failed to load Acyclica data. Please check your data sources.")
-        st.stop()
-
-    # ---------------- Sidebar (controls only) ----------------
-    with st.sidebar:
-        with st.expander("⚙️ Pg.3 SETTINGS", expanded=True):
-            st.caption("Acyclica Data: Speed + Travel Time Analysis")
-            st.caption("AI Models: Peak Hour Prediction, Incident Detection, Event Impact Analysis")
-
-            # Corridor
-            st.markdown("## 🛣️ Select Corridor")
-            corridor_options = ["Washington Street"]
-            selected_corridor = st.selectbox(
-                "Corridor",
-                corridor_options,
-                key="tab3_corridor",
-                help="Currently focusing on Washington Street corridor"
-            )
-
-            # Direction
-            st.markdown("## 🔄 Direction Filter")
-            if "direction" in acyclica_df.columns and not acyclica_df.empty:
-                available_directions = sorted(pd.Series(acyclica_df["direction"]).dropna().astype(str).unique().tolist())
-                direction_options = ["All Directions"] + available_directions
-            else:
-                direction_options = ["All Directions", "NB", "SB"]
-            selected_direction = st.selectbox(
-                "Direction",
-                direction_options,
-                key="tab3_direction",
-                help="Filter analysis by travel direction"
-            )
-
-            # Date bounds for sidebar picker
-            if "local_datetime" in acyclica_df.columns:
-                min_date_ts = acyclica_df["local_datetime"].min()
-                max_date_ts = acyclica_df["local_datetime"].max()
-            else:
-                min_date_ts = datetime.today() - timedelta(days=30)
-                max_date_ts = datetime.today()
-
-            try:
-                min_date = pd.to_datetime(min_date_ts, errors="coerce").date()
-                max_date = pd.to_datetime(max_date_ts, errors="coerce").date()
-                if min_date > max_date:
-                    min_date, max_date = max_date, min_date
-                if min_date == max_date:
-                    max_date = max_date + timedelta(days=1)
-            except Exception:
-                min_date = (datetime.today().date() - timedelta(days=30))
-                max_date = datetime.today().date()
-
-            st.markdown("## 📅 Date And Time")
-            try:
-                date_range = date_range_preset_controls(min_date, max_date, key_prefix="tab3")
-            except Exception:
-                st.session_state.pop("tab3_range", None)
-                date_range = (max(min_date, max_date - timedelta(days=30)), max_date)
-                st.info("Date range was reset to a safe default for this dataset.")
-
-            # Aggregation
-            st.markdown("## Data Aggregation")
-            aggregation_options = ["Hourly", "Daily", "Weekly", "Monthly"]
-            selected_aggregation = st.selectbox(
-                "Aggregation Level",
-                aggregation_options,
-                index=1,  # default to Daily
-                key="tab3_aggregation",
-                help="Daily shows day-by-day patterns, Weekly shows weekly trends, Monthly shows long-term patterns."
-            )
-
-            # Analysis type
-            st.markdown("## Select Analysis Type")
-            analysis_type = st.selectbox(
-                "Choose Analysis",
-                [
-                    "Travel Time Analysis",
-                    "Peak Hour Prediction",
-                    "Incident Detection & Recovery",
-                    "Event Impact Analysis",
-                ],
-                key="tab3_analysis_type",
-                help="Travel Time Analysis shows the same metrics as Tab 1 but with Acyclica data + speed insights.",
-            )
-
-    # --------------- Main area (render) ----------------
-    filtered_acyclica_df = acyclica_df.copy()
-
-    # Apply direction filter
-    if selected_direction != "All Directions" and "direction" in filtered_acyclica_df.columns:
-        dir_series = filtered_acyclica_df["direction"].astype(str)
-        filtered_acyclica_df = filtered_acyclica_df[dir_series.str.upper() == str(selected_direction).upper()]
-
-    # Apply date filter from the sidebar
-    if date_range and len(date_range) == 2 and "local_datetime" in filtered_acyclica_df.columns:
-        filtered_acyclica_df = filtered_acyclica_df[
-            (filtered_acyclica_df["local_datetime"].dt.date >= date_range[0]) &
-            (filtered_acyclica_df["local_datetime"].dt.date <= date_range[1])
+    # Filter by date range
+    if len(date_range) == 2:
+        start_date, end_date = date_range
+        df = df[
+            (df["local_datetime"].dt.date >= start_date)
+            & (df["local_datetime"].dt.date <= end_date)
         ]
 
-    # Route to the selected analysis (this is now OUTSIDE the sidebar)
-    if analysis_type == "Travel Time Analysis":
-        render_acyclica_section_with_settings(
-            filtered_acyclica_df,
-            selected_corridor,
-            selected_direction,
-            selected_aggregation,
-        )
-    elif analysis_type == "Peak Hour Prediction":
-        from Prediction.peak_hour_prediction import render_peak_hour_section
-        render_peak_hour_section()
-    elif analysis_type == "Incident Detection & Recovery":
-        render_incident_detection_section(
-            df_source=filtered_acyclica_df,
-            corridor=selected_corridor,
-            direction=selected_direction if selected_direction != "All Directions" else "NB",
-            day=date_range[1] if date_range and len(date_range) == 2 else datetime.now().date()
-        )
-    elif analysis_type == "Event Impact Analysis":
-        from Prediction.event_impact_analysis import render_event_impact_section
-        render_event_impact_section()
+    # Optional time-of-day filters for Hourly
+    if granularity == "Hourly" and time_filter:
+        if time_filter == "Peak Hours (7-9 AM, 4-6 PM)":
+            df = df[
+                (df["local_datetime"].dt.hour.between(7, 9))
+                | (df["local_datetime"].dt.hour.between(16, 18))
+            ]
+        elif time_filter == "AM Peak (7-9 AM)":
+            df = df[df["local_datetime"].dt.hour.between(7, 9)]
+        elif time_filter == "PM Peak (4-6 PM)":
+            df = df[df["local_datetime"].dt.hour.between(16, 18)]
+        elif time_filter == "Off-Peak":
+            df = df[
+                ~(df["local_datetime"].dt.hour.between(7, 9))
+                & ~(df["local_datetime"].dt.hour.between(16, 18))
+            ]
+        elif time_filter == "Custom Range" and start_hour is not None and end_hour is not None:
+            df = df[df["local_datetime"].dt.hour.between(start_hour, end_hour - 1)]
+
+    # ---- Determine dataset type and aggregate accordingly ----
+    has_corridor_measures = ("average_traveltime" in df.columns) or ("average_speed" in df.columns)
+
+    if has_corridor_measures:
+        # Corridor-wide data (Acyclica): aggregate by corridor_id/direction (segment_name optional)
+        key_base = [k for k in ["corridor_id", "direction"] if k in df.columns]
+        if "segment_name" in df.columns:
+            key_base.append("segment_name")
+
+        if granularity == "Daily":
+            df["date_group"] = df["local_datetime"].dt.date
+            grouped = df.groupby(["date_group"] + key_base).agg(
+                {
+                    "average_traveltime": "mean" if "average_traveltime" in df.columns else "first",
+                    "average_speed": "mean" if "average_speed" in df.columns else "first",
+                }
+            ).reset_index()
+            grouped["local_datetime"] = pd.to_datetime(grouped["date_group"])
+
+        elif granularity == "Weekly":
+            df["week_group"] = df["local_datetime"].dt.to_period("W").dt.start_time
+            grouped = df.groupby(["week_group"] + key_base).agg(
+                {
+                    "average_traveltime": "mean" if "average_traveltime" in df.columns else "first",
+                    "average_speed": "mean" if "average_speed" in df.columns else "first",
+                }
+            ).reset_index()
+            grouped["local_datetime"] = grouped["week_group"]
+
+        elif granularity == "Monthly":
+            df["month_group"] = df["local_datetime"].dt.to_period("M").dt.start_time
+            grouped = df.groupby(["month_group"] + key_base).agg(
+                {
+                    "average_traveltime": "mean" if "average_traveltime" in df.columns else "first",
+                    "average_speed": "mean" if "average_speed" in df.columns else "first",
+                }
+            ).reset_index()
+            grouped["local_datetime"] = grouped["month_group"]
+
+        else:  # Hourly - no aggregation
+            grouped = df
+
+    elif "intersection_id" in df.columns:  # Volume data
+        if granularity == "Daily":
+            df["date_group"] = df["local_datetime"].dt.date
+            grouped = df.groupby(["date_group", "intersection_id", "direction", "intersection_name"]).agg(
+                {"total_volume": "sum"}
+            ).reset_index()
+            grouped["local_datetime"] = pd.to_datetime(grouped["date_group"])
+
+        elif granularity == "Weekly":
+            df["week_group"] = df["local_datetime"].dt.to_period("W").dt.start_time
+            grouped = df.groupby(["week_group", "intersection_id", "direction", "intersection_name"]).agg(
+                {"total_volume": "sum"}
+            ).reset_index()
+            grouped["local_datetime"] = grouped["week_group"]
+
+        elif granularity == "Monthly":
+            df["month_group"] = df["local_datetime"].dt.to_period("M").dt.start_time
+            grouped = df.groupby(["month_group", "intersection_id", "direction", "intersection_name"]).agg(
+                {"total_volume": "sum"}
+            ).reset_index()
+            grouped["local_datetime"] = grouped["month_group"]
+
+        else:  # Hourly - no aggregation
+            grouped = df
+
+    else:
+        # Fallback - just return filtered data
+        grouped = df
+
+    return grouped
