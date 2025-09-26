@@ -16,7 +16,7 @@ from plotly.subplots import make_subplots
 @st.cache_data
 def load_traffic_data():
     """
-    Load and combine all corridor traffic data from GitHub
+    Load and combine all corridor traffic Prediction from GitHub
     """
     data_sources = {
         "Avenue 52 → Calle Tampico": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/1_2_LONG_NSB_Ave52_CalleTampico_WashSt_1hr_septojuly.csv",
@@ -51,7 +51,7 @@ def load_traffic_data():
 @st.cache_data
 def load_volume_data():
     """
-    Load consolidated volume data for all Washington Street intersections
+    Load consolidated volume Prediction for all Washington Street intersections
     """
     volume_url = "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/VOLUME/KMOB_LONG/LONG_MASTER_Avenue52_to_Avenue47_1hr_NS_VOLUME_OctoberTOJune.csv"
 
@@ -86,12 +86,62 @@ def load_volume_data():
         return volume_df
 
     except Exception as e:
-        st.error(f"Error loading volume data: {e}")
+        st.error(f"Error loading volume Prediction: {e}")
+        return pd.DataFrame()
+
+
+@st.cache_data
+def load_acyclica_data():
+    """
+    Load Acyclica travel time and speed data from GitHub.
+    Data structure: local_datetime, corridor_id, direction, metric, Strength, Firsts, Lasts, Minimum, Maximum
+    The 'metric' column contains either 'TravelTime' or 'Speed' values.
+    """
+    acyclica_url = "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/MASTER_Acyclica_Traveltime_speed.csv"
+
+    try:
+        df = pd.read_csv(acyclica_url)
+
+        # Convert datetime
+        df["local_datetime"] = pd.to_datetime(df["local_datetime"])
+
+        # Pivot the data to get TravelTime and Speed as separate columns
+        # Using 'Strength' as the main value
+        pivoted = df.pivot_table(
+            index=['local_datetime', 'corridor_id', 'direction'],
+            columns='metric',
+            values='Strength',
+            aggfunc='mean'
+        ).reset_index()
+
+        # Flatten column names
+        pivoted.columns.name = None
+
+        # Rename columns to match existing schema
+        column_mapping = {}
+        if 'TravelTime' in pivoted.columns:
+            column_mapping['TravelTime'] = 'average_traveltime'
+        if 'Speed' in pivoted.columns:
+            column_mapping['Speed'] = 'average_speed'
+
+        pivoted = pivoted.rename(columns=column_mapping)
+
+        # Add missing columns that existing code expects
+        pivoted['average_delay'] = np.nan  # Acyclica doesn't have delay data
+        pivoted['segment_name'] = pivoted['corridor_id'].astype(str)  # Create segment_name from corridor_id
+
+        # Sort by datetime
+        pivoted = pivoted.sort_values("local_datetime").reset_index(drop=True)
+
+        return pivoted
+
+    except Exception as e:
+        st.error(f"Error loading Acyclica data: {e}")
         return pd.DataFrame()
 
 
 # =========================
-# Small data utilities
+# Small Prediction utilities
 # =========================
 def _safe_to_datetime(df: pd.DataFrame, col: str) -> pd.DataFrame:
     if col in df.columns:
@@ -122,6 +172,27 @@ def get_volume_df() -> pd.DataFrame:
     missing = needed - set(df.columns)
     if missing:
         st.warning(f"Volume dataset is missing columns: {', '.join(missing)}")
+    return df
+
+
+@st.cache_data(show_spinner=False)
+def get_acyclica_df() -> pd.DataFrame:
+    """
+    Get Acyclica dataset for Tab 3 (speed-focused analysis).
+    Returns data with: local_datetime, corridor_id, direction, average_traveltime, average_speed, average_delay (NaN)
+    """
+    df = load_acyclica_data()
+    if df is None or len(df) == 0:
+        return pd.DataFrame()
+
+    df = _safe_to_datetime(df.copy(), "local_datetime")
+
+    # Check for expected columns
+    needed = {"average_traveltime", "average_speed", "direction"}
+    missing = needed - set(df.columns)
+    if missing:
+        st.warning(f"Acyclica dataset is missing columns: {', '.join(missing)}")
+
     return df
 
 
@@ -475,7 +546,7 @@ def date_range_preset_controls(min_date: datetime.date, max_date: datetime.date,
 # =========================
 def process_traffic_data(df, date_range, granularity, time_filter=None, start_hour=None, end_hour=None):
     """
-    Process traffic data based on date range and granularity selections
+    Process traffic Prediction based on date range and granularity selections
     """
     # Convert datetime if not already done
     df["local_datetime"] = pd.to_datetime(df["local_datetime"])
@@ -488,7 +559,7 @@ def process_traffic_data(df, date_range, granularity, time_filter=None, start_ho
             & (df["local_datetime"].dt.date <= end_date)
         ]
 
-    # Apply time filters for hourly data
+    # Apply time filters for hourly Prediction
     if granularity == "Hourly" and time_filter:
         if time_filter == "Peak Hours (7-9 AM, 4-6 PM)":
             df = df[
@@ -507,8 +578,8 @@ def process_traffic_data(df, date_range, granularity, time_filter=None, start_ho
         elif time_filter == "Custom Range" and start_hour is not None and end_hour is not None:
             df = df[df["local_datetime"].dt.hour.between(start_hour, end_hour - 1)]
 
-    # Determine data type and aggregate accordingly
-    if "segment_name" in df.columns:  # Corridor data (delay/speed/travel time)
+    # Determine Prediction type and aggregate accordingly
+    if "segment_name" in df.columns:  # Corridor Prediction (delay/speed/travel time)
         if granularity == "Daily":
             df["date_group"] = df["local_datetime"].dt.date
             grouped = df.groupby(["date_group", "corridor_id", "direction", "segment_name"]).agg(
@@ -545,7 +616,7 @@ def process_traffic_data(df, date_range, granularity, time_filter=None, start_ho
         else:  # Hourly - no aggregation needed
             grouped = df
 
-    elif "intersection_id" in df.columns:  # Volume data
+    elif "intersection_id" in df.columns:  # Volume Prediction
         if granularity == "Daily":
             df["date_group"] = df["local_datetime"].dt.date
             grouped = df.groupby(["date_group", "intersection_id", "direction", "intersection_name"]).agg(
@@ -571,7 +642,7 @@ def process_traffic_data(df, date_range, granularity, time_filter=None, start_ho
             grouped = df
 
     else:
-        # Fallback - just return filtered data
+        # Fallback - just return filtered Prediction
         grouped = df
 
     return grouped

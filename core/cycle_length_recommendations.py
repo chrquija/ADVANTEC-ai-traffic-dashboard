@@ -154,7 +154,7 @@ def _inject_kpi_css():
 }
 
 /* ---------- Dark mode overrides ---------- */
-html.dark, [data-theme="dark"], [data-base-theme="dark"], body[data-theme="dark"]{
+html.dark, [Prediction-theme="dark"], [Prediction-base-theme="dark"], body[Prediction-theme="dark"]{
   --legend-bg: rgba(255,255,255,.08);
   --legend-border: rgba(255,255,255,.18);
   --legend-title: #ffffff;
@@ -356,7 +356,7 @@ def render_cycle_length_section(raw: pd.DataFrame, key_prefix: str = "cycle") ->
     render_howto_sidebar()
 
     if raw is None or raw.empty:
-        st.info("No hourly volume data available for cycle length recommendations.")
+        st.info("No hourly volume Prediction available for cycle length recommendations.")
         return
     if "local_datetime" not in raw.columns or "total_volume" not in raw.columns:
         st.info("Required columns not found: 'local_datetime', 'total_volume'.")
@@ -435,14 +435,14 @@ def render_cycle_length_section(raw: pd.DataFrame, key_prefix: str = "cycle") ->
     selected_period = period_map[time_period]
     period_data = raw if selected_period == "ALL" else filter_by_period(raw, "local_datetime", selected_period)
     if period_data.empty:
-        # Render the header (with current cycle bubble) even if no data to show
+        # Render the header (with current cycle bubble) even if no Prediction to show
         header_slot.markdown(
             _build_header_html(
                 intersection_label, direction_label, start_label, end_label, time_period, current_cycle
             ),
             unsafe_allow_html=True,
         )
-        st.warning("⚠️ No data available for the selected time period.")
+        st.warning("⚠️ No Prediction available for the selected time period.")
         return
 
     # Now that we know the user's choices, render the header with the bubble

@@ -18,6 +18,7 @@ from sidebar_functions import (
     process_traffic_data,
     get_corridor_df,
     get_volume_df,
+    get_acyclica_df,  # NEW for Tab 3
     get_performance_rating,
     performance_chart,
     # volume_charts,  # <- no longer used in TAB 2
@@ -31,6 +32,14 @@ from cycle_length_recommendations import render_cycle_length_section
 
 # Map builders (return Plotly figures)
 from Map import build_corridor_map, build_intersection_map, build_intersections_overview
+
+# Acyclica analysis (Tab 3)
+from acyclica_traveltime_analysis import render_acyclica_section
+
+# AI Prediction Models (Tab 3 sub-sections)
+from Prediction.peak_hour_prediction import render_peak_hour_section
+from Prediction.incident_detection import render_incident_detection_section  
+from Prediction.event_impact_analysis import render_event_impact_section
 
 
 # =========================
@@ -149,7 +158,7 @@ def _nodes_present_in_data(df: pd.DataFrame) -> set:
     return set(pd.concat([left, right], ignore_index=True).dropna().unique())
 
 def _canonical_order_in_data(df: pd.DataFrame) -> list[str]:
-    """Canonical corridor order, restricted to nodes that actually exist in the data."""
+    """Canonical corridor order, restricted to nodes that actually exist in the Prediction."""
     present = _nodes_present_in_data(df)
     return [n for n in DESIRED_NODE_ORDER_BOTTOM_UP if n in present]
 
@@ -222,8 +231,8 @@ st.markdown("""
     .badge-critical  { background: linear-gradient(45deg, #e74c3c, #8e44ad); animation: pulse 2s infinite; }
     @keyframes pulse { 0% {opacity:1} 50% {opacity:.7} 100% {opacity:1} }
 
-    .stTabs [data-baseweb="tab-list"] { gap: 16px; }
-    .stTabs [data-baseweb="tab"] { height: 56px; padding: 0 18px; border-radius: 12px;
+    .stTabs [Prediction-baseweb="tab-list"] { gap: 16px; }
+    .stTabs [Prediction-baseweb="tab"] { height: 56px; padding: 0 18px; border-radius: 12px;
         background: rgba(79, 172, 254, 0.1); border: 1px solid rgba(79, 172, 254, 0.2); }
 
     /* ==========================================================
@@ -231,8 +240,8 @@ st.markdown("""
        ========================================================== */
     :root { --cvag-rail-top: 5.6rem; } /* top offset (enough to clear headers) */
 
-    [data-testid="column"]:has(#od-map-anchor),
-    [data-testid="column"]:has(#vol-map-anchor) {
+    [Prediction-testid="column"]:has(#od-map-anchor),
+    [Prediction-testid="column"]:has(#vol-map-anchor) {
         position: sticky;
         top: var(--cvag-rail-top);
         align-self: flex-start;
@@ -248,8 +257,8 @@ st.markdown("""
     }
 
     @media (max-width: 1100px) {
-        [data-testid="column"]:has(#od-map-anchor),
-        [data-testid="column"]:has(#vol-map-anchor) {
+        [Prediction-testid="column"]:has(#od-map-anchor),
+        [Prediction-testid="column"]:has(#vol-map-anchor) {
             position: static;
             top: auto;
         }
@@ -306,7 +315,7 @@ st.markdown("""
     <div style="text-align:center; margin-bottom: 0.5rem;">
         <strong style="font-size: 1.2rem; color: #2980b9;">🌎 The ADVANTEC Web Service Platform</strong>
     </div>
-    <p>Leverages <strong>millions of data points</strong> trained on advanced Machine Learning algorithms to optimize traffic flow, reduce travel time, minimize fuel consumption, and decrease greenhouse gas emissions across the transportation network.</p>
+    <p>Leverages <strong>millions of Prediction points</strong> trained on advanced Machine Learning algorithms to optimize traffic flow, reduce travel time, minimize fuel consumption, and decrease greenhouse gas emissions across the transportation network.</p>
     <p><strong>Key Capabilities:</strong> Real-time anomaly detection • Intelligent cycle length optimization • Predictive traffic modeling • Performance analytics</p>
 </div>
 """, unsafe_allow_html=True)
@@ -491,14 +500,14 @@ def improved_volume_charts_for_tab2(
 # Tabs
 # =========================
 st.markdown("## Select Page")
-tab1, tab2 = st.tabs(["Pg.1 ITERIS CLEARGUIDE", "Pg.2 KINETIC MOBILITY"])
+tab1, tab2, tab3 = st.tabs(["Pg.1 ITERIS CLEARGUIDE", "Pg.2 KINETIC MOBILITY", "Pg.3 ACYCLICA"])
 
 # -------------------------
 # TAB 1: Performance / Travel Time (Search-gated, NO forms)
 # -------------------------
 with tab1:
 
-    # Load data once to populate controls (safe to load; results stay blank until Search)
+    # Load Prediction once to populate controls (safe to load; results stay blank until Search)
     corridor_df = get_corridor_df()
 
     # -------- Sidebar controls (commit on Search) --------
@@ -605,7 +614,7 @@ with tab1:
         try:
             base_df = corridor_df.copy() if not corridor_df.empty else pd.DataFrame()
             if base_df.empty:
-                st.error("❌ Failed to load corridor data. Please check your data sources.")
+                st.error("❌ Failed to load corridor Prediction. Please check your Prediction sources.")
             else:
                 # Unpack committed params
                 od_mode = t1_params.get("od_mode", True)
@@ -704,8 +713,8 @@ with tab1:
                             )
 
                             if filtered_data.empty:
-                                step("No data found for selected filters", 100)
-                                st.warning("⚠️ No data available for the selected filters.")
+                                step("No Prediction found for selected filters", 100)
+                                st.warning("⚠️ No Prediction available for the selected filters.")
                             else:
                                 total_records = len(filtered_data)
                                 data_span = (date_range[1] - date_range[0]).days + 1
@@ -729,7 +738,7 @@ with tab1:
                                   </div>
                                   <div style="margin-top:10px;display:flex;flex-direction:column;gap:6px;">
                                     <div>📅 {date_range[0].strftime('%b %d, %Y')} to {date_range[1].strftime('%b %d, %Y')} ({data_span} days) • {granularity} Aggregation{time_context}</div>
-                                    <div>✅ Analyzing {total_records:,} data points across the selected period</div>
+                                    <div>✅ Analyzing {total_records:,} Prediction points across the selected period</div>
                                   </div>
                                 </div>
                                 """,
@@ -776,8 +785,8 @@ with tab1:
                                             raw_data[col] = pd.to_numeric(raw_data[col], errors="coerce")
 
                                 if raw_data.empty:
-                                    step("No data in window after processing", 100)
-                                    st.info("No data in this window.")
+                                    step("No Prediction in window after processing", 100)
+                                    st.info("No Prediction in this window.")
                                 else:
                                     step("Computing KPIs", 70)
                                     st.subheader("🚦 KPI's (Key Performance Indicators)")
@@ -992,14 +1001,14 @@ with tab1:
                                             st.error(f"❌ Error in performance analysis: {e}")
 
         except Exception as e:
-            st.error(f"❌ Error processing traffic data: {e}")
+            st.error(f"❌ Error processing traffic Prediction: {e}")
 
 # -------------------------
 # TAB 2: Volume / Capacity (Search-gated, NO forms)
 # -------------------------
 with tab2:
 
-    # Load data once to populate controls; results stay blank until Search
+    # Load Prediction once to populate controls; results stay blank until Search
     volume_df = get_volume_df()
 
     with st.sidebar:
@@ -1072,7 +1081,7 @@ with tab2:
         try:
             base_df = volume_df.copy() if not volume_df.empty else pd.DataFrame()
             if base_df.empty:
-                st.error("❌ Failed to load volume data. Please check your data sources.")
+                st.error("❌ Failed to load volume Prediction. Please check your Prediction sources.")
             else:
                 # Unpack committed params
                 intersection = t2_params.get("intersection", "All Intersections")
@@ -1126,8 +1135,8 @@ with tab2:
                             filtered_volume_data = process_traffic_data(base_df, date_range_vol, granularity_vol)
 
                             if filtered_volume_data.empty:
-                                step("No volume data in selected range", 100)
-                                st.warning("⚠️ No volume data available for the selected range.")
+                                step("No volume Prediction in selected range", 100)
+                                st.warning("⚠️ No volume Prediction available for the selected range.")
                             else:
                                 span = (date_range_vol[1] - date_range_vol[0]).days + 1
                                 total_obs = len(filtered_volume_data)
@@ -1157,7 +1166,7 @@ with tab2:
                                     unsafe_allow_html=True,
                                 )
 
-                                # ---- Windowed raw hourly data for robust KPI math ----
+                                # ---- Windowed raw hourly Prediction for robust KPI math ----
                                 step("Computing KPIs & risk indicators", 60)
                                 raw = base_df[
                                     (base_df["local_datetime"].dt.date >= date_range_vol[0])
@@ -1334,7 +1343,7 @@ with tab2:
                                         step("Generating insights & recommendations", 92)
                                         agg_all = _prep_bucket(raw, granularity_vol).groupby("local_datetime", as_index=False)["total_volume"].sum()
                                         if agg_all.empty:
-                                            raise ValueError("No data in selected window")
+                                            raise ValueError("No Prediction in selected window")
 
                                         if granularity_vol == "Monthly":
                                             agg_all["bucket_hours"] = pd.to_datetime(agg_all["local_datetime"]).dt.days_in_month * 24
@@ -1528,8 +1537,48 @@ with tab2:
                                 render_cycle_length_section(raw)
 
         except Exception as e:
-            st.error(f"❌ Error processing traffic data: {e}")
-            st.info("Please check your data sources and try again.")
+            st.error(f"❌ Error processing traffic Prediction: {e}")
+            st.info("Please check your Prediction sources and try again.")
+
+# -------------------------
+# TAB 3: Acyclica (Travel Time + AI Prediction Models)
+# -------------------------
+with tab3:
+
+    # Load Acyclica data for sidebar population
+    acyclica_df = get_acyclica_df()
+
+    with st.sidebar:
+        with st.expander("⚙️ Pg.3 SETTINGS", expanded=True):
+            st.caption("Acyclica Data: Speed + Travel Time Analysis")
+            st.caption("AI Models: Peak Hour, Incident Detection, Event Impact")
+
+            # Tab 3 Navigation
+            st.markdown("## 🎯 Select Analysis Type")
+            analysis_type = st.selectbox(
+                "Choose Analysis",
+                [
+                    "🚗 Travel Time Analysis", 
+                    "🔮 Peak Hour Prediction",
+                    "⚠️ Incident Detection & Recovery", 
+                    "🎪 Event Impact Analysis"
+                ],
+                key="tab3_analysis_type",
+                help="Travel Time Analysis shows same metrics as Tab 1 but with Acyclica data + speed insights"
+            )
+
+    # Render the appropriate section based on selection
+    if analysis_type == "🚗 Travel Time Analysis":
+        render_acyclica_section()
+
+    elif analysis_type == "🔮 Peak Hour Prediction":
+        render_peak_hour_section()
+
+    elif analysis_type == "⚠️ Incident Detection & Recovery":
+        render_incident_detection_section()
+
+    elif analysis_type == "🎪 Event Impact Analysis":
+        render_event_impact_section()
 
 # =========================
 # FOOTER
@@ -1619,8 +1668,8 @@ FOOTER = """
   }
   updateFooterColors();
   const observer = new MutationObserver(updateFooterColors);
-  observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme', 'class'] });
-  observer.observe(document.body, { attributes: true, attributeFilter: ['data-theme', 'class', 'style'] });
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ['Prediction-theme', 'class'] });
+  observer.observe(document.body, { attributes: true, attributeFilter: ['Prediction-theme', 'class', 'style'] });
   setInterval(updateFooterColors, 1000);
 })();
 </script>
