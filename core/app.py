@@ -1544,6 +1544,10 @@ with tab2:
 # TAB 3: Acyclica (Travel Time + AI Prediction Models)
 # -------------------------
 with tab3:
+    # Use the enhanced Tab 3 renderer with proper sidebar controls
+    from acyclica_traveltime_analysis import render_tab3_analysis
+    render_tab3_analysis()
+
 
     # Load Acyclica data for sidebar population
     acyclica_df = get_acyclica_df()
