@@ -226,7 +226,7 @@ def render_acyclica_section():
     Main function to render the Acyclica travel time analysis section.
     This mirrors Tab 1 functionality but uses Acyclica data and focuses on speed instead of delay.
     """
-    # Load Acyclica data with proper error handling
+    # Load Acyclica data - get_acyclica_df() already returns processed wide format
     try:
         acyclica_df = get_acyclica_df()
     except Exception as e:
@@ -236,6 +236,18 @@ def render_acyclica_section():
     if acyclica_df.empty:
         st.error("❌ Failed to load Acyclica data. Please check your data sources.")
         return
+
+    # Show a sample of the data for debugging (optional - remove this in production)
+    with st.expander("🔍 Data Preview (First 5 rows)", expanded=False):
+        st.write("**Available columns:**", list(acyclica_df.columns))
+        st.dataframe(acyclica_df.head(), use_container_width=True)
+
+        # Show basic stats
+        st.write("**Data shape:**", acyclica_df.shape)
+        if "local_datetime" in acyclica_df.columns:
+            st.write("**Date range:**",
+                     acyclica_df["local_datetime"].min(), "to",
+                     acyclica_df["local_datetime"].max())
 
     # Ensure required columns exist and are properly typed
     required_cols = ["local_datetime", "average_traveltime", "average_speed"]
@@ -257,10 +269,13 @@ def render_acyclica_section():
             if col in acyclica_df.columns:
                 acyclica_df[col] = pd.to_numeric(acyclica_df[col], errors="coerce")
 
-        # Add segment_name if missing (for compatibility)
+        # Add segment_name if missing (for compatibility with process_traffic_data)
         if "segment_name" not in acyclica_df.columns:
-            if "direction" in acyclica_df.columns:
-                acyclica_df["segment_name"] = "Washington Street (" + acyclica_df["direction"].astype(str) + ")"
+            if "corridor_id" in acyclica_df.columns and "direction" in acyclica_df.columns:
+                acyclica_df["segment_name"] = acyclica_df["corridor_id"].astype(str) + " (" + acyclica_df[
+                    "direction"].astype(str) + ")"
+            elif "corridor_id" in acyclica_df.columns:
+                acyclica_df["segment_name"] = acyclica_df["corridor_id"].astype(str)
             else:
                 acyclica_df["segment_name"] = "Washington Street"
 
@@ -290,7 +305,7 @@ def render_acyclica_section():
         st.warning("⚠️ Please select both start and end dates to proceed.")
         return
 
-    # Process the data with error handling
+    # Process the data with error handling - now using the existing process_traffic_data function
     try:
         filtered_data = process_traffic_data(
             acyclica_df,
@@ -368,6 +383,8 @@ def render_acyclica_section():
             help=buffer_help,
         )
         st.markdown(render_badge(k['buffer_index']['score']), unsafe_allow_html=True)
+
+    # ... rest of the existing code remains the same ...
 
     # Performance Trends
     if len(filtered_data) > 1:
