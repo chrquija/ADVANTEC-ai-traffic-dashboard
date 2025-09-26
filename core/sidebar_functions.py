@@ -150,37 +150,43 @@ ACYCLICA_URL = _fix_raw_url(
 @st.cache_data(show_spinner=False)
 def load_acyclica_data() -> pd.DataFrame:
     """
-    Load Acyclica travel time & speed in **LONG** format.
-    Columns returned (normalized):
+    Load Acyclica travel time & speed in LONG format.
+    Returns a cleaned DataFrame or raises RuntimeError on failure.
+    Columns (normalized):
       local_datetime, corridor_id, direction, metric, Strength, Firsts, Lasts, Minimum, Maximum
     """
     try:
         df = pd.read_csv(ACYCLICA_URL)
     except Exception as e:
-        st.error(f"Error loading Acyclica data: {e}")
-        return pd.DataFrame()
+        # Raise so the caller decides where/how to display the error (main area, not sidebar)
+        raise RuntimeError(f"Error loading Acyclica data: {e}")
 
     if df is None or df.empty:
-        st.warning("Acyclica CSV is empty.")
-        return pd.DataFrame()
+        raise RuntimeError("Acyclica CSV is empty.")
 
+    # Normalize headers
     df = _normalize_acyclica_headers(df)
 
     required = ["local_datetime","corridor_id","direction","metric","Strength","Firsts","Lasts","Minimum","Maximum"]
     missing = [c for c in required if c not in df.columns]
     if missing:
-        st.error(f"Acyclica CSV missing required columns: {', '.join(missing)}")
-        return pd.DataFrame()
+        raise RuntimeError(f"Acyclica CSV missing required columns: {', '.join(missing)}")
 
     # Types & cleanup
     df["local_datetime"] = pd.to_datetime(df["local_datetime"], errors="coerce")
     df = df.dropna(subset=["local_datetime"])
     for c in ["Strength","Firsts","Lasts","Minimum","Maximum"]:
         df[c] = pd.to_numeric(df[c], errors="coerce")
-    df["metric"] = df["metric"].astype(str).str.strip().str.replace(" ", "", regex=False).str.title()  # TravelTime / Speed
+
+    # Metric and direction normalization (vectorized string ops)
+    df["metric"] = (
+        df["metric"].astype(str).str.strip().str.replace(" ", "", regex=False).str.title()
+    )  # TravelTime / Speed
     df["direction"] = df["direction"].astype(str).str.strip().str.upper()
+
     df = df.sort_values(["local_datetime","direction","metric"]).reset_index(drop=True)
     return df
+
 
 
 @st.cache_data(show_spinner=False)
