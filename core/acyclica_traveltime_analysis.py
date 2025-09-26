@@ -27,6 +27,37 @@ from Prediction.timeline_scrubber import render_gradient_header
 # Import incident detection for Tab 3
 from Prediction.incident_detection import render_incident_detection_section
 
+def _safe_get_acyclica_df() -> pd.DataFrame:
+    """
+    Defensive loader: tries the wide-format getter first.
+    If that fails, rebuilds wide-format from long-format and normalizes direction safely.
+    """
+    try:
+        return get_acyclica_df()
+    except Exception:
+        try:
+            from sidebar_functions import get_acyclica_long_df, acyclica_long_to_hourly
+        except Exception:
+            return pd.DataFrame()
+
+        long_df = get_acyclica_long_df()
+        if long_df is None or long_df.empty:
+            return pd.DataFrame()
+
+        # Normalize direction safely on a Series
+        if "direction" in long_df.columns:
+            long_df["direction"] = long_df["direction"].astype(str).str.strip().str.upper()
+
+        wide = acyclica_long_to_hourly(long_df)
+        if wide is None or wide.empty:
+            return pd.DataFrame()
+
+        if "local_datetime" in wide.columns:
+            wide["local_datetime"] = pd.to_datetime(wide["local_datetime"], errors="coerce")
+            wide = wide.dropna(subset=["local_datetime"])
+        return wide
+
+
 
 def compute_acyclica_kpis(df: pd.DataFrame, low_speed_threshold: float) -> dict:
     """
@@ -226,9 +257,9 @@ def render_acyclica_section():
     Main function to render the Acyclica travel time analysis section.
     This mirrors Tab 1 functionality but uses Acyclica data and focuses on speed instead of delay.
     """
-    # Load Acyclica data - get_acyclica_df() already returns processed wide format
+    # Load Acyclica data - use defensive loader
     try:
-        acyclica_df = get_acyclica_df()
+        acyclica_df = _safe_get_acyclica_df()
     except Exception as e:
         st.error(f"Error loading Acyclica data: {str(e)}")
         acyclica_df = pd.DataFrame()
@@ -510,7 +541,7 @@ def render_tab3_analysis():
     """
     # Load Acyclica data for sidebar population
     try:
-        acyclica_df = get_acyclica_df()
+        acyclica_df = _safe_get_acyclica_df()
     except Exception as e:
         st.error(f"Error loading Acyclica data: {str(e)}")
         acyclica_df = pd.DataFrame()
@@ -519,7 +550,7 @@ def render_tab3_analysis():
     with st.sidebar:
         with st.expander("⚙️ Pg.3 SETTINGS", expanded=True):
             st.caption("Acyclica Data: Speed + Travel Time Analysis")
-            st.caption("AI Models: Peak Hour, Incident Detection, Event Impact")
+            st.caption("AI Models: Peak Hour Prediction, Incident Detection, Event Impact Analysis")
 
             # Corridor Selection
             st.markdown("## 🛣️ Select Corridor")
@@ -558,7 +589,7 @@ def render_tab3_analysis():
             date_range = date_range_preset_controls(min_date, max_date, key_prefix="tab3")
 
             # Data Aggregation Selector
-            st.markdown("## 📊 Data Aggregation")
+            st.markdown("## Data Aggregation")
             aggregation_options = ["Daily", "Weekly", "Monthly"]  # Hourly excluded as specified
             selected_aggregation = st.selectbox(
                 "Aggregation Level",
@@ -568,60 +599,60 @@ def render_tab3_analysis():
             )
 
             # Analysis Type Selection
-            st.markdown("## 🎯 Select Analysis Type")
+            st.markdown("## Select Analysis Type")
             analysis_type = st.selectbox(
                 "Choose Analysis",
                 [
-                    "🚗 Travel Time Analysis",
-                    "🔮 Peak Hour Prediction",
-                    "⚠️ Incident Detection & Recovery",
-                    "🎪 Event Impact Analysis"
+                    "Travel Time Analysis",
+                    "Peak Hour Prediction",
+                    "Incident Detection & Recovery",
+                    "Event Impact Analysis"
                 ],
                 key="tab3_analysis_type",
                 help="Travel Time Analysis shows same metrics as Tab 1 but with Acyclica data + speed insights"
             )
 
-    # Apply filters to the data based on sidebar selections
-    filtered_acyclica_df = acyclica_df.copy() if not acyclica_df.empty else pd.DataFrame()
+        # Apply filters to the data based on sidebar selections
+        filtered_acyclica_df = acyclica_df.copy() if not acyclica_df.empty else pd.DataFrame()
 
-    if not filtered_acyclica_df.empty:
-        # Apply direction filter
-        if selected_direction != "All Directions" and "direction" in filtered_acyclica_df.columns:
-            filtered_acyclica_df = filtered_acyclica_df[
-                filtered_acyclica_df["direction"].str.upper() == selected_direction.upper()
-                ]
+        if not filtered_acyclica_df.empty:
+            # Apply direction filter (guard .str use by casting to string)
+            if selected_direction != "All Directions" and "direction" in filtered_acyclica_df.columns:
+                dir_series = filtered_acyclica_df["direction"].astype(str)
+                filtered_acyclica_df = filtered_acyclica_df[
+                    dir_series.str.upper() == str(selected_direction).upper()
+                    ]
+            # Apply date filter if provided
+            if date_range and len(date_range) == 2 and "local_datetime" in filtered_acyclica_df.columns:
+                filtered_acyclica_df = filtered_acyclica_df[
+                    (filtered_acyclica_df["local_datetime"].dt.date >= date_range[0]) &
+                    (filtered_acyclica_df["local_datetime"].dt.date <= date_range[1])
+                    ]
 
-        # Apply date filter if provided
-        if date_range and len(date_range) == 2:
-            filtered_acyclica_df = filtered_acyclica_df[
-                (filtered_acyclica_df["local_datetime"].dt.date >= date_range[0]) &
-                (filtered_acyclica_df["local_datetime"].dt.date <= date_range[1])
-                ]
-
-    # Render the appropriate section based on selection
-    if analysis_type == "🚗 Travel Time Analysis":
-        # Pass the filtered data and settings to the analysis
-        render_acyclica_section_with_settings(
-            filtered_acyclica_df,
-            selected_corridor,
-            selected_direction,
-            date_range,
-            selected_aggregation
-        )
-    elif analysis_type == "🔮 Peak Hour Prediction":
-        from Prediction.peak_hour_prediction import render_peak_hour_section
-        render_peak_hour_section()
-    elif analysis_type == "⚠️ Incident Detection & Recovery":
-        # Pass the filtered Acyclica data to incident detection
-        render_incident_detection_section(
-            df_source=filtered_acyclica_df,
-            corridor=selected_corridor,
-            direction=selected_direction if selected_direction != "All Directions" else "NB",
-            day=date_range[1] if date_range and len(date_range) == 2 else datetime.now().date()
-        )
-    elif analysis_type == "🎪 Event Impact Analysis":
-        from Prediction.event_impact_analysis import render_event_impact_section
-        render_event_impact_section()
+        # Render the appropriate section based on selection
+        if analysis_type == "🚗 Travel Time Analysis":
+            # Pass the filtered data and settings to the analysis
+            render_acyclica_section_with_settings(
+                filtered_acyclica_df,
+                selected_corridor,
+                selected_direction,
+                date_range,
+                selected_aggregation
+            )
+        elif analysis_type == "🔮 Peak Hour Prediction":
+            from Prediction.peak_hour_prediction import render_peak_hour_section
+            render_peak_hour_section()
+        elif analysis_type == "⚠️ Incident Detection & Recovery":
+            # Pass the filtered Acyclica data to incident detection
+            render_incident_detection_section(
+                df_source=filtered_acyclica_df,
+                corridor=selected_corridor,
+                direction=selected_direction if selected_direction != "All Directions" else "NB",
+                day=date_range[1] if date_range and len(date_range) == 2 else datetime.now().date()
+            )
+        elif analysis_type == "🎪 Event Impact Analysis":
+            from Prediction.event_impact_analysis import render_event_impact_section
+            render_event_impact_section()
 
 
 def render_acyclica_section_with_settings(data, corridor, direction, date_range, aggregation):
