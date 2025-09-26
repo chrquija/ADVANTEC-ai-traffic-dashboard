@@ -57,6 +57,8 @@ def _normalize_acyclica_headers(df: pd.DataFrame) -> pd.DataFrame:
 # =========================
 # Data loading
 # =========================
+
+# Iteris ClearGuide Data
 @st.cache_data
 def load_traffic_data():
     """
@@ -93,7 +95,7 @@ def load_traffic_data():
     combined_df = combined_df.dropna(subset=["local_datetime"]).sort_values("local_datetime").reset_index(drop=True)
     return combined_df
 
-
+#Kinetic mobility data
 @st.cache_data
 def load_volume_data():
     """
@@ -229,7 +231,15 @@ def get_corridor_df() -> pd.DataFrame:
     if missing:
         st.warning(f"Traffic dataset is missing columns: {', '.join(missing)}")
     return df
+## sanity check
+df_pg1 = get_corridor_df()
 
+# Provenance sanity check
+if {"Strength","Firsts","Lasts","Minimum","Maximum"}.intersection(df_pg1.columns):
+    st.error("Pg.1 is seeing Acyclica-style columns (Strength/Firsts/Lasts/…). It should NOT.")
+else:
+    st.success("Pg.1 is using ClearGuide-style data ✅ (no Acyclica long columns present).")
+st.caption(f"Columns sample: {sorted(df_pg1.columns)[:12]}")
 
 @st.cache_data(show_spinner=False)
 def get_volume_df() -> pd.DataFrame:
