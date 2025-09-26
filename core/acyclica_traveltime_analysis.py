@@ -10,11 +10,11 @@ from plotly.subplots import make_subplots
 from sidebar_functions import (
     get_acyclica_df,
     process_traffic_data,
-    compute_perf_kpis_interpretable,
+    compute_perf_kpis_interpretable,  # may be unused here but fine to keep
     render_badge,
-    performance_chart,
+    performance_chart,                 # may be unused here but fine to keep
     date_range_preset_controls,
-    get_performance_rating,
+    get_performance_rating,            # may be unused here but fine to keep
 )
 
 # Import from timeline_scrubber for consistent headers
@@ -69,7 +69,6 @@ def _safe_get_acyclica_df() -> pd.DataFrame:
 def compute_acyclica_kpis(df: pd.DataFrame, low_speed_threshold: float) -> dict:
     """
     Compute KPIs for Acyclica data (speed-focused instead of delay-focused).
-    Similar to compute_perf_kpis_interpretable but uses speed metrics instead of delay.
     """
     if df is None or df.empty:
         return {
@@ -257,21 +256,14 @@ def speed_performance_chart(data: pd.DataFrame, metric_type: str = "speed"):
     return fig
 
 
-def render_acyclica_section():
+def render_acyclica_section(acyclica_df: pd.DataFrame):
     """
     Main function to render the Acyclica travel time analysis section.
+    Expects a prepared DataFrame (already loaded/filtered).
     """
-    # Load Acyclica data - use defensive loader
-    # Load Acyclica data OUTSIDE the sidebar and stop if it fails/empty
-    try:
-        acyclica_df = _safe_get_acyclica_df()
-    except Exception as e:
-        st.error(f"Error loading Acyclica data: {e}")
-        st.stop()
-
     if acyclica_df is None or acyclica_df.empty:
         st.error("❌ Failed to load Acyclica data. Please check your data sources.")
-        st.stop()
+        return
 
     # Data preview
     with st.expander("🔍 Data Preview (First 5 rows)", expanded=False):
@@ -299,7 +291,9 @@ def render_acyclica_section():
 
         if "segment_name" not in acyclica_df.columns:
             if "corridor_id" in acyclica_df.columns and "direction" in acyclica_df.columns:
-                acyclica_df["segment_name"] = acyclica_df["corridor_id"].astype(str) + " (" + acyclica_df["direction"].astype(str) + ")"
+                acyclica_df["segment_name"] = (
+                    acyclica_df["corridor_id"].astype(str) + " (" + acyclica_df["direction"].astype(str) + ")"
+                )
             elif "corridor_id" in acyclica_df.columns:
                 acyclica_df["segment_name"] = acyclica_df["corridor_id"].astype(str)
             else:
@@ -547,12 +541,16 @@ def render_tab3_analysis():
     """
     Enhanced Tab 3 renderer with proper sidebar controls and sub-analysis routing.
     """
-    # Load Acyclica data for sidebar population (defensive)
+    # Load Acyclica data OUTSIDE the sidebar and stop if it fails/empty
     try:
         acyclica_df = _safe_get_acyclica_df()
     except Exception as e:
-        st.error(f"Error loading Acyclica data: {str(e)}")
-        acyclica_df = pd.DataFrame()
+        st.error(f"Error loading Acyclica data: {e}")
+        st.stop()
+
+    if acyclica_df is None or acyclica_df.empty:
+        st.error("❌ Failed to load Acyclica data. Please check your data sources.")
+        st.stop()
 
     # Enhanced sidebar with all requested controls
     with st.sidebar:
@@ -573,7 +571,9 @@ def render_tab3_analysis():
             # Direction Filter
             st.markdown("## 🔄 Direction Filter")
             if not acyclica_df.empty and "direction" in acyclica_df.columns:
-                available_directions = sorted(pd.Series(acyclica_df["direction"]).dropna().astype(str).unique().tolist())
+                available_directions = sorted(
+                    pd.Series(acyclica_df["direction"]).dropna().astype(str).unique().tolist()
+                )
                 direction_options = ["All Directions"] + available_directions
             else:
                 direction_options = ["All Directions", "NB", "SB"]
@@ -692,5 +692,5 @@ def render_acyclica_section_with_settings(data, corridor, direction, date_range,
     # Context banner
     st.info(f"📊 **Analysis Context**: {corridor} | {direction} | {aggregation} Aggregation")
 
-    # Call the main analysis function
-    render_acyclica_section()
+    # Call the main analysis function with the prepared data
+    render_acyclica_section(data)
