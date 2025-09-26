@@ -25,37 +25,82 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from Prediction.timeline_scrubber import render_gradient_header
 
 # Import incident detection for Tab 3
+# ... existing code ...
 from Prediction.incident_detection import render_incident_detection_section
 
 def _safe_get_acyclica_df() -> pd.DataFrame:
     """
     Defensive loader: tries the wide-format getter first.
-    If that fails, rebuilds wide-format from long-format and normalizes direction safely.
+    If that fails due to a Series.upper() bug in the source loader, directly reads the CSV,
+    normalizes headers, safely uppercases the direction via .str, and pivots to wide.
     """
+    # 1) Primary path
     try:
         return get_acyclica_df()
     except Exception:
-        try:
-            from sidebar_functions import get_acyclica_long_df, acyclica_long_to_hourly
-        except Exception:
+        pass
+
+    # 2) Robust fallback — read LONG CSV ourselves and pivot to WIDE (avoid the buggy .upper())
+    try:
+        # Import helpers and constants from the sidebar module without invoking its loader
+        from sidebar_functions import (
+            ACYCLICA_URL,
+            _normalize_acyclica_headers,   # tolerant header normalizer
+            acyclica_long_to_hourly,       # pivot LONG -> WIDE
+        )
+    except Exception:
+        return pd.DataFrame()
+
+    try:
+        # Read long-format CSV directly
+        long_df = pd.read_csv(ACYCLICA_URL)
+    except Exception:
+        return pd.DataFrame()
+
+    if long_df is None or long_df.empty:
+        return pd.DataFrame()
+
+    # Normalize headers and types safely (no raw .upper() on Series)
+    try:
+        long_df = _normalize_acyclica_headers(long_df)
+
+        # Ensure required columns exist
+        required = ["local_datetime", "corridor_id", "direction", "metric", "Strength"]
+        if not all(c in long_df.columns for c in required):
             return pd.DataFrame()
 
-        long_df = get_acyclica_long_df()
-        if long_df is None or long_df.empty:
-            return pd.DataFrame()
+        # Types & cleanup
+        long_df["local_datetime"] = pd.to_datetime(long_df["local_datetime"], errors="coerce")
+        long_df = long_df.dropna(subset=["local_datetime"])
 
-        # Normalize direction safely on a Series
+        # Safe numeric coercion for value columns if they exist
+        for c in ["Strength", "Firsts", "Lasts", "Minimum", "Maximum"]:
+            if c in long_df.columns:
+                long_df[c] = pd.to_numeric(long_df[c], errors="coerce")
+
+        # Normalize metric and direction safely (Series-aware)
+        if "metric" in long_df.columns:
+            long_df["metric"] = (
+                long_df["metric"].astype(str).str.strip().str.replace(" ", "", regex=False).str.title()
+            )
         if "direction" in long_df.columns:
             long_df["direction"] = long_df["direction"].astype(str).str.strip().str.upper()
 
+        # Pivot to wide
         wide = acyclica_long_to_hourly(long_df)
         if wide is None or wide.empty:
             return pd.DataFrame()
 
+        # Final datetime guard
         if "local_datetime" in wide.columns:
             wide["local_datetime"] = pd.to_datetime(wide["local_datetime"], errors="coerce")
-            wide = wide.dropna(subset=["local_datetime"])
+            wide = wide.dropna(subset=["local_datetime"]).sort_values(["local_datetime", "direction"]).reset_index(drop=True)
+
         return wide
+    except Exception:
+        return pd.DataFrame()
+
+# ... existing code ...
 
 def compute_acyclica_kpis(df: pd.DataFrame, low_speed_threshold: float) -> dict:
     """
