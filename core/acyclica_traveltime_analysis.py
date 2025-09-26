@@ -262,15 +262,16 @@ def render_acyclica_section():
     Main function to render the Acyclica travel time analysis section.
     """
     # Load Acyclica data - use defensive loader
+    # Load Acyclica data OUTSIDE the sidebar and stop if it fails/empty
     try:
         acyclica_df = _safe_get_acyclica_df()
     except Exception as e:
-        st.error(f"Error loading Acyclica data: {str(e)}")
-        acyclica_df = pd.DataFrame()
+        st.error(f"Error loading Acyclica data: {e}")
+        st.stop()
 
-    if acyclica_df.empty:
+    if acyclica_df is None or acyclica_df.empty:
         st.error("❌ Failed to load Acyclica data. Please check your data sources.")
-        return
+        st.stop()
 
     # Data preview
     with st.expander("🔍 Data Preview (First 5 rows)", expanded=False):
