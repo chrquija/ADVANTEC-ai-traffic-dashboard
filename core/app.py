@@ -33,8 +33,14 @@ from cycle_length_recommendations import render_cycle_length_section
 # Map builders (return Plotly figures)
 from Map import build_corridor_map, build_intersection_map, build_intersections_overview
 
-# Acyclica analysis (Tab 3)
-from acyclica_traveltime_analysis import render_acyclica_section
+# --- Acyclica (Tab 3) ---
+try:
+    # when run as a package:  streamlit run core/app.py    or    python -m core.app
+    from core.acyclica_traveltime_analysis import render_tab3_analysis
+except ImportError:
+    # when run from the same folder as app.py
+    from acyclica_traveltime_analysis import render_tab3_analysis
+
 
 # AI Prediction Models (Tab 3 sub-sections)
 from Prediction.peak_hour_prediction import render_peak_hour_section
@@ -1545,7 +1551,6 @@ with tab2:
 # -------------------------
 with tab3:
     # Use the enhanced Tab 3 renderer with proper sidebar controls
-    from acyclica_traveltime_analysis import render_tab3_analysis
     render_tab3_analysis()
 
 # =========================
