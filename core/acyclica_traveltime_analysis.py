@@ -25,8 +25,8 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from Prediction.timeline_scrubber import render_gradient_header
 
 # Import incident detection for Tab 3
-
 from Prediction.incident_detection import render_incident_detection_section
+
 
 def _safe_get_acyclica_df() -> pd.DataFrame:
     """
@@ -36,6 +36,7 @@ def _safe_get_acyclica_df() -> pd.DataFrame:
     try:
         return get_acyclica_df()
     except Exception:
+        # Late import to avoid any issues unless needed
         try:
             from sidebar_functions import get_acyclica_long_df, acyclica_long_to_hourly
         except Exception:
@@ -49,14 +50,21 @@ def _safe_get_acyclica_df() -> pd.DataFrame:
         if "direction" in long_df.columns:
             long_df["direction"] = long_df["direction"].astype(str).str.strip().str.upper()
 
-        wide = acyclica_long_to_hourly(long_df)
+        # Pivot long → wide
+        try:
+            wide = acyclica_long_to_hourly(long_df)
+        except Exception:
+            return pd.DataFrame()
+
         if wide is None or wide.empty:
             return pd.DataFrame()
 
+        # Ensure datetime type and drop bad rows
         if "local_datetime" in wide.columns:
             wide["local_datetime"] = pd.to_datetime(wide["local_datetime"], errors="coerce")
             wide = wide.dropna(subset=["local_datetime"])
         return wide
+
 
 def compute_acyclica_kpis(df: pd.DataFrame, low_speed_threshold: float) -> dict:
     """
@@ -101,7 +109,7 @@ def compute_acyclica_kpis(df: pd.DataFrame, low_speed_threshold: float) -> dict:
         cv_tt = 0.0
     reliability = max(0.0, 100.0 - cv_tt)
 
-    # Low Speed Frequency (% of hours with speed < threshold) - replaces congestion frequency
+    # Low Speed Frequency (% of hours with speed < threshold)
     if "average_speed" in df.columns and df["average_speed"].notna().any():
         total_hours = int(df["average_speed"].count())
         low_speed_hours = int((df["average_speed"] < low_speed_threshold).sum())
@@ -144,32 +152,33 @@ def compute_acyclica_kpis(df: pd.DataFrame, low_speed_threshold: float) -> dict:
             "value": p95_tt,
             "unit": "min",
             "score": score_plan,
-            "help": "Planning Time (95th)\n\nWhat it means: If you take all trip times in current filter, the 95th-percentile is the value such that 95% of the observations are at or below it.\nWhy it exists: Averages can hide variability. Planning Time being 95th percentile captures \"typical worst-case\".\nHow to read it: Realistically, your trip will in total, take this much time.",
+            "help": "Planning Time (95th)\n\nWhat it means: If you take all trip times in current filter, the 95th-percentile is the value such that 95% of the observations are at or below it.",
         },
         "buffer_index": {
             "value": buffer_index,
             "unit": "%",
             "score": score_buffer,
-            "help": "Buffer Index\n\nWhat it means: Extra time (as a percent) you should add on top of the average to be safe.\nHow it's calculated: (Planning Time − Average Time) ÷ Average Time × 100%.\nFormula: (P95 − mean) / mean × 100%",
+            "help": "Buffer Index\n\nWhat it means: Extra time (as a percent) you should add on top of the average to be safe.\nFormula: (P95 − mean) / mean × 100%",
         },
         "reliability": {
             "value": reliability,
             "unit": "%",
             "score": score_reliability,
-            "help": "Reliability Index\n\nWhat it Means: Its your predictability score for travel time\n\nWhy it exists: An average travel time may not be reliable since the corridor has spiky and unpredictable periods. Higher RI = more dependable and easier arrival time planning.",
+            "help": "Reliability Index\n\nHigher = more predictable travel times.",
         },
         "low_speed_freq": {
             "value": low_speed_freq,
             "unit": "%",
             "score": score_low_speed,
             "extra": f"Hours < {low_speed_threshold:.0f}mph: {low_speed_hours}/{total_hours}",
-            "help": f"Low Speed Frequency\n\nWhat it means: How often speed drops below the chosen threshold of {low_speed_threshold}mph during your selected period.\nWhy it exists: Highlights how frequently you encounter slow speeds that indicate congestion.",
+            "help": f"Low Speed Frequency\n\nPercent of hours below {low_speed_threshold:.0f} mph.",
         },
     }
 
+
 def speed_performance_chart(data: pd.DataFrame, metric_type: str = "speed"):
     """
-    Create performance charts focused on speed instead of delay.
+    Create performance charts focused on speed or travel time.
     """
     if data.empty:
         return None
@@ -196,7 +205,6 @@ def speed_performance_chart(data: pd.DataFrame, metric_type: str = "speed"):
         return None
 
     dd = data.dropna(subset=["local_datetime", y_col]).sort_values("local_datetime")
-
     if dd.empty:
         st.warning(f"No valid data for {metric_type} analysis")
         return None
@@ -217,8 +225,7 @@ def speed_performance_chart(data: pd.DataFrame, metric_type: str = "speed"):
             line=dict(color=color, width=2),
             marker=dict(size=4),
         ),
-        row=1,
-        col=1,
+        row=1, col=1,
     )
 
     # Distribution histogram
@@ -230,8 +237,7 @@ def speed_performance_chart(data: pd.DataFrame, metric_type: str = "speed"):
             marker_color=color,
             opacity=0.75,
         ),
-        row=2,
-        col=1,
+        row=2, col=1,
     )
 
     fig.update_layout(
@@ -250,10 +256,10 @@ def speed_performance_chart(data: pd.DataFrame, metric_type: str = "speed"):
 
     return fig
 
+
 def render_acyclica_section():
     """
     Main function to render the Acyclica travel time analysis section.
-    This mirrors Tab 1 functionality but uses Acyclica data and focuses on speed instead of delay.
     """
     # Load Acyclica data - use defensive loader
     try:
@@ -266,7 +272,7 @@ def render_acyclica_section():
         st.error("❌ Failed to load Acyclica data. Please check your data sources.")
         return
 
-    # Show a sample of the data for debugging (optional - remove this in production)
+    # Data preview
     with st.expander("🔍 Data Preview (First 5 rows)", expanded=False):
         st.write("**Available columns:**", list(acyclica_df.columns))
         st.dataframe(acyclica_df.head(), use_container_width=True)
@@ -277,24 +283,19 @@ def render_acyclica_section():
     # Ensure required columns exist and are properly typed
     required_cols = ["local_datetime", "average_traveltime", "average_speed"]
     missing_cols = [col for col in required_cols if col not in acyclica_df.columns]
-
     if missing_cols:
         st.error(f"❌ Missing required columns in Acyclica data: {', '.join(missing_cols)}")
         return
 
     # Clean and prepare the data
     try:
-        # Convert datetime column
         acyclica_df["local_datetime"] = pd.to_datetime(acyclica_df["local_datetime"], errors="coerce")
         acyclica_df = acyclica_df.dropna(subset=["local_datetime"])
 
-        # Convert numeric columns
-        numeric_cols = ["average_traveltime", "average_speed", "average_delay"]
-        for col in numeric_cols:
+        for col in ["average_traveltime", "average_speed", "average_delay"]:
             if col in acyclica_df.columns:
                 acyclica_df[col] = pd.to_numeric(acyclica_df[col], errors="coerce")
 
-        # Add segment_name if missing (for compatibility with process_traffic_data)
         if "segment_name" not in acyclica_df.columns:
             if "corridor_id" in acyclica_df.columns and "direction" in acyclica_df.columns:
                 acyclica_df["segment_name"] = acyclica_df["corridor_id"].astype(str) + " (" + acyclica_df["direction"].astype(str) + ")"
@@ -315,20 +316,37 @@ def render_acyclica_section():
 
     # Date range and basic filters
     if "local_datetime" in acyclica_df.columns:
-        min_date = acyclica_df["local_datetime"].dt.date.min()
-        max_date = acyclica_df["local_datetime"].dt.date.max()
+        min_date_ts = acyclica_df["local_datetime"].min()
+        max_date_ts = acyclica_df["local_datetime"].max()
     else:
-        min_date = datetime.today().date() - timedelta(days=7)
+        min_date_ts = datetime.today() - timedelta(days=7)
+        max_date_ts = datetime.today()
+
+    # Convert to date, ensure ordering and span
+    try:
+        min_date = pd.to_datetime(min_date_ts, errors="coerce").date()
+        max_date = pd.to_datetime(max_date_ts, errors="coerce").date()
+        if min_date > max_date:
+            min_date, max_date = max_date, min_date
+        if min_date == max_date:
+            max_date = max_date + timedelta(days=1)
+    except Exception:
+        min_date = (datetime.today().date() - timedelta(days=30))
         max_date = datetime.today().date()
 
     st.markdown("#### 📅 Analysis Period")
-    date_range = date_range_preset_controls(min_date, max_date, key_prefix="acyclica")
+    try:
+        date_range = date_range_preset_controls(min_date, max_date, key_prefix="acyclica")
+    except Exception:
+        st.session_state.pop("acyclica_range", None)
+        date_range = (max(min_date, max_date - timedelta(days=30)), max_date)
+        st.info("Date range was reset to a safe default for this dataset.")
 
     if not date_range or len(date_range) != 2:
         st.warning("⚠️ Please select both start and end dates to proceed.")
         return
 
-    # Process the data with error handling
+    # Process the data
     try:
         filtered_data = process_traffic_data(
             acyclica_df,
@@ -523,11 +541,12 @@ def render_acyclica_section():
             except Exception as e:
                 st.error(f"Error creating direction summary: {str(e)}")
 
+
 def render_tab3_analysis():
     """
     Enhanced Tab 3 renderer with proper sidebar controls and sub-analysis routing.
     """
-    # Load Acyclica data for sidebar population
+    # Load Acyclica data for sidebar population (defensive)
     try:
         acyclica_df = _safe_get_acyclica_df()
     except Exception as e:
@@ -553,7 +572,7 @@ def render_tab3_analysis():
             # Direction Filter
             st.markdown("## 🔄 Direction Filter")
             if not acyclica_df.empty and "direction" in acyclica_df.columns:
-                available_directions = sorted(acyclica_df["direction"].dropna().unique().tolist())
+                available_directions = sorted(pd.Series(acyclica_df["direction"]).dropna().astype(str).unique().tolist())
                 direction_options = ["All Directions"] + available_directions
             else:
                 direction_options = ["All Directions", "NB", "SB"]
@@ -565,20 +584,37 @@ def render_tab3_analysis():
                 help="Filter analysis by travel direction"
             )
 
-            # Date and Time Options
+            # Date and Time Options — sanitize bounds
             if not acyclica_df.empty and "local_datetime" in acyclica_df.columns:
-                min_date = acyclica_df["local_datetime"].dt.date.min()
-                max_date = acyclica_df["local_datetime"].dt.date.max()
+                min_date_ts = acyclica_df["local_datetime"].min()
+                max_date_ts = acyclica_df["local_datetime"].max()
             else:
-                min_date = datetime.today().date() - timedelta(days=30)
+                min_date_ts = datetime.today() - timedelta(days=30)
+                max_date_ts = datetime.today()
+
+            try:
+                min_date = pd.to_datetime(min_date_ts, errors="coerce").date()
+                max_date = pd.to_datetime(max_date_ts, errors="coerce").date()
+                if min_date > max_date:
+                    min_date, max_date = max_date, min_date
+                if min_date == max_date:
+                    max_date = max_date + timedelta(days=1)
+            except Exception:
+                min_date = (datetime.today().date() - timedelta(days=30))
                 max_date = datetime.today().date()
 
             st.markdown("## 📅 Date And Time")
-            date_range = date_range_preset_controls(min_date, max_date, key_prefix="tab3")
+            try:
+                date_range = date_range_preset_controls(min_date, max_date, key_prefix="tab3")
+            except Exception:
+                # Reset stale session state if needed
+                st.session_state.pop("tab3_range", None)
+                date_range = (max(min_date, max_date - timedelta(days=30)), max_date)
+                st.info("Date range was reset to a safe default for this dataset.")
 
             # Data Aggregation Selector
             st.markdown("## Data Aggregation")
-            aggregation_options = ["Daily", "Weekly", "Monthly"]  # Hourly excluded as specified
+            aggregation_options = ["Daily", "Weekly", "Monthly"]
             selected_aggregation = st.selectbox(
                 "Aggregation Level",
                 aggregation_options,
@@ -617,8 +653,8 @@ def render_tab3_analysis():
                     (filtered_acyclica_df["local_datetime"].dt.date <= date_range[1])
                 ]
 
-        # Render the appropriate section based on selection
-        if analysis_type == "🚗 Travel Time Analysis":
+        # Route user to selected section
+        if analysis_type == "Travel Time Analysis":
             render_acyclica_section_with_settings(
                 filtered_acyclica_df,
                 selected_corridor,
@@ -626,19 +662,20 @@ def render_tab3_analysis():
                 date_range,
                 selected_aggregation
             )
-        elif analysis_type == "🔮 Peak Hour Prediction":
+        elif analysis_type == "Peak Hour Prediction":
             from Prediction.peak_hour_prediction import render_peak_hour_section
             render_peak_hour_section()
-        elif analysis_type == "⚠️ Incident Detection & Recovery":
+        elif analysis_type == "Incident Detection & Recovery":
             render_incident_detection_section(
                 df_source=filtered_acyclica_df,
                 corridor=selected_corridor,
                 direction=selected_direction if selected_direction != "All Directions" else "NB",
                 day=date_range[1] if date_range and len(date_range) == 2 else datetime.now().date()
             )
-        elif analysis_type == "🎪 Event Impact Analysis":
+        elif analysis_type == "Event Impact Analysis":
             from Prediction.event_impact_analysis import render_event_impact_section
             render_event_impact_section()
+
 
 def render_acyclica_section_with_settings(data, corridor, direction, date_range, aggregation):
     """
@@ -651,7 +688,7 @@ def render_acyclica_section_with_settings(data, corridor, direction, date_range,
         st.error("❌ Failed to load Acyclica data. Please check your data sources.")
         return
 
-    # Use the existing render_acyclica_section but with context about the filters
+    # Context banner
     st.info(f"📊 **Analysis Context**: {corridor} | {direction} | {aggregation} Aggregation")
 
     # Call the main analysis function
