@@ -178,7 +178,7 @@ def load_acyclica_data() -> pd.DataFrame:
     for c in ["Strength","Firsts","Lasts","Minimum","Maximum"]:
         df[c] = pd.to_numeric(df[c], errors="coerce")
     df["metric"] = df["metric"].astype(str).str.strip().str.replace(" ", "", regex=False).str.title()  # TravelTime / Speed
-    df["direction"] = df["direction"].astype(str).str.strip().upper()
+    df["direction"] = df["direction"].astype(str).str.strip().str.upper()
     df = df.sort_values(["local_datetime","direction","metric"]).reset_index(drop=True)
     return df
 
