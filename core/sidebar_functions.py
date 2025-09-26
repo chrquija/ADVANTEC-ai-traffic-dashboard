@@ -10,13 +10,58 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 
+# ------------------------------------------------------------------
+# Helpers
+# ------------------------------------------------------------------
+def _fix_raw_url(url: str) -> str:
+    """
+    GitHub RAW URLs must be:
+      https://raw.githubusercontent.com/<user>/<repo>/<branch>/<path>
+    Some of your links used '/refs/heads/main/'. This converts them.
+    """
+    return url.replace("/refs/heads/", "/")
+
+
+def _safe_to_datetime(df: pd.DataFrame, col: str) -> pd.DataFrame:
+    if col in df.columns:
+        df[col] = pd.to_datetime(df[col], errors="coerce")
+    return df
+
+
+def _normalize_acyclica_headers(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Tolerant column normalizer for Acyclica CSVs.
+    """
+    if df is None or df.empty:
+        return df
+    # Lower + strip spaces to catch variants, then map back to canon names
+    lowmap = {c: "".join(str(c).strip().split()).lower() for c in df.columns}
+    df = df.rename(columns=lowmap)
+    canon = {
+        "localdatetime": "local_datetime",
+        "corridorid": "corridor_id",
+        "direction": "direction",
+        "metric": "metric",
+        "strength": "Strength",
+        "firsts": "Firsts",
+        "lasts": "Lasts",
+        "minimum": "Minimum",
+        "maximum": "Maximum",
+    }
+    for src, tgt in canon.items():
+        if src in df.columns:
+            df = df.rename(columns={src: tgt})
+    return df
+
+
 # =========================
 # Data loading
 # =========================
 @st.cache_data
 def load_traffic_data():
     """
-    Load and combine all corridor traffic Prediction from GitHub
+    Load and combine all corridor traffic data from GitHub (Iteris-style).
+    Auto-fixes bad RAW URL pattern.
     """
     data_sources = {
         "Avenue 52 → Calle Tampico": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/1_2_LONG_NSB_Ave52_CalleTampico_WashSt_1hr_septojuly.csv",
@@ -32,6 +77,7 @@ def load_traffic_data():
 
     all_data = []
     for segment_name, url in data_sources.items():
+        url = _fix_raw_url(url)
         try:
             df = pd.read_csv(url)
             df["segment_name"] = segment_name
@@ -43,30 +89,32 @@ def load_traffic_data():
         return pd.DataFrame()
 
     combined_df = pd.concat(all_data, ignore_index=True)
-    combined_df["local_datetime"] = pd.to_datetime(combined_df["local_datetime"])
-    combined_df = combined_df.sort_values("local_datetime").reset_index(drop=True)
+    combined_df["local_datetime"] = pd.to_datetime(combined_df["local_datetime"], errors="coerce")
+    combined_df = combined_df.dropna(subset=["local_datetime"]).sort_values("local_datetime").reset_index(drop=True)
     return combined_df
 
 
 @st.cache_data
 def load_volume_data():
     """
-    Load consolidated volume Prediction for all Washington Street intersections
+    Load consolidated volume data for all Washington Street intersections.
+    Auto-fixes bad RAW URL pattern.
     """
-    volume_url = "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/VOLUME/KMOB_LONG/LONG_MASTER_Avenue52_to_Avenue47_1hr_NS_VOLUME_OctoberTOJune.csv"
+    volume_url = _fix_raw_url(
+        "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/VOLUME/KMOB_LONG/LONG_MASTER_Avenue52_to_Avenue47_1hr_NS_VOLUME_OctoberTOJune.csv"
+    )
 
     try:
         volume_df = pd.read_csv(volume_url)
-
-        volume_df["local_datetime"] = pd.to_datetime(volume_df["local_datetime"])
-        volume_df = volume_df.sort_values("local_datetime").reset_index(drop=True)
+        volume_df["local_datetime"] = pd.to_datetime(volume_df["local_datetime"], errors="coerce")
+        volume_df = volume_df.dropna(subset=["local_datetime"]).sort_values("local_datetime").reset_index(drop=True)
 
         # Create proper intersection names from intersection_id
         volume_df["intersection_name"] = (
             volume_df["intersection_id"]
-            .str.replace("_", " ")
-            .str.replace("Washington St and ", "Washington St & ")
-            .str.replace(" and ", " & ")
+            .str.replace("_", " ", regex=False)
+            .str.replace("Washington St and ", "Washington St & ", regex=False)
+            .str.replace(" and ", " & ", regex=False)
         )
 
         # Create a sorting order for intersections (from south to north along Washington St)
@@ -86,69 +134,90 @@ def load_volume_data():
         return volume_df
 
     except Exception as e:
-        st.error(f"Error loading volume Prediction: {e}")
+        st.error(f"Error loading volume data: {e}")
         return pd.DataFrame()
 
 
-@st.cache_data
-def load_acyclica_data():
-    """
-    Load Acyclica travel time and speed data from GitHub.
-    Data structure: local_datetime, corridor_id, direction, metric, Strength, Firsts, Lasts, Minimum, Maximum
-    The 'metric' column contains either 'TravelTime' or 'Speed' values.
-    """
-    acyclica_url = "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/MASTER_Acyclica_Traveltime_speed.csv"
+# -------------------------
+# Acyclica (Long + Wide)
+# -------------------------
+ACYCLICA_URL = _fix_raw_url(
+    "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/MASTER_Acyclica_Traveltime_speed.csv"
+)
 
+@st.cache_data(show_spinner=False)
+def load_acyclica_data() -> pd.DataFrame:
+    """
+    Load Acyclica travel time & speed in **LONG** format.
+    Columns returned (normalized):
+      local_datetime, corridor_id, direction, metric, Strength, Firsts, Lasts, Minimum, Maximum
+    """
     try:
-        df = pd.read_csv(acyclica_url)
-
-        # Convert datetime
-        df["local_datetime"] = pd.to_datetime(df["local_datetime"])
-
-        # Pivot the data to get TravelTime and Speed as separate columns
-        # Using 'Strength' as the main value
-        pivoted = df.pivot_table(
-            index=['local_datetime', 'corridor_id', 'direction'],
-            columns='metric',
-            values='Strength',
-            aggfunc='mean'
-        ).reset_index()
-
-        # Flatten column names
-        pivoted.columns.name = None
-
-        # Rename columns to match existing schema
-        column_mapping = {}
-        if 'TravelTime' in pivoted.columns:
-            column_mapping['TravelTime'] = 'average_traveltime'
-        if 'Speed' in pivoted.columns:
-            column_mapping['Speed'] = 'average_speed'
-
-        pivoted = pivoted.rename(columns=column_mapping)
-
-        # Add missing columns that existing code expects
-        pivoted['average_delay'] = np.nan  # Acyclica doesn't have delay data
-        pivoted['segment_name'] = pivoted['corridor_id'].astype(str)  # Create segment_name from corridor_id
-
-        # Sort by datetime
-        pivoted = pivoted.sort_values("local_datetime").reset_index(drop=True)
-
-        return pivoted
-
+        df = pd.read_csv(ACYCLICA_URL)
     except Exception as e:
         st.error(f"Error loading Acyclica data: {e}")
         return pd.DataFrame()
 
+    if df is None or df.empty:
+        st.warning("Acyclica CSV is empty.")
+        return pd.DataFrame()
 
-# =========================
-# Small Prediction utilities
-# =========================
-def _safe_to_datetime(df: pd.DataFrame, col: str) -> pd.DataFrame:
-    if col in df.columns:
-        df[col] = pd.to_datetime(df[col], errors="coerce")
+    df = _normalize_acyclica_headers(df)
+
+    required = ["local_datetime","corridor_id","direction","metric","Strength","Firsts","Lasts","Minimum","Maximum"]
+    missing = [c for c in required if c not in df.columns]
+    if missing:
+        st.error(f"Acyclica CSV missing required columns: {', '.join(missing)}")
+        return pd.DataFrame()
+
+    # Types & cleanup
+    df["local_datetime"] = pd.to_datetime(df["local_datetime"], errors="coerce")
+    df = df.dropna(subset=["local_datetime"])
+    for c in ["Strength","Firsts","Lasts","Minimum","Maximum"]:
+        df[c] = pd.to_numeric(df[c], errors="coerce")
+    df["metric"] = df["metric"].astype(str).str.strip().str.replace(" ", "", regex=False).str.title()  # TravelTime / Speed
+    df["direction"] = df["direction"].astype(str).str.strip().upper()
+    df = df.sort_values(["local_datetime","direction","metric"]).reset_index(drop=True)
     return df
 
 
+@st.cache_data(show_spinner=False)
+def acyclica_long_to_hourly(df_long: pd.DataFrame) -> pd.DataFrame:
+    """
+    Convert long → wide for KPI/plots.
+    Output columns:
+      local_datetime, corridor_id, direction, average_traveltime, average_speed, average_delay (NaN), segment_name
+    """
+    if df_long is None or df_long.empty:
+        return pd.DataFrame()
+
+    piv = (
+        df_long.pivot_table(
+            index=["local_datetime","corridor_id","direction"],
+            columns="metric",
+            values="Strength",
+            aggfunc="mean",
+        )
+        .reset_index()
+        .rename(columns={"TravelTime":"average_traveltime","Speed":"average_speed"})
+    )
+
+    # Ensure presence
+    for col in ["average_traveltime","average_speed"]:
+        if col not in piv.columns:
+            piv[col] = np.nan
+
+    piv["average_delay"] = np.nan  # Acyclica doesn't provide delay
+    piv["segment_name"] = piv["corridor_id"].astype(str)
+
+    piv["local_datetime"] = pd.to_datetime(piv["local_datetime"], errors="coerce")
+    piv = piv.dropna(subset=["local_datetime"]).sort_values(["local_datetime","direction"]).reset_index(drop=True)
+    return piv
+
+
+# =========================
+# Small data getters
+# =========================
 @st.cache_data(show_spinner=False)
 def get_corridor_df() -> pd.DataFrame:
     df = load_traffic_data()
@@ -176,24 +245,24 @@ def get_volume_df() -> pd.DataFrame:
 
 
 @st.cache_data(show_spinner=False)
+def get_acyclica_long_df() -> pd.DataFrame:
+    """
+    Long-format Acyclica (for Incident/Peak/Event detection).
+    """
+    return load_acyclica_data()
+
+
+@st.cache_data(show_spinner=False)
 def get_acyclica_df() -> pd.DataFrame:
     """
-    Get Acyclica dataset for Tab 3 (speed-focused analysis).
-    Returns data with: local_datetime, corridor_id, direction, average_traveltime, average_speed, average_delay (NaN)
+    Wide-format Acyclica for KPI/plots (Iteris-like):
+      local_datetime, corridor_id, direction, average_traveltime, average_speed, average_delay, segment_name
     """
-    df = load_acyclica_data()
-    if df is None or len(df) == 0:
+    long_df = load_acyclica_data()
+    if long_df is None or len(long_df) == 0:
         return pd.DataFrame()
-
-    df = _safe_to_datetime(df.copy(), "local_datetime")
-
-    # Check for expected columns
-    needed = {"average_traveltime", "average_speed", "direction"}
-    missing = needed - set(df.columns)
-    if missing:
-        st.warning(f"Acyclica dataset is missing columns: {', '.join(missing)}")
-
-    return df
+    wide = acyclica_long_to_hourly(long_df)
+    return _safe_to_datetime(wide.copy(), "local_datetime")
 
 
 def get_performance_rating(score: float):
@@ -220,15 +289,7 @@ def _coerce_num(s: pd.Series) -> pd.Series:
 
 def compute_perf_kpis_interpretable(df: pd.DataFrame, high_delay_threshold: float) -> dict:
     """
-    Compute five interpretable KPIs:
-      - avg_tt: Average Travel Time (lower is better)
-      - planning_time: 95th percentile travel time (lower is better)
-      - buffer_index: (P95 - Mean)/Mean * 100 (lower is better)
-      - reliability: 100 - CV(travel_time)% (higher is better)
-      - congestion_freq: Share of hours with Delay > threshold (lower is better)
-
-    Returns dict with values, units, normalized 'score' 0..100 (higher = better),
-    and 'help' strings that explain formula + interpretation.
+    Compute five interpretable KPIs for Iteris-style (wide) data.
     """
     if df is None or df.empty:
         return {
@@ -279,8 +340,7 @@ def compute_perf_kpis_interpretable(df: pd.DataFrame, high_delay_threshold: floa
         mn, mx = float(series.min()), float(series.max())
         if mx <= mn:
             return 50.0
-        # lower is better -> invert
-        frac = (val - mn) / (mx - mn)
+        frac = (val - mn) / (mx - mn)  # lower is better
         return float(max(0.0, min(100.0, 100.0 * (1.0 - frac))))
 
     if "average_traveltime" in df and df["average_traveltime"].notna().any():
@@ -298,32 +358,32 @@ def compute_perf_kpis_interpretable(df: pd.DataFrame, high_delay_threshold: floa
             "value": avg_tt,
             "unit": "min",
             "score": score_avg_tt,
-            "help": "Average Travel Time\n\nWhat it means: The typical door-to-door trip time for this route with your current filters.\nWhy it exists: Gives a quick sense of what most trips take.\nHow it’s calculated: Average of the hourly O-D trip times.\nFormula: mean(travel_time)\nExample: 6, 6, 7, 7 minutes → (6 + 6 + 7 + 7) / 4 = 6.5 minutes.",
+            "help": "Average Travel Time\n\nWhat it means: The typical door-to-door trip time for this route with your current filters.\nWhy it exists: Gives a quick sense of what most trips take.\nHow it’s calculated: Average of the hourly O-D trip times.\nFormula: mean(travel_time).",
         },
         "planning_time": {
             "value": p95_tt,
             "unit": "min",
             "score": score_plan,
-            "help": "Planning Time (95th)\n\nWhat it means: If you take all trip times in current filter, the 95th-percentile is the value such that 95% of the observations are at or below it.\nWhy it exists: Averages can hide variability. Planning Time being 95th percentile captures \"typical worst-case\".\nHow to read it: Realistically, your trip will in total, take this much time. Its the Travel Time you should plan for so you arrive on time about 95% of trips.",
+            "help": "Planning Time (95th)\n\nWhat it means: 95th-percentile travel time in your filtered period.\nPurpose: captures a realistic worst-case for planning.",
         },
         "buffer_index": {
             "value": buffer_index,
             "unit": "%",
             "score": score_buffer,
-            "help": "Buffer Index\n\nWhat it means: Extra time (as a percent) you should add on top of the average to be safe.\nHow it’s calculated: (Planning Time − Average Time) ÷ Average Time × 100%.\nFormula: (P95 − mean) / mean × 100%\nExample: (7.5 − 6.5) ÷ 6.5 × 100% ≈ 15.4%.",
+            "help": "Buffer Index = (P95 − mean) / mean × 100.",
         },
         "reliability": {
             "value": reliability,
             "unit": "%",
             "score": score_reliability,
-            "help": "Reliability Index\n\nWhat it Means: Its your predictability score for travel time\n\nWhy it exists: An average travel time may not be reliable since the corridor has spiky and unpredictable periods. Higher RI = more dependable and easier arrival time planning.\n\nHow to read it:\n\nCalculate CV = Coefficient of Variation (a measure of variability in travel times in this case)\n\nReliability Index (RI) = 100 − CV%, where CV% = (Std Dev / Mean) × 100\n\nExample (travel time):\nIf mean = 6.5 min and stdev = 0.78 min, then CV = 0.78/6.5 ≈ 12%.\nReliability Index = 100 − CV%, \nso RI ≈ 88%.\n\nReliability Index Thresholds:\n≥ 85% → Excellent (very consistent; CV ≤ ~15%)\n\n70–84% → Good (moderately consistent)\n\n55–69% → Fair (noticeable variability)\n\n< 55% → Poor (highly variable; users can’t plan confidently)",
+            "help": "Reliability Index = 100 − CV%, where CV% = stdev/mean × 100.",
         },
         "congestion_freq": {
             "value": cong_freq,
             "unit": "%",
             "score": score_congestion,
             "extra": f"Hours > {high_delay_threshold:.0f}s: {cong_hours}/{total_hours}",
-            "help": f"Congestion Frequency\n\nWhat it means: How often delay occurs above the chosen threshold of 60s during your selected period.\nWhy it exists: Highlights how frequently you encounter “too much” delay.\n\nExample: 0 of 4 hours above {high_delay_threshold:.0f}s → 0%.",
+            "help": "Share of hours with delay above your chosen threshold.",
         },
     }
 
@@ -370,8 +430,7 @@ def performance_chart(data: pd.DataFrame, metric_type: str = "delay"):
             line=dict(color=color, width=2),
             marker=dict(size=4),
         ),
-        row=1,
-        col=1,
+        row=1, col=1,
     )
 
     # Distribution histogram
@@ -383,11 +442,9 @@ def performance_chart(data: pd.DataFrame, metric_type: str = "delay"):
             marker_color=color,
             opacity=0.75,
         ),
-        row=2,
-        col=1,
+        row=2, col=1,
     )
 
-    # Update layout with proper axis labels
     fig.update_layout(
         height=600,
         title=title,
@@ -396,8 +453,6 @@ def performance_chart(data: pd.DataFrame, metric_type: str = "delay"):
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
     )
-
-    # Update x and y axis labels for both subplots
     fig.update_xaxes(title_text="Date/Time", row=1, col=1)
     fig.update_yaxes(title_text=y_label, row=1, col=1)
     fig.update_xaxes(title_text=dist_x_label, row=2, col=1)
@@ -458,8 +513,7 @@ def volume_charts(
             showscale=True,
             colorbar=dict(title="Avg Volume (vph)"),
         ),
-        row=2,
-        col=1,
+        row=2, col=1,
     )
     fig2.update_layout(
         height=800,
@@ -546,7 +600,7 @@ def date_range_preset_controls(min_date: datetime.date, max_date: datetime.date,
 # =========================
 def process_traffic_data(df, date_range, granularity, time_filter=None, start_hour=None, end_hour=None):
     """
-    Process traffic Prediction based on date range and granularity selections
+    Process traffic data based on date range and granularity selections
     """
     # Convert datetime if not already done
     df["local_datetime"] = pd.to_datetime(df["local_datetime"])
@@ -559,7 +613,7 @@ def process_traffic_data(df, date_range, granularity, time_filter=None, start_ho
             & (df["local_datetime"].dt.date <= end_date)
         ]
 
-    # Apply time filters for hourly Prediction
+    # Apply time filters for hourly data
     if granularity == "Hourly" and time_filter:
         if time_filter == "Peak Hours (7-9 AM, 4-6 PM)":
             df = df[
@@ -578,8 +632,8 @@ def process_traffic_data(df, date_range, granularity, time_filter=None, start_ho
         elif time_filter == "Custom Range" and start_hour is not None and end_hour is not None:
             df = df[df["local_datetime"].dt.hour.between(start_hour, end_hour - 1)]
 
-    # Determine Prediction type and aggregate accordingly
-    if "segment_name" in df.columns:  # Corridor Prediction (delay/speed/travel time)
+    # Determine data type and aggregate accordingly
+    if "segment_name" in df.columns:  # Corridor data (delay/speed/travel time)
         if granularity == "Daily":
             df["date_group"] = df["local_datetime"].dt.date
             grouped = df.groupby(["date_group", "corridor_id", "direction", "segment_name"]).agg(
@@ -616,7 +670,7 @@ def process_traffic_data(df, date_range, granularity, time_filter=None, start_ho
         else:  # Hourly - no aggregation needed
             grouped = df
 
-    elif "intersection_id" in df.columns:  # Volume Prediction
+    elif "intersection_id" in df.columns:  # Volume data
         if granularity == "Daily":
             df["date_group"] = df["local_datetime"].dt.date
             grouped = df.groupby(["date_group", "intersection_id", "direction", "intersection_name"]).agg(
@@ -642,7 +696,7 @@ def process_traffic_data(df, date_range, granularity, time_filter=None, start_ho
             grouped = df
 
     else:
-        # Fallback - just return filtered Prediction
+        # Fallback - just return filtered data
         grouped = df
 
     return grouped
