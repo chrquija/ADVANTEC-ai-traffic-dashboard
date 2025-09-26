@@ -1548,42 +1548,6 @@ with tab3:
     from acyclica_traveltime_analysis import render_tab3_analysis
     render_tab3_analysis()
 
-
-    # Load Acyclica data for sidebar population
-    acyclica_df = get_acyclica_df()
-
-    with st.sidebar:
-        with st.expander("⚙️ Pg.3 SETTINGS", expanded=True):
-            st.caption("Acyclica Data: Speed + Travel Time Analysis")
-            st.caption("AI Models: Peak Hour, Incident Detection, Event Impact")
-
-            # Tab 3 Navigation
-            st.markdown("## 🎯 Select Analysis Type")
-            analysis_type = st.selectbox(
-                "Choose Analysis",
-                [
-                    "🚗 Travel Time Analysis", 
-                    "🔮 Peak Hour Prediction",
-                    "⚠️ Incident Detection & Recovery", 
-                    "🎪 Event Impact Analysis"
-                ],
-                key="tab3_analysis_type",
-                help="Travel Time Analysis shows same metrics as Tab 1 but with Acyclica data + speed insights"
-            )
-
-    # Render the appropriate section based on selection
-    if analysis_type == "🚗 Travel Time Analysis":
-        render_acyclica_section()
-
-    elif analysis_type == "🔮 Peak Hour Prediction":
-        render_peak_hour_section()
-
-    elif analysis_type == "⚠️ Incident Detection & Recovery":
-        render_incident_detection_section()
-
-    elif analysis_type == "🎪 Event Impact Analysis":
-        render_event_impact_section()
-
 # =========================
 # FOOTER
 # =========================
