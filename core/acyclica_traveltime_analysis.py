@@ -18,7 +18,11 @@ from sidebar_functions import (
 )
 
 # Import from timeline_scrubber for consistent headers
+import sys
+import os
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 from Prediction.timeline_scrubber import render_gradient_header
+
 
 
 def compute_acyclica_kpis(df: pd.DataFrame, low_speed_threshold: float) -> dict:
