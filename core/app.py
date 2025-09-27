@@ -4,7 +4,11 @@ import numpy as np
 from datetime import datetime, timedelta
 import time
 import streamlit.components.v1 as components
-import contextlib  # <-- added
+import contextlib
+
+# make sure /core (this file's folder) is importable for sibling modules
+import os, sys
+sys.path.insert(0, os.path.dirname(__file__))
 
 # Plotly
 import plotly.express as px
@@ -18,28 +22,22 @@ from sidebar_functions import (
     process_traffic_data,
     get_corridor_df,
     get_volume_df,
-    get_acyclica_df,  # NEW for Tab 3
+    get_acyclica_df,      # ok to keep
     get_performance_rating,
     performance_chart,
-    # volume_charts,  # <- no longer used in TAB 2
     date_range_preset_controls,
     compute_perf_kpis_interpretable,
     render_badge,
 )
 
-# Cycle length section (moved out)
+# Cycle length section
 from cycle_length_recommendations import render_cycle_length_section
 
 # Map builders (return Plotly figures)
 from Map import build_corridor_map, build_intersection_map, build_intersections_overview
 
 # --- Acyclica (Tab 3) ---
-try:
-    # when run as a package:  streamlit run core/app.py    or    python -m core.app
-    from core.acyclica_traveltime_analysis import render_tab3_analysis
-except ImportError:
-    # when run from the same folder as app.py
-    from acyclica_traveltime_analysis import render_tab3_analysis
+from acyclica_traveltime_analysis import render_tab3_analysis  # simple sibling import
 
 
 # AI Prediction Models (Tab 3 sub-sections)
