@@ -47,7 +47,7 @@ try:
     from acyclica_traveltime_analysis import render_tab3_analysis
 except Exception:
     # running from project root with 'core.' package style
-    from core.acyclica_traveltime_analysis import render_tab3_analysis
+    from acyclica_traveltime_analysis import render_tab3_analysis
 
 # AI Prediction Models (Tab 3 sub-sections) – keep as you had
 from Prediction.peak_hour_prediction import render_peak_hour_section
