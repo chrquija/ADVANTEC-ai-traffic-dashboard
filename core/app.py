@@ -39,12 +39,12 @@ try:
     from core.acyclica_traveltime_analysis import render_tab3_analysis
 except ImportError:
     # when run from the same folder as app.py
-    from core.acyclica_traveltime_analysis import render_tab3_analysis
+    from acyclica_traveltime_analysis import render_tab3_analysis
 
 
 # AI Prediction Models (Tab 3 sub-sections)
 from Prediction.peak_hour_prediction import render_peak_hour_section
-from Prediction.incident_detection import render_incident_detection_section  
+from Prediction.incident_detection import render_incident_detection_section
 from Prediction.event_impact_analysis import render_event_impact_section
 
 
