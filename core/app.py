@@ -6,14 +6,9 @@ import time
 import streamlit.components.v1 as components
 import contextlib
 
-# --- ensure imports from this folder AND the project root work ---
+# --- make the /core folder (this file's folder) importable for sibling modules ---
 import os, sys
-_THIS_DIR = os.path.dirname(__file__)              # .../core
-_PROJECT_ROOT = os.path.dirname(_THIS_DIR)         # repo root
-if _THIS_DIR not in sys.path:
-    sys.path.insert(0, _THIS_DIR)
-if _PROJECT_ROOT not in sys.path:
-    sys.path.insert(0, _PROJECT_ROOT)
+sys.path.insert(0, os.path.dirname(__file__))
 
 # Plotly
 import plotly.express as px
@@ -41,13 +36,8 @@ from cycle_length_recommendations import render_cycle_length_section
 # Map builders (return Plotly figures)
 from Map import build_corridor_map, build_intersection_map, build_intersections_overview
 
-# --- Acyclica (Tab 3) ---
-try:
-    # running inside /core or with /core on sys.path
-    from acyclica_traveltime_analysis import render_tab3_analysis
-except Exception:
-    # running from project root with 'core.' package style
-    from core.acyclica_traveltime_analysis import render_tab3_analysis
+# --- Acyclica (Tab 3) — sibling import ---
+from acyclica_traveltime_analysis import render_tab3_analysis
 
 # AI Prediction Models (Tab 3 sub-sections) – keep as you had
 from Prediction.peak_hour_prediction import render_peak_hour_section
