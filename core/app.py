@@ -6,9 +6,14 @@ import time
 import streamlit.components.v1 as components
 import contextlib
 
-# --- make the /core folder (this file's folder) importable for sibling modules ---
+# --- ensure imports from this folder AND the project root work ---
 import os, sys
-sys.path.insert(0, os.path.dirname(__file__))
+_THIS_DIR = os.path.dirname(__file__)              # .../core
+_PROJECT_ROOT = os.path.dirname(_THIS_DIR)         # repo root
+if _THIS_DIR not in sys.path:
+    sys.path.insert(0, _THIS_DIR)
+if _PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, _PROJECT_ROOT)
 
 # Plotly
 import plotly.express as px
