@@ -9,6 +9,9 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
+# Add the Map import
+from Map import build_all_segments_overview, build_intersections_overview
+
 
 # ------------------------------------------------------------------
 # Helpers
@@ -836,17 +839,53 @@ def render_tab3_analysis():
         # ---------- Layout: wide content + sticky right rail (matching Tabs 1 & 2) ----------
         main_col_t3, right_col_t3 = st.columns([7, 3.5], gap="large")
 
-        # Right rail (map code - matching other tabs)
+        # Right rail (map code - now with actual map!)
         with right_col_t3:
             st.markdown('<div id="acyclica-map-anchor"></div>', unsafe_allow_html=True)
             st.markdown("##### Corridor Map", help="Stays visible while you scroll the analysis on the left.")
 
-            # For now, show a placeholder map or try to build one based on corridor
-            # You can enhance this later with actual Acyclica corridor mapping
-            st.markdown('<div class="cvag-map-card">', unsafe_allow_html=True)
-            st.info(f"**Acyclica Corridor:** {corridor}")
-            st.markdown("📍 Map visualization for Acyclica corridors coming soon...")
-            st.markdown("</div>", unsafe_allow_html=True)
+            # Use the existing map functions since Acyclica is on the same Washington Street corridor
+            try:
+                # Try to build the corridor overview map (shows all segments)
+                fig_corridor = build_all_segments_overview()
+
+                if fig_corridor:
+                    try:
+                        # Match the map height used in other tabs
+                        fig_corridor.update_layout(height=900, margin=dict(l=0, r=0, t=32, b=0))
+                    except Exception:
+                        pass
+
+                    st.markdown('<div class="cvag-map-card">', unsafe_allow_html=True)
+                    st.plotly_chart(fig_corridor, use_container_width=True, config={"displaylogo": False})
+                    st.caption(f"**Acyclica Corridor:** {corridor}")
+                    st.markdown("</div>", unsafe_allow_html=True)
+                else:
+                    # Fallback: try the intersections overview
+                    fig_intersections = build_intersections_overview()
+                    if fig_intersections:
+                        try:
+                            fig_intersections.update_layout(height=900, margin=dict(l=0, r=0, t=32, b=0))
+                        except Exception:
+                            pass
+                        st.markdown('<div class="cvag-map-card">', unsafe_allow_html=True)
+                        st.plotly_chart(fig_intersections, use_container_width=True, config={"displaylogo": False})
+                        st.caption(f"**Acyclica Corridor:** {corridor}")
+                        st.markdown("</div>", unsafe_allow_html=True)
+                    else:
+                        # Final fallback
+                        st.markdown('<div class="cvag-map-card">', unsafe_allow_html=True)
+                        st.info(f"**Acyclica Corridor:** {corridor}")
+                        st.markdown("📍 Washington Street Corridor")
+                        st.markdown("_Acyclica sensors monitor travel time and speed along the corridor_")
+                        st.markdown("</div>", unsafe_allow_html=True)
+            except Exception:
+                # Error fallback
+                st.markdown('<div class="cvag-map-card">', unsafe_allow_html=True)
+                st.info(f"**Acyclica Corridor:** {corridor}")
+                st.markdown("📍 Washington Street Corridor")
+                st.markdown("_Acyclica sensors monitor travel time and speed along the corridor_")
+                st.markdown("</div>", unsafe_allow_html=True)
 
         # Left/main content
         with main_col_t3:
