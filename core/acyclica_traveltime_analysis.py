@@ -703,142 +703,385 @@ def process_traffic_data(df, date_range, granularity, time_filter=None, start_ho
     return grouped
 
 
-# =========================
-# Tab 3 renderer (Acyclica)
-# =========================
+# ... existing code ...
+
 def render_tab3_analysis():
     """
-    Renders Pg.3 — Acyclica (Travel Time & Speed).
-    Uses the long→wide transformed Acyclica data and your shared
-    date-range + aggregation helpers.
+    Main Tab 3 renderer for Acyclica travel time analysis.
+    Similar to Tab 1 but uses Acyclica speed data instead of delay data.
     """
-    st.markdown("## Pg.3 — Acyclica (Travel Time & Speed)")
-
-    # Load wide (hourly) Acyclica data
     try:
-        wide_df = get_acyclica_df()
+        # Load Acyclica data once to populate controls
+        acyclica_df = get_acyclica_df()
+    except RuntimeError as e:
+        st.error(f"❌ Failed to load Acyclica data: {e}")
+        return
     except Exception as e:
-        st.error(f"Failed to load Acyclica data: {e}")
+        st.error(f"❌ Unexpected error loading Acyclica data: {e}")
         return
 
-    if wide_df is None or wide_df.empty:
-        st.warning("No Acyclica data available.")
-        return
-
-    # Ensure datetime is parsed
-    wide_df["local_datetime"] = pd.to_datetime(wide_df["local_datetime"], errors="coerce")
-    wide_df = wide_df.dropna(subset=["local_datetime"])
-
-    # --- Sidebar / controls for this tab ---
+    # -------- Sidebar controls --------
     with st.sidebar:
-        st.markdown("### ⚙️ Pg.3 SETTINGS")
-        st.caption("Source: Acyclica (corridor-level hourly)")
+        with st.expander("⚙️ Pg.3 ACYCLICA SETTINGS", expanded=True):
+            st.caption("Select Corridor and Date Range")
+            st.caption("Data: Travel Time & Speed from Acyclica sensors")
 
-        # Date range based on available data
-        min_date = wide_df["local_datetime"].dt.date.min()
-        max_date = wide_df["local_datetime"].dt.date.max()
-        date_range = date_range_preset_controls(min_date, max_date, key_prefix="acyc")
+            # Get available corridors
+            if not acyclica_df.empty and "corridor_id" in acyclica_df.columns:
+                corridors = ["All Corridors"] + sorted(acyclica_df["corridor_id"].dropna().unique().tolist())
+            else:
+                corridors = ["All Corridors"]
 
-        # Aggregation
-        granularity = st.selectbox(
-            "Aggregation",
-            ["Hourly", "Daily", "Weekly", "Monthly"],
-            index=0,
-            key="acyc_gran"
-        )
+            st.markdown("## 🛣️ Select Corridor")
+            corridor = st.selectbox("Corridor", corridors, key="corridor_acyclica")
 
-        # Direction filter
-        dirs = ["All"] + sorted([d for d in wide_df["direction"].dropna().unique().tolist()])
-        direction = st.selectbox("Direction", dirs, index=0, key="acyc_dir")
+            # Date range
+            if acyclica_df.empty or "local_datetime" not in acyclica_df.columns:
+                min_date = datetime.today().date() - timedelta(days=7)
+                max_date = datetime.today().date()
+            else:
+                min_date = acyclica_df["local_datetime"].dt.date.min()
+                max_date = acyclica_df["local_datetime"].dt.date.max()
 
-        # Optional: time-of-day window if Hourly
-        time_filter = None
-        start_hour = end_hour = None
-        if granularity == "Hourly":
-            # IMPORTANT: strings must match those used in process_traffic_data()
-            time_filter = st.selectbox(
-                "Time Focus",
-                [
-                    "All Hours",
-                    "Peak Hours (7-9 AM, 4-6 PM)",
-                    "AM Peak (7-9 AM)",
-                    "PM Peak (4-6 PM)",
-                    "Off-Peak",
-                    "Custom Range",
-                ],
-                key="acyc_tod"
+            st.markdown("## 📅 Date And Time")
+            date_range = date_range_preset_controls(min_date, max_date, key_prefix="acyclica")
+
+            # Granularity
+            st.markdown("## Granularity")
+            granularity = st.selectbox(
+                "Data Aggregation",
+                ["Hourly", "Daily", "Weekly", "Monthly"],
+                index=0,
+                key="granularity_acyclica",
             )
-            if time_filter == "Custom Range":
-                c1, c2 = st.columns(2)
-                with c1:
-                    start_hour = st.number_input("Start Hour (0–23)", 0, 23, 7, step=1, key="acyc_start")
-                with c2:
-                    end_hour = st.number_input("End Hour (1–24)", 1, 24, 18, step=1, key="acyc_end")
 
-    # Apply direction filter before processing
-    df = wide_df if direction == "All" else wide_df[wide_df["direction"] == direction]
+            # Direction filter
+            if not acyclica_df.empty and "direction" in acyclica_df.columns:
+                direction_options = ["All Directions"] + sorted(acyclica_df["direction"].dropna().unique().tolist())
+            else:
+                direction_options = ["All Directions"]
+            direction_filter = st.selectbox("🔄 Direction Filter", direction_options, key="direction_filter_acyclica")
 
-    # Guard on date range
+            # Time period focus for hourly
+            time_filter, start_hour, end_hour = None, None, None
+            if granularity == "Hourly":
+                time_filter = st.selectbox(
+                    "Time Period Focus",
+                    [
+                        "All Hours",
+                        "Peak Hours (7–9 AM, 4–6 PM)",
+                        "AM Peak (7–9 AM)",
+                        "PM Peak (4–6 PM)",
+                        "Off-Peak",
+                        "Custom Range",
+                    ],
+                    key="time_period_focus_acyclica",
+                )
+                if time_filter == "Custom Range":
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        start_hour = st.number_input("Start Hour (0–23)", 0, 23, 7, step=1, key="start_hour_acyclica")
+                    with c2:
+                        end_hour = st.number_input("End Hour (1–24)", 1, 24, 18, step=1, key="end_hour_acyclica")
+
+    # -------- Main content area --------
     if not date_range or len(date_range) != 2:
-        st.warning("Please select both start and end dates.")
+        st.info("Choose your Corridor and Date Range in the settings to the left.")
         return
 
-    # Process/aggregate using your shared helper
-    filtered = process_traffic_data(
-        df,
-        date_range=date_range,
-        granularity=granularity,
-        time_filter=time_filter if granularity == "Hourly" else None,
-        start_hour=start_hour,
-        end_hour=end_hour,
-    )
+    try:
+        # Apply filters
+        working_df = acyclica_df.copy() if not acyclica_df.empty else pd.DataFrame()
 
-    if filtered is None or filtered.empty:
-        st.info("No data after filters.")
-        return
+        if working_df.empty:
+            st.error("❌ No Acyclica data available.")
+            return
 
-    # =========================
-    # KPIs (reusing interpretable KPI function)
-    # =========================
-    st.subheader("🚦 Key Performance Indicators")
-    kpis = compute_perf_kpis_interpretable(filtered, high_delay_threshold=60.0)  # 60s example threshold
+        # Filter by corridor
+        if corridor != "All Corridors":
+            working_df = working_df[working_df["corridor_id"] == corridor]
 
-    c1, c2, c3, c4, c5 = st.columns(5)
-    with c1:
-        st.metric("Average Travel Time", f"{kpis['avg_tt']['value']:.1f} {kpis['avg_tt']['unit']}", help=kpis['avg_tt']['help'])
-    with c2:
-        st.metric("Planning Time (P95)", f"{kpis['planning_time']['value']:.1f} {kpis['planning_time']['unit']}", help=kpis['planning_time']['help'])
-    with c3:
-        st.metric("Buffer Index", f"{kpis['buffer_index']['value']:.1f}{kpis['buffer_index']['unit']}", help=kpis['buffer_index']['help'])
-    with c4:
-        st.metric("Reliability Index", f"{kpis['reliability']['value']:.0f}{kpis['reliability']['unit']}", help=kpis['reliability']['help'])
-    with c5:
-        st.metric("Congestion Frequency", f"{kpis['congestion_freq']['value']:.1f}{kpis['congestion_freq']['unit']}", help=kpis['congestion_freq']['help'])
+        # Filter by direction
+        if direction_filter != "All Directions" and "direction" in working_df.columns:
+            working_df = working_df[working_df["direction"] == direction_filter]
 
-    # =========================
-    # Charts
-    # =========================
-    st.subheader("📈 Travel Time Trend & Distribution")
-    fig_tt = performance_chart(filtered, metric_type="travel")
-    if fig_tt:
-        st.plotly_chart(fig_tt, use_container_width=True)
-    else:
-        st.info("Not enough data to draw travel time chart.")
-
-    if "average_speed" in filtered.columns and filtered["average_speed"].notna().any():
-        st.subheader("🚀 Speed Trend")
-        fig_spd = px.line(
-            filtered.sort_values("local_datetime"),
-            x="local_datetime",
-            y="average_speed",
-            title="Average Speed over Time",
-            labels={"average_speed": "Average Speed (mph)", "local_datetime": "Date/Time"},
-            template="plotly_white",
+        # Process the data
+        filtered_data = process_traffic_data(
+            working_df,
+            date_range,
+            granularity,
+            time_filter if granularity == "Hourly" else None,
+            start_hour,
+            end_hour,
         )
-        st.plotly_chart(fig_spd, use_container_width=True)
 
-    # =========================
-    # Data preview
-    # =========================
-    with st.expander("Preview filtered data"):
-        st.dataframe(filtered.head(200), use_container_width=True)
+        if filtered_data.empty:
+            st.warning("⚠️ No data available for the selected filters.")
+            return
+
+        # Display header
+        total_records = len(filtered_data)
+        data_span = (date_range[1] - date_range[0]).days + 1
+        time_context = f" • {time_filter}" if (granularity == "Hourly" and time_filter) else ""
+
+        st.markdown(
+            f"""
+            <div class="context-header">
+                <h2>🌐 Acyclica Travel Time Analysis: {corridor}</h2>
+                <p>📅 {date_range[0].strftime('%b %d, %Y')} to {date_range[1].strftime('%b %d, %Y')} ({data_span} days) • {granularity} Aggregation{time_context}</p>
+                <p>✅ Analyzing {total_records:,} data points from Acyclica sensors • Direction: {direction_filter}</p>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+
+        # Ensure numeric columns
+        for col in ["average_traveltime", "average_speed"]:
+            if col in filtered_data.columns:
+                filtered_data[col] = pd.to_numeric(filtered_data[col], errors="coerce")
+
+        # ---- KPIs Section ----
+        st.subheader("🚦 Travel Time & Speed KPIs")
+        if not filtered_data.empty:
+            # Since Acyclica doesn't have delay, we'll focus on travel time and speed
+            avg_tt = float(np.nanmean(
+                filtered_data["average_traveltime"])) if "average_traveltime" in filtered_data.columns else 0.0
+            avg_speed = float(
+                np.nanmean(filtered_data["average_speed"])) if "average_speed" in filtered_data.columns else 0.0
+
+            if "average_traveltime" in filtered_data.columns and filtered_data["average_traveltime"].notna().any():
+                p95_tt = float(np.nanpercentile(filtered_data["average_traveltime"].dropna(), 95))
+                min_tt = float(np.nanmin(filtered_data["average_traveltime"]))
+                max_tt = float(np.nanmax(filtered_data["average_traveltime"]))
+            else:
+                p95_tt = min_tt = max_tt = 0.0
+
+            if "average_speed" in filtered_data.columns and filtered_data["average_speed"].notna().any():
+                min_speed = float(np.nanmin(filtered_data["average_speed"]))
+                max_speed = float(np.nanmax(filtered_data["average_speed"]))
+                p5_speed = float(
+                    np.nanpercentile(filtered_data["average_speed"].dropna(), 5))  # 5th percentile for worst speeds
+            else:
+                min_speed = max_speed = p5_speed = 0.0
+
+            # Calculate buffer time and reliability
+            buffer_minutes = max(0.0, p95_tt - avg_tt)
+            if avg_tt > 0:
+                cv_tt = float(np.nanstd(filtered_data["average_traveltime"])) / avg_tt * 100.0
+                reliability = max(0.0, 100.0 - cv_tt)
+            else:
+                reliability = 50.0
+
+            # Display metrics
+            col1, col2, col3, col4, col5 = st.columns(5)
+
+            with col1:
+                st.metric(
+                    "⏱️ Average Travel Time",
+                    f"{avg_tt:.1f} min",
+                    help="Average travel time across the selected period and filters"
+                )
+                # Simple scoring based on travel time (lower is better)
+                tt_score = max(0, 100 - (avg_tt * 5)) if avg_tt > 0 else 50
+                st.markdown(render_badge(tt_score), unsafe_allow_html=True)
+
+            with col2:
+                st.metric(
+                    "📈 Planning Time (95th)",
+                    f"{p95_tt:.1f} min",
+                    help="95th percentile travel time - plan for this to arrive on time 95% of the time"
+                )
+                planning_score = max(0, 100 - (p95_tt * 4)) if p95_tt > 0 else 50
+                st.markdown(render_badge(planning_score), unsafe_allow_html=True)
+
+            with col3:
+                st.metric(
+                    "🧭 Buffer Time",
+                    f"{buffer_minutes:.1f} min",
+                    help="Extra time needed above average to arrive on time 95% of trips"
+                )
+                buffer_score = max(0, 100 - (buffer_minutes * 10)) if buffer_minutes >= 0 else 50
+                st.markdown(render_badge(buffer_score), unsafe_allow_html=True)
+
+            with col4:
+                st.metric(
+                    "🎯 Reliability Index",
+                    f"{reliability:.0f}%",
+                    help="Travel time reliability (100% - coefficient of variation%)"
+                )
+                st.markdown(render_badge(reliability), unsafe_allow_html=True)
+
+            with col5:
+                st.metric(
+                    "🚗 Average Speed",
+                    f"{avg_speed:.1f} mph",
+                    delta=f"Range: {min_speed:.1f} - {max_speed:.1f} mph",
+                    help="Average speed across the corridor"
+                )
+                # Speed scoring (assume 35 mph is ideal for arterial)
+                speed_score = min(100, max(0, (avg_speed / 35) * 100)) if avg_speed > 0 else 50
+                st.markdown(render_badge(speed_score), unsafe_allow_html=True)
+
+        # ---- Charts Section ----
+        if len(filtered_data) > 1:
+            st.subheader("📈 Performance Trends")
+
+            chart_col1, chart_col2 = st.columns(2)
+
+            with chart_col1:
+                # Travel Time Chart
+                tt_chart = performance_chart(filtered_data, "travel")
+                if tt_chart:
+                    st.plotly_chart(tt_chart, use_container_width=True, config={"displaylogo": False})
+
+            with chart_col2:
+                # Speed Chart (create a custom speed chart since performance_chart doesn't handle speed)
+                if "average_speed" in filtered_data.columns:
+                    speed_data = filtered_data.dropna(subset=["local_datetime", "average_speed"]).sort_values(
+                        "local_datetime")
+
+                    fig = make_subplots(
+                        rows=2, cols=1,
+                        subplot_titles=("Speed Time Series Analysis", "Speed Distribution Analysis"),
+                        vertical_spacing=0.1,
+                    )
+
+                    # Time series plot
+                    fig.add_trace(
+                        go.Scatter(
+                            x=speed_data["local_datetime"],
+                            y=speed_data["average_speed"],
+                            mode="lines+markers",
+                            name="Speed Trend",
+                            line=dict(color="#2ecc71", width=2),
+                            marker=dict(size=4),
+                        ),
+                        row=1, col=1,
+                    )
+
+                    # Distribution histogram
+                    fig.add_trace(
+                        go.Histogram(
+                            x=speed_data["average_speed"],
+                            nbinsx=30,
+                            name="Speed Distribution",
+                            marker_color="#2ecc71",
+                            opacity=0.75,
+                        ),
+                        row=2, col=1,
+                    )
+
+                    fig.update_layout(
+                        height=600,
+                        title="Speed Analysis",
+                        showlegend=True,
+                        template="plotly_white",
+                        plot_bgcolor="rgba(0,0,0,0)",
+                        paper_bgcolor="rgba(0,0,0,0)",
+                    )
+                    fig.update_xaxes(title_text="Date/Time", row=1, col=1)
+                    fig.update_yaxes(title_text="Average Speed (mph)", row=1, col=1)
+                    fig.update_xaxes(title_text="Average Speed (mph)", row=2, col=1)
+                    fig.update_yaxes(title_text="Frequency (Number of Hours)", row=2, col=1)
+
+                    st.plotly_chart(fig, use_container_width=True, config={"displaylogo": False})
+
+        # ---- Data Table ----
+        st.subheader("🔍 Detailed Data")
+        display_columns = ["local_datetime", "corridor_id", "direction", "average_traveltime", "average_speed"]
+        available_columns = [col for col in display_columns if col in filtered_data.columns]
+
+        if available_columns:
+            display_df = filtered_data[available_columns].copy()
+            # Rename columns for better display
+            column_renames = {
+                "local_datetime": "Timestamp",
+                "corridor_id": "Corridor",
+                "direction": "Direction",
+                "average_traveltime": "Travel Time (min)",
+                "average_speed": "Speed (mph)"
+            }
+            display_df = display_df.rename(columns={k: v for k, v in column_renames.items() if k in display_df.columns})
+
+            st.dataframe(display_df, use_container_width=True)
+
+            # Download button
+            st.download_button(
+                "⬇️ Download Acyclica Data (CSV)",
+                data=display_df.to_csv(index=False).encode("utf-8"),
+                file_name="acyclica_analysis.csv",
+                mime="text/csv",
+            )
+
+        # ---- Performance Analysis by Corridor/Direction ----
+        if "corridor_id" in filtered_data.columns and "direction" in filtered_data.columns:
+            st.subheader("🚨 Corridor Performance Analysis")
+
+            # Group by corridor and direction
+            perf_analysis = filtered_data.groupby(["corridor_id", "direction"]).agg(
+                avg_travel_time=("average_traveltime", "mean"),
+                max_travel_time=("average_traveltime", "max"),
+                avg_speed=("average_speed", "mean"),
+                min_speed=("average_speed", "min"),
+                observations=("average_traveltime", "count")
+            ).reset_index()
+
+            # Calculate performance scores
+            if not perf_analysis.empty:
+                # Normalize scores (lower travel time = better, higher speed = better)
+                def normalize_score(series, reverse=False):
+                    series = pd.to_numeric(series, errors="coerce")
+                    if len(series) < 2 or series.std() == 0:
+                        return pd.Series([50.0] * len(series))
+                    normalized = (series - series.min()) / (series.max() - series.min())
+                    if reverse:
+                        normalized = 1 - normalized
+                    return normalized * 100
+
+                perf_analysis["Travel Time Score"] = normalize_score(perf_analysis["avg_travel_time"], reverse=True)
+                perf_analysis["Speed Score"] = normalize_score(perf_analysis["avg_speed"], reverse=False)
+                perf_analysis["Overall Score"] = (perf_analysis["Travel Time Score"] + perf_analysis["Speed Score"]) / 2
+
+                # Add performance ratings
+                def get_rating(score):
+                    if score > 80:
+                        return "🟢 Excellent"
+                    elif score > 60:
+                        return "🔵 Good"
+                    elif score > 40:
+                        return "🟡 Fair"
+                    elif score > 20:
+                        return "🟠 Poor"
+                    else:
+                        return "🔴 Critical"
+
+                perf_analysis["Performance Rating"] = perf_analysis["Overall Score"].apply(get_rating)
+
+                # Display the analysis
+                display_perf = perf_analysis.rename(columns={
+                    "corridor_id": "Corridor",
+                    "direction": "Direction",
+                    "avg_travel_time": "Avg Travel Time (min)",
+                    "max_travel_time": "Max Travel Time (min)",
+                    "avg_speed": "Avg Speed (mph)",
+                    "min_speed": "Min Speed (mph)",
+                    "observations": "Data Points"
+                }).round(2)
+
+                st.dataframe(
+                    display_perf.sort_values("Overall Score", ascending=False),
+                    use_container_width=True,
+                    column_config={
+                        "Overall Score": st.column_config.NumberColumn(
+                            "Overall Performance Score",
+                            help="Composite score based on travel time and speed performance",
+                            format="%.1f"
+                        )
+                    }
+                )
+
+    except Exception as e:
+        st.error(f"❌ Error processing Acyclica data: {e}")
+        import traceback
+        st.text("Debug info:")
+        st.text(traceback.format_exc())
