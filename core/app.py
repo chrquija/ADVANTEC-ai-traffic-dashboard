@@ -6,14 +6,12 @@ import time
 import streamlit.components.v1 as components
 import contextlib
 
-# --- ensure imports from this folder AND the project root work ---
-import os, sys
-_THIS_DIR = os.path.dirname(__file__)              # .../core
-_PROJECT_ROOT = os.path.dirname(_THIS_DIR)         # repo root
-if _THIS_DIR not in sys.path:
-    sys.path.insert(0, _THIS_DIR)
-if _PROJECT_ROOT not in sys.path:
-    sys.path.insert(0, _PROJECT_ROOT)
+# --- make sure both /core and the project root are importable ---
+import sys, pathlib
+_THIS_DIR = pathlib.Path(__file__).resolve().parent          # .../core
+_PROJECT_ROOT = _THIS_DIR.parent                             # repo root
+# prepend so they’re searched first
+sys.path[:0] = [str(_THIS_DIR), str(_PROJECT_ROOT)]
 
 # Plotly
 import plotly.express as px
@@ -41,13 +39,17 @@ from cycle_length_recommendations import render_cycle_length_section
 # Map builders (return Plotly figures)
 from Map import build_corridor_map, build_intersection_map, build_intersections_overview
 
-# --- Acyclica (Tab 3) — sibling import ---
-from acyclica_traveltime_analysis import render_tab3_analysis
+# --- Acyclica (Tab 3) ---
+try:
+    from acyclica_traveltime_analysis import render_tab3_analysis  # sibling import
+except ModuleNotFoundError:
+    from core.acyclica_traveltime_analysis import render_tab3_analysis  # package import
 
-# AI Prediction Models (Tab 3 sub-sections) – keep as you had
+# AI Prediction Models (Tab 3 sub-sections)
 from Prediction.peak_hour_prediction import render_peak_hour_section
 from Prediction.incident_detection import render_incident_detection_section
 from Prediction.event_impact_analysis import render_event_impact_section
+
 
 
 
