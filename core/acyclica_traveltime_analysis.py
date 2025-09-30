@@ -725,7 +725,7 @@ def render_tab3_analysis():
 
     # -------- Sidebar controls (matching Tab 1 & 2 style) --------
     with st.sidebar:
-        with st.expander("⚙️ Pg.3 ACYCLICA SETTINGS", expanded=True):
+        with st.expander("⚙️ Pg.3 ACYCLICA SETTINGS", expanded=False):
             st.caption("Select Corridor and Date Range")
             st.caption("Data: Travel Time & Speed from Acyclica sensors")
 

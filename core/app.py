@@ -532,7 +532,7 @@ with tab1:
         st.image("Logos/ACE-logo-HiRes.jpg", width=210)
         st.image("Logos/CV Sync__.jpg", width=205)
 
-        with st.expander("⚙️ Pg.1 SETTINGS", expanded=True):
+        with st.expander("⚙️ Pg.1 SETTINGS", expanded=False):
             st.caption("Select Route and Date Range")
             st.caption("Data: Vehicle Speed, Delay, and Travel Time")
             st.markdown("## 🗺️ Select Route")
@@ -1029,7 +1029,7 @@ with tab2:
     volume_df = get_volume_df()
 
     with st.sidebar:
-        with st.expander("⚙️ Pg.2 SETTINGS", expanded=True):
+        with st.expander("⚙️ Pg.2 SETTINGS", expanded=False):
 
             st.caption("Select Intersection(s) and Date Range")
             st.caption("Data: Vehicle Volume")
