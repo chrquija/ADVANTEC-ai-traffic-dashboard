@@ -61,15 +61,26 @@ def load_vantage_bikes() -> pd.DataFrame:
     try:
         df = pd.read_csv(url)
 
-        # Parse dates in American format (month/day/year)
+        # Dates are daily (MM/DD/YYYY). If a time ever shows up, this still works.
         df["local_datetime"] = pd.to_datetime(df["local_datetime"], format="%m/%d/%Y", errors="coerce")
         df = df.dropna(subset=["local_datetime"])
 
-        # Map segment_id to intersection names
-        df["intersection_name"] = df["segment_id"].map(SEGMENT_ID_TO_NAME)
+        # If segment_id is numeric, map; if it's already a name, use it directly.
+        if pd.api.types.is_numeric_dtype(df["segment_id"]):
+            df["intersection_name"] = df["segment_id"].map(SEGMENT_ID_TO_NAME)
+        else:
+            df["intersection_name"] = df["segment_id"].astype(str).str.strip()
+
         df = df.dropna(subset=["intersection_name"])
 
-        # Ensure volume is numeric
+        # Normalize direction to NB/SB/EB/WB if present
+        if "direction" in df.columns:
+            df["direction"] = df["direction"].astype(str).str.strip().str.upper()
+
+        # Bikes don’t have turn_type; add a dummy so downstream code stays uniform
+        if "turn_type" not in df.columns:
+            df["turn_type"] = "Through"
+
         df["volume"] = pd.to_numeric(df["volume"], errors="coerce").fillna(0)
 
         return df.sort_values("local_datetime").reset_index(drop=True)
@@ -85,15 +96,22 @@ def load_vantage_vehicles() -> pd.DataFrame:
     try:
         df = pd.read_csv(url)
 
-        # Parse dates in American format (month/day/year)
         df["local_datetime"] = pd.to_datetime(df["local_datetime"], format="%m/%d/%Y", errors="coerce")
         df = df.dropna(subset=["local_datetime"])
 
-        # Map segment_id to intersection names
-        df["intersection_name"] = df["segment_id"].map(SEGMENT_ID_TO_NAME)
+        if pd.api.types.is_numeric_dtype(df["segment_id"]):
+            df["intersection_name"] = df["segment_id"].map(SEGMENT_ID_TO_NAME)
+        else:
+            df["intersection_name"] = df["segment_id"].astype(str).str.strip()
+
         df = df.dropna(subset=["intersection_name"])
 
-        # Ensure volume is numeric
+        # Normalize direction & turn_type casing
+        if "direction" in df.columns:
+            df["direction"] = df["direction"].astype(str).str.strip().str.upper()
+        if "turn_type" in df.columns:
+            df["turn_type"] = df["turn_type"].astype(str).str.strip().str.title()
+
         df["volume"] = pd.to_numeric(df["volume"], errors="coerce").fillna(0)
 
         return df.sort_values("local_datetime").reset_index(drop=True)
@@ -106,8 +124,8 @@ def load_vantage_vehicles() -> pd.DataFrame:
 # =========================
 def _prep_bucket(df: pd.DataFrame, granularity: str) -> pd.DataFrame:
     """
-    Aggregate hourly records to the selected bucket (sum of hourly volumes).
-    Returns: df with columns [local_datetime, intersection_name, volume, bucket_hours].
+    Aggregate records to the selected bucket (sum of volumes).
+    Returns: df with columns [local_datetime, intersection_name, volume, bucket_hours, direction?(optional)].
     """
     if df.empty:
         return df.copy()
@@ -126,8 +144,12 @@ def _prep_bucket(df: pd.DataFrame, granularity: str) -> pd.DataFrame:
     else:  # Monthly
         d["bucket"] = d["local_datetime"].dt.to_period("M").dt.start_time
 
+    group_cols = ["bucket", "intersection_name"]
+    if "direction" in d.columns:
+        group_cols.append("direction")
+
     agg = (
-        d.groupby(["bucket", "intersection_name"], as_index=False)
+        d.groupby(group_cols, as_index=False)
         .agg(volume=("volume", "sum"))
         .rename(columns={"bucket": "local_datetime"})
     )
@@ -302,6 +324,12 @@ def render_vantage_tab():
 
             # Intersection selector
             all_intersections = sorted(list(SEGMENT_ID_TO_NAME.values()))
+            # Also add any intersections present as names in the data but not in the dict
+            if not bikes_df.empty:
+                all_intersections = sorted(set(all_intersections) | set(bikes_df["intersection_name"].unique()))
+            if not vehicles_df.empty:
+                all_intersections = sorted(set(all_intersections) | set(vehicles_df["intersection_name"].unique()))
+
             st.markdown("## 🚦 Select Intersection")
             intersection = st.selectbox(
                 "Intersection",
@@ -333,7 +361,7 @@ def render_vantage_tab():
             granularity = st.selectbox(
                 "Data Aggregation",
                 ["Hourly", "Daily", "Weekly", "Monthly"],
-                index=0,
+                index=1,  # default to Daily
                 key="granularity_vantage",
             )
 
@@ -381,7 +409,7 @@ def render_vantage_tab():
     mode = vantage_params.get("mode", "Vehicles")
     intersection = vantage_params.get("intersection", "All Intersections")
     date_range = vantage_params.get("date_range")
-    granularity = vantage_params.get("granularity", "Hourly")
+    granularity = vantage_params.get("granularity", "Daily")
     direction_filter = vantage_params.get("direction_filter", "All Directions")
     turn_filter = vantage_params.get("turn_filter", "All Turns")
 
@@ -391,33 +419,28 @@ def render_vantage_tab():
 
     try:
         # Prepare working datasets
-        working_bikes = bikes_df.copy() if not bikes_df.empty else pd.DataFrame()
-        working_vehicles = vehicles_df.copy() if not vehicles_df.empty else pd.DataFrame()
-
-        # Apply filters
-        for df in [working_bikes, working_vehicles]:
+        def apply_filters(df: pd.DataFrame) -> pd.DataFrame:
             if df.empty:
-                continue
-            # Date filter
-            df = df[(df["local_datetime"].dt.date >= date_range[0]) &
-                    (df["local_datetime"].dt.date <= date_range[1])]
-            # Intersection filter
-            if intersection != "All Intersections":
-                df = df[df["intersection_name"] == intersection]
-            # Direction filter
-            if direction_filter != "All Directions" and "direction" in df.columns:
-                df = df[df["direction"].str.upper() == direction_filter]
+                return df
+            out = df[
+                (df["local_datetime"].dt.date >= date_range[0]) &
+                (df["local_datetime"].dt.date <= date_range[1])
+            ].copy()
 
-            # Store back
-            if df is working_bikes:
-                working_bikes = df
-            else:
-                working_vehicles = df
+            if intersection != "All Intersections":
+                out = out[out["intersection_name"] == intersection]
+
+            if direction_filter != "All Directions" and "direction" in out.columns:
+                out = out[out["direction"].str.upper() == direction_filter]
+
+            return out
+
+        working_bikes = apply_filters(bikes_df.copy()) if not bikes_df.empty else pd.DataFrame()
+        working_vehicles = apply_filters(vehicles_df.copy()) if not vehicles_df.empty else pd.DataFrame()
 
         # Apply turn filter to vehicles
-        if turn_filter and turn_filter != "All Turns" and not working_vehicles.empty:
-            if "turn_type" in working_vehicles.columns:
-                working_vehicles = working_vehicles[working_vehicles["turn_type"].str.title() == turn_filter]
+        if turn_filter and turn_filter != "All Turns" and not working_vehicles.empty and "turn_type" in working_vehicles.columns:
+            working_vehicles = working_vehicles[working_vehicles["turn_type"] == turn_filter]
 
         # Select data based on mode
         if mode == "Bikes":
@@ -427,7 +450,6 @@ def render_vantage_tab():
             analysis_df = working_vehicles
             mode_label = "Vehicles"
         else:  # Both (Combined)
-            # Combine bikes and vehicles
             if not working_bikes.empty and not working_vehicles.empty:
                 # Aggregate vehicles by intersection/datetime (sum across turns)
                 if "turn_type" in working_vehicles.columns:
@@ -436,7 +458,6 @@ def render_vantage_tab():
                         as_index=False
                     )["volume"].sum()
 
-                # Add mode column
                 working_bikes["mode"] = "Bikes"
                 working_vehicles["mode"] = "Vehicles"
                 analysis_df = pd.concat([working_bikes, working_vehicles], ignore_index=True)
@@ -519,8 +540,7 @@ def render_vantage_tab():
             # -------- KPIs Section --------
             st.subheader(f"🚦 {mode_label} Volume Performance Indicators")
             if not raw.empty and raw["volume"].notna().any():
-                bucket_all = _prep_bucket(raw, granularity).groupby("local_datetime", as_index=False)[
-                    "volume"].sum().sort_values("local_datetime")
+                bucket_all = _prep_bucket(raw, granularity).groupby("local_datetime", as_index=False)["volume"].sum().sort_values("local_datetime")
                 if granularity == "Monthly":
                     bucket_all["bucket_hours"] = pd.to_datetime(bucket_all["local_datetime"]).dt.days_in_month * 24
                 else:
@@ -529,26 +549,30 @@ def render_vantage_tab():
                 bucket_all["cap"] = bucket_all["bucket_hours"] * THEORETICAL_LINK_CAPACITY_VPH
                 util_series = np.where(bucket_all["cap"] > 0, bucket_all["volume"] / bucket_all["cap"] * 100, np.nan)
 
+                # Peak bucket
                 peak_idx = int(bucket_all["volume"].idxmax())
                 peak_val = float(bucket_all.loc[peak_idx, "volume"])
                 peak_cap = float(bucket_all.loc[peak_idx, "cap"])
                 peak_util_pct = (peak_val / peak_cap * 100) if peak_cap > 0 else 0.0
 
-                p95_val = float(np.nanpercentile(bucket_all["volume"], 95)) if bucket_all[
-                    "volume"].notna().any() else 0.0
+                p95_val = float(np.nanpercentile(bucket_all["volume"], 95)) if bucket_all["volume"].notna().any() else 0.0
                 avg_bucket_val = float(bucket_all["volume"].mean())
                 avg_util_pct = float(np.nanmean(util_series)) if np.isfinite(util_series).any() else 0.0
 
+                # Hourly stats (per-row for hourly; otherwise raw rows are daily/weekly/monthly)
                 hourly_avg = float(np.nanmean(raw["volume"])) if raw["volume"].notna().any() else 0.0
                 cv_hourly = (float(np.nanstd(raw["volume"])) / hourly_avg * 100) if hourly_avg > 0 else 0.0
-                cv_bucket = (float(
-                    np.nanstd(bucket_all["volume"])) / avg_bucket_val * 100) if avg_bucket_val > 0 else 0.0
+                cv_bucket = (float(np.nanstd(bucket_all["volume"])) / avg_bucket_val * 100) if avg_bucket_val > 0 else 0.0
 
-                high_hours = int((raw["volume"] > HIGH_VOLUME_THRESHOLD_VPH).sum())
-                total_hours = int(raw["volume"].count())
-                risk_pct = (high_hours / total_hours * 100) if total_hours > 0 else 0.0
-
+                # Risk vs threshold using bucketed totals
                 unit = AGG_META[granularity]["unit"]
+                label = AGG_META[granularity]["label"]  # hour/day/week/month
+                bucket_all["threshold"] = bucket_all["bucket_hours"] * HIGH_VOLUME_THRESHOLD_VPH
+                high_periods = int((bucket_all["volume"] > bucket_all["threshold"]).sum())
+                total_periods = int(len(bucket_all))
+                risk_pct = (high_periods / total_periods * 100) if total_periods > 0 else 0.0
+
+                # Dynamic labels
                 if granularity == "Hourly":
                     avg_label = f"Average Hourly {mode_label}"
                     peak_label = f"🔥 Peak Hourly {mode_label}"
@@ -582,22 +606,16 @@ def render_vantage_tab():
                     )
 
                 with col2:
-                    st.metric(
-                        f"📊 {avg_label}",
-                        f"{avg_bucket_val:,.0f} {avg_suffix}",
-                    )
+                    st.metric(f"📊 {avg_label}", f"{avg_bucket_val:,.0f} {avg_suffix}")
                     if granularity == "Hourly":
-                        avg_util_pct_hourly = (
-                                    hourly_avg / THEORETICAL_LINK_CAPACITY_VPH * 100) if THEORETICAL_LINK_CAPACITY_VPH else 0.0
-                        badge2 = "badge-good" if avg_util_pct_hourly <= 40 else (
-                            "badge-fair" if avg_util_pct_hourly <= 60 else "badge-poor")
+                        avg_util_pct_hourly = (hourly_avg / THEORETICAL_LINK_CAPACITY_VPH * 100) if THEORETICAL_LINK_CAPACITY_VPH else 0.0
+                        badge2 = "badge-good" if avg_util_pct_hourly <= 40 else ("badge-fair" if avg_util_pct_hourly <= 60 else "badge-poor")
                         st.markdown(
                             f'<span class="performance-badge {badge2}">{avg_util_pct_hourly:.0f}% Avg Util</span>',
                             unsafe_allow_html=True,
                         )
                     else:
-                        badge2 = "badge-good" if avg_util_pct <= 40 else (
-                            "badge-fair" if avg_util_pct <= 60 else "badge-poor")
+                        badge2 = "badge-good" if avg_util_pct <= 40 else ("badge-fair" if avg_util_pct <= 60 else "badge-poor")
                         st.markdown(
                             f'<span class="performance-badge {badge2}">{avg_util_pct:.0f}% Avg Util</span>',
                             unsafe_allow_html=True,
@@ -605,10 +623,7 @@ def render_vantage_tab():
 
                 with col3:
                     total_volume = float(np.nansum(raw["volume"]))
-                    st.metric(
-                        f"🚗 Total {mode_label} (period)",
-                        f"{total_volume:,.0f}",
-                    )
+                    st.metric(f"🚗 Total {mode_label} (period)", f"{total_volume:,.0f}")
                     state_badge = (
                         "badge-good" if total_volume < 0.4 * THEORETICAL_LINK_CAPACITY_VPH * 24
                         else "badge-fair" if total_volume < 0.7 * THEORETICAL_LINK_CAPACITY_VPH * 24
@@ -620,13 +635,8 @@ def render_vantage_tab():
                     )
 
                 with col4:
-                    st.metric(
-                        "🎯 Demand Consistency",
-                        f"{max(0, 100 - cv_bucket):.0f}%",
-                        delta=f"CV: {cv_bucket:.1f}%",
-                    )
-                    label_cons = "Consistent" if cv_bucket < 30 else (
-                        "Variable" if cv_bucket < 50 else "Highly Variable")
+                    st.metric("🎯 Demand Consistency", f"{max(0, 100 - cv_bucket):.0f}%", delta=f"CV: {cv_bucket:.1f}%")
+                    label_cons = "Consistent" if cv_bucket < 30 else ("Variable" if cv_bucket < 50 else "Highly Variable")
                     badge_cons = "badge-good" if cv_bucket < 30 else ("badge-fair" if cv_bucket < 50 else "badge-poor")
                     st.markdown(
                         f'<span class="performance-badge {badge_cons}">{label_cons}</span>',
@@ -634,11 +644,7 @@ def render_vantage_tab():
                     )
 
                 with col5:
-                    st.metric(
-                        "⚠️ High Volume Hours",
-                        f"{high_hours}",
-                        delta=f"{risk_pct:.1f}% of time",
-                    )
+                    st.metric(f"⚠️ High Volume {label.capitalize()}s", f"{high_periods}", delta=f"{risk_pct:.1f}% of {label}s")
                     level_badge = (
                         "badge-critical" if risk_pct > 25 else
                         "badge-poor" if risk_pct > 15 else
@@ -679,33 +685,49 @@ def render_vantage_tab():
                 except Exception as e:
                     st.error(f"❌ Error creating volume charts: {e}")
 
-            # -------- Risk Analysis Table --------
+            # -------- Risk Analysis Table (granularity-aware) --------
             st.subheader(f"🚨 Intersection Volume & Capacity Risk Analysis ({mode_label})")
             try:
-                g = raw.groupby(["intersection_name", "direction"]).agg(
+                # Work at the selected bucket so periods (day/week/month) are apples-to-apples
+                bucketed = _prep_bucket(raw, granularity)
+
+                # Per-hour equivalent for utilization vs capacity
+                bucketed["per_hour_equiv"] = np.where(
+                    bucketed["bucket_hours"] > 0,
+                    bucketed["volume"] / bucketed["bucket_hours"],
+                    np.nan
+                )
+
+                group_cols = ["intersection_name"]
+                if "direction" in bucketed.columns:
+                    group_cols.append("direction")
+
+                g = bucketed.groupby(group_cols).agg(
                     volume_mean=("volume", "mean"),
                     volume_max=("volume", "max"),
                     volume_std=("volume", "std"),
                     volume_count=("volume", "count"),
+                    hr_mean=("per_hour_equiv", "mean"),
+                    hr_max=("per_hour_equiv", "max"),
                 ).reset_index()
 
-                g["Peak_Capacity_Util"] = (
-                        g["volume_max"] / THEORETICAL_LINK_CAPACITY_VPH * 100
-                ).round(1)
-                g["Avg_Capacity_Util"] = (
-                        g["volume_mean"] / THEORETICAL_LINK_CAPACITY_VPH * 100
-                ).round(1)
+                # Capacity utilization based on per-hour equivalent
+                g["Peak_Capacity_Util"] = (g["hr_max"] / THEORETICAL_LINK_CAPACITY_VPH * 100).round(1)
+                g["Avg_Capacity_Util"] = (g["hr_mean"] / THEORETICAL_LINK_CAPACITY_VPH * 100).round(1)
+
+                # Peaking/variability based on bucket totals
                 g["Volume_Variability"] = (
-                        g["volume_std"] / g["volume_mean"] * 100
+                    g["volume_std"] / g["volume_mean"] * 100
                 ).replace([np.inf, -np.inf], np.nan).fillna(0).round(1)
                 g["Peak_Avg_Ratio"] = (
-                        g["volume_max"] / g["volume_mean"]
-                ).replace([np.inf, -np.inf], 0).fillna(0).round(1)
+                    g["volume_max"] / g["volume_mean"]
+                ).replace([np.inf, -np.inf], 0).fillna(0).round(2)
 
+                # Composite risk
                 g["🚨 Risk Score"] = (
-                        0.5 * g["Peak_Capacity_Util"]
-                        + 0.3 * g["Avg_Capacity_Util"]
-                        + 0.2 * (g["Peak_Avg_Ratio"] * 10)
+                    0.5 * g["Peak_Capacity_Util"]
+                    + 0.3 * g["Avg_Capacity_Util"]
+                    + 0.2 * (g["Peak_Avg_Ratio"] * 10)
                 ).round(1)
 
                 g["⚠️ Risk Level"] = pd.cut(
@@ -721,10 +743,13 @@ def render_vantage_tab():
                     include_lowest=True,
                 )
 
+                unit = AGG_META[granularity]["unit"]
+                label = AGG_META[granularity]["label"]
+
                 final = g[
                     [
                         "intersection_name",
-                        "direction",
+                        *(["direction"] if "direction" in g.columns else []),
                         "⚠️ Risk Level",
                         "🎯 Action Priority",
                         "🚨 Risk Score",
@@ -738,14 +763,19 @@ def render_vantage_tab():
                 ].rename(
                     columns={
                         "intersection_name": "Intersection",
-                        "direction": "Dir",
+                        "direction": "Dir" if "direction" in g.columns else None,
                         "Peak_Capacity_Util": "📊 Peak Capacity %",
                         "Avg_Capacity_Util": "📊 Avg Capacity %",
-                        "volume_mean": f"Avg {mode_label} (vph)",
-                        "volume_max": f"Peak {mode_label} (vph)",
-                        "volume_count": "Data Points",
+                        "volume_mean": f"Avg {mode_label} ({unit})",
+                        "volume_max": f"Peak {mode_label} ({unit})",
+                        "volume_count": f"{label.capitalize()}s",
                     }
-                ).sort_values("🚨 Risk Score", ascending=False)
+                )
+
+                # Clean any None keys that can appear in rename when direction not present
+                final.columns = [c if c is not None else "Dir" for c in final.columns]
+
+                final = final.sort_values("🚨 Risk Score", ascending=False)
 
                 st.dataframe(
                     final.head(15),
@@ -772,13 +802,20 @@ def render_vantage_tab():
             except Exception as e:
                 st.error(f"❌ Error in risk analysis: {e}")
 
-            # -------- Cycle Length Recommendations --------
+            # -------- Cycle Length Recommendations (granularity-aware feed) --------
             st.subheader("🔄 Cycle Length Recommendations for CVAG")
             try:
-                # Prepare data for cycle length function (expects 'total_volume' column)
-                cycle_df = raw.copy()
-                cycle_df["total_volume"] = cycle_df["volume"]
-                render_cycle_length_section(cycle_df)
+                # Prepare data for cycle length function.
+                # The recommender expects something like hourly demand;
+                # so we pass hourly-equivalent (bucket total / bucket_hours) to 'total_volume'.
+                cycle_bucketed = _prep_bucket(raw, granularity)
+                cycle_bucketed["total_volume"] = np.where(
+                    cycle_bucketed["bucket_hours"] > 0,
+                    cycle_bucketed["volume"] / cycle_bucketed["bucket_hours"],
+                    cycle_bucketed["volume"]
+                )
+                st.caption("Note: Using hourly-equivalent demand (bucket total ÷ hours in bucket) for cycle estimation.")
+                render_cycle_length_section(cycle_bucketed)
             except Exception as e:
                 st.error(f"❌ Error rendering cycle length section: {e}")
 
