@@ -538,7 +538,11 @@ def render_vantage_tab():
                 except Exception:
                     pass
                 st.markdown('<div class="cvag-map-card">', unsafe_allow_html=True)
-                st.plotly_chart(fig_map, use_container_width=True, config=PLOTLY_CONFIG)
+
+                # UNIQUE KEY FOR TAB 4 MAP
+                map_key = f"t4_map_{(selected_map_label or 'all').replace(' ', '_').replace('+','plus')}"
+                st.plotly_chart(fig_map, use_container_width=True, config=PLOTLY_CONFIG, key=map_key)
+
                 if intersection != "All Intersections":
                     st.caption(f"Selected: **{intersection}**")
                 st.markdown('</div>', unsafe_allow_html=True)
@@ -791,7 +795,13 @@ def render_vantage_tab():
                             height=460,
                             legend=dict(orientation="v", yanchor="middle", y=0.5),
                         )
-                        st.plotly_chart(fig_pie, use_container_width=True, config=PLOTLY_CONFIG)
+                        # UNIQUE KEY FOR PIE
+                        st.plotly_chart(
+                            fig_pie,
+                            use_container_width=True,
+                            config=PLOTLY_CONFIG,
+                            key=f"t4_pie_{mode}_{granularity}_{(intersection or 'all').replace(' ', '_').replace('+','plus')}"
+                        )
 
                     if show_turn_pie and c2 is not None and not turn_df.empty:
                         with c2:
@@ -818,7 +828,13 @@ def render_vantage_tab():
                                 height=460,
                                 legend=dict(orientation="v", yanchor="middle", y=0.5),
                             )
-                            st.plotly_chart(fig_turn, use_container_width=True, config=PLOTLY_CONFIG)
+                            # UNIQUE KEY FOR TURN PIE
+                            st.plotly_chart(
+                                fig_turn,
+                                use_container_width=True,
+                                config=PLOTLY_CONFIG,
+                                key=f"t4_turnpie_{granularity}_{(intersection or 'all').replace(' ', '_').replace('+','plus')}"
+                            )
                 else:
                     st.info("No data available to render the share (pie) view.")
             else:
@@ -832,14 +848,29 @@ def render_vantage_tab():
                             mode_label=mode_label,
                         )
                         if fig_trend:
-                            st.plotly_chart(fig_trend, use_container_width=True, config=PLOTLY_CONFIG)
+                            st.plotly_chart(
+                                fig_trend,
+                                use_container_width=True,
+                                config=PLOTLY_CONFIG,
+                                key=f"t4_trend_{mode}_{granularity}_{(intersection or 'all').replace(' ', '_').replace('+','plus')}"
+                            )
                         colA, colB = st.columns(2)
                         with colA:
                             if fig_box:
-                                st.plotly_chart(fig_box, use_container_width=True, config=PLOTLY_CONFIG)
+                                st.plotly_chart(
+                                    fig_box,
+                                    use_container_width=True,
+                                    config=PLOTLY_CONFIG,
+                                    key=f"t4_box_{mode}_{granularity}_{(intersection or 'all').replace(' ', '_').replace('+','plus')}"
+                                )
                         with colB:
                             if fig_matrix:
-                                st.plotly_chart(fig_matrix, use_container_width=True, config=PLOTLY_CONFIG)
+                                st.plotly_chart(
+                                    fig_matrix,
+                                    use_container_width=True,
+                                    config=PLOTLY_CONFIG,
+                                    key=f"t4_matrix_{mode}_{granularity}_{(intersection or 'all').replace(' ', '_').replace('+','plus')}"
+                                )
                     except Exception as e:
                         st.error(f"❌ Error creating volume charts: {e}")
 
