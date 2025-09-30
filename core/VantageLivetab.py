@@ -101,7 +101,6 @@ def load_vantage_vehicles() -> pd.DataFrame:
         st.error(f"Error loading vehicle data: {e}")
         return pd.DataFrame()
 
-
 # =========================
 # Processing Helpers
 # =========================
