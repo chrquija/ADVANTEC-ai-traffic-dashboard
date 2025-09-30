@@ -50,6 +50,12 @@ from Prediction.peak_hour_prediction import render_peak_hour_section
 from Prediction.incident_detection import render_incident_detection_section
 from Prediction.event_impact_analysis import render_event_impact_section
 
+# --- VantageLive (Tab 4) ---
+try:
+    from VantageLivetab import render_vantage_tab  # sibling import
+except ModuleNotFoundError:
+    from core.VantageLivetab import render_vantage_tab  # package import
+
 
 
 
@@ -511,7 +517,7 @@ def improved_volume_charts_for_tab2(
 # Tabs
 # =========================
 st.markdown("## Select Page")
-tab1, tab2, tab3 = st.tabs(["Pg.1 ITERIS CLEARGUIDE", "Pg.2 KINETIC MOBILITY", "Pg.3 ACYCLICA"])
+tab1, tab2, tab3, tab4, = st.tabs(["Pg.1 ITERIS CLEARGUIDE", "Pg.2 KINETIC MOBILITY", "Pg.3 ACYCLICA", "Pg.4 Iteris VantageLive"])
 
 # -------------------------
 # TAB 1: Performance / Travel Time (Search-gated, NO forms)
@@ -1557,6 +1563,11 @@ with tab2:
 with tab3:
     # Use the enhanced Tab 3 renderer with proper sidebar controls
     render_tab3_analysis()
+# -------------------------
+# TAB 4: Iteris VantageLive (Bikes + Vehicles)
+# -------------------------
+with tab4:
+    render_vantage_tab()
 
 # =========================
 # FOOTER
