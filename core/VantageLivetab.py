@@ -111,6 +111,23 @@ PLOTLY_CONFIG = {
 }
 MAP_HEIGHT = 900
 
+# ---------- Small helper for KPI titles with hover help ----------
+def kpi_title(label: str, help_text: str):
+    """Render a KPI title with a small '?' hover tooltip."""
+    safe_help = (help_text or "").replace('"', "&quot;")
+    st.markdown(
+        f"""
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:2px;">
+          <span style="font-weight:800;">{label}</span>
+          <span title="{safe_help}"
+                style="cursor:help;display:inline-flex;align-items:center;justify-content:center;
+                       width:18px;height:18px;border-radius:50%;
+                       background:rgba(0,0,0,.15);color:#fff;font-size:12px;line-height:18px;">?</span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
 
 # =========================
 # Helpers
@@ -209,6 +226,8 @@ def _prep_bucket(df: pd.DataFrame, granularity: str) -> pd.DataFrame:
     group_cols = ["bucket", "intersection_name"]
     if "direction" in d.columns:
         group_cols.append("direction")
+    if "turn_type" in d.columns:
+        group_cols.append("turn_type")
 
     agg = (
         d.groupby(group_cols, as_index=False)
@@ -247,7 +266,11 @@ def create_volume_charts(
     if agg_all.empty:
         return None, None, None
 
-    agg_for_plot = agg_all.groupby(["local_datetime", "intersection_name"], as_index=False)["volume"].sum()
+    # Sum across direction + turns for main trend
+    agg_for_plot = (
+        agg_all.groupby(["local_datetime", "intersection_name"], as_index=False)["volume"]
+        .sum()
+    )
 
     order = agg_for_plot.groupby("intersection_name")["volume"].mean().sort_values(ascending=False)
     keep = order.index[:max(1, min(top_k, len(order)))]
@@ -478,7 +501,7 @@ def render_vantage_tab():
             if not working_bikes.empty and not working_vehicles.empty:
                 if "turn_type" in working_vehicles.columns:
                     working_vehicles = working_vehicles.groupby(
-                        ["local_datetime", "intersection_name", "direction"], as_index=False
+                        ["local_datetime", "intersection_name", "direction", "turn_type"], as_index=False
                     )["volume"].sum()
                 working_bikes["mode"] = "Bikes"
                 working_vehicles["mode"] = "Vehicles"
@@ -614,34 +637,50 @@ def render_vantage_tab():
                     avg_label = f"Average Monthly {mode_label}"
                     peak_label = f"🔥 Peak Monthly {mode_label}"
                     avg_suffix = "vpm"
-                    # Month length varies; show an example with 30d
                     display_threshold = HIGH_VPH * 24 * 30
                     threshold_help = f"High-Volume Threshold (monthly): > ~{display_threshold:,} vpm (scaled from {HIGH_VPH:,} vph × hours in month)."
 
                 col1, col2, col3, col4, col5 = st.columns(5)
 
+                # ----- col1: Peak -----
                 with col1:
+                    kpi_title(
+                        peak_label,
+                        f"Highest {label} total within the selected period. Date shown below; "
+                        f"95th percentile is provided for context."
+                    )
+                    st.metric("", f"{peak_val:,.0f} {unit}", delta=f"on {peak_date.strftime('%b %d, %Y')}")
                     badge = (
                         "badge-critical" if peak_util_pct > 90 else
                         "badge-poor" if peak_util_pct > 75 else
                         "badge-fair" if peak_util_pct > 60 else
                         "badge-good"
                     )
-                    st.metric(peak_label, f"{peak_val:,.0f} {unit}", delta=f"on {peak_date.strftime('%b %d, %Y')}")
                     st.markdown(
                         f'<span class="performance-badge {badge}">{peak_util_pct:.0f}% of Capacity</span>',
                         unsafe_allow_html=True,
                     )
-                    st.caption(f"Highest {label} total within the selected period. 95th percentile: {p95_val:,.0f} {unit}.")
+                    st.caption(f"95th percentile: {p95_val:,.0f} {unit}")
 
+                # ----- col2: Avg -----
                 with col2:
-                    st.metric(f"📊 {avg_label}", f"{avg_bucket_val:,.0f} {avg_suffix}", delta=f"{avg_util_pct:.0f}% Avg Util")
-                    st.caption(f"Mean of {label} totals over the selected period (includes all applied filters).")
+                    kpi_title(
+                        f"📊 {avg_label}",
+                        f"Mean of {label} totals across the selected period (after all filters). "
+                        f"Delta shows average utilization vs capacity."
+                    )
+                    st.metric("", f"{avg_bucket_val:,.0f} {avg_suffix}", delta=f"{avg_util_pct:.0f}% Avg Util")
 
+                # ----- col3: Total -----
                 with col3:
                     total_volume = float(np.nansum(raw["volume"]))
                     cap_total = CAP_VPH * float(bucket_all["bucket_hours"].sum())
-                    st.metric(f"🚗 Total {mode_label} (period)", f"{total_volume:,.0f}")
+                    kpi_title(
+                        f"🚗 Total {mode_label} (period)",
+                        "Sum of all volumes across the selected time window and filters. "
+                        "The pill compares this against the period’s total theoretical capacity."
+                    )
+                    st.metric("", f"{total_volume:,.0f}")
                     if cap_total > 0:
                         ratio = total_volume / cap_total
                         state_badge = "badge-good" if ratio < 0.40 else ("badge-fair" if ratio < 0.70 else "badge-poor")
@@ -651,21 +690,51 @@ def render_vantage_tab():
                         f'<span class="performance-badge {state_badge}">vs. period capacity</span>',
                         unsafe_allow_html=True,
                     )
-                    st.caption("Sum of all volumes across the selected period and filters.")
 
+                # ----- col4: Consistency -----
                 with col4:
-                    st.metric("🎯 Demand Consistency", f"{max(0, 100 - cv_bucket):.0f}%", delta=f"CV: {cv_bucket:.1f}%")
-                    st.caption("Computed from the coefficient of variation (CV) of bucket totals. Lower CV → more consistent demand.")
+                    kpi_title(
+                        "🎯 Demand Consistency",
+                        "Consistency is 100 − CV%, where CV is coefficient of variation of bucket totals "
+                        "(std ÷ mean). Higher → more consistent."
+                    )
+                    st.metric("", f"{max(0, 100 - cv_bucket):.0f}%", delta=f"CV: {cv_bucket:.1f}%")
+                    label_cons = "Consistent" if cv_bucket < 30 else ("Variable" if cv_bucket < 50 else "Highly Variable")
+                    badge_cons = "badge-good" if cv_bucket < 30 else ("badge-fair" if cv_bucket < 50 else "badge-poor")
+                    st.markdown(
+                        f'<span class="performance-badge {badge_cons}">{label_cons}</span>',
+                        unsafe_allow_html=True,
+                    )
 
+                # ----- col5: High-Volume -----
                 with col5:
-                    st.metric(f"⚠️ High Volume {label.capitalize()}s", f"{high_periods}", delta=f"{risk_pct:.1f}% of {label}s")
-                    st.caption(f"{threshold_help} Count of {label}s exceeding the threshold within the selected period.")
+                    kpi_title(
+                        f"⚠️ High Volume {label.capitalize()}s",
+                        f"{threshold_help} Count and share of {label}s exceeding the threshold."
+                    )
+                    st.metric("", f"{high_periods}", delta=f"{risk_pct:.1f}% of {label}s")
+                    level_badge = (
+                        "badge-critical" if risk_pct > 25 else
+                        "badge-poor" if risk_pct > 15 else
+                        "badge-fair" if risk_pct > 5 else
+                        "badge-good"
+                    )
+                    level = (
+                        "Very High" if risk_pct > 25 else
+                        "High" if risk_pct > 15 else
+                        "Moderate" if risk_pct > 5 else
+                        "Low"
+                    )
+                    st.markdown(
+                        f'<span class="performance-badge {level_badge}">{level} Risk</span>',
+                        unsafe_allow_html=True,
+                    )
 
             # ---------- Visualizations ----------
             st.subheader(f"📈 {mode_label} Volume Visualizations")
 
             if chart_type == "Share (Pie)":
-                # Blue-themed, percent + sum labels, pulled largest slice
+                # Build the main (blue) pie: by intersection OR by direction if one intersection selected
                 if intersection == "All Intersections":
                     pie_df = raw.groupby("intersection_name", as_index=False)["volume"].sum()
                     pie_title = f"{mode_label} Volume Share by Intersection"
@@ -680,34 +749,76 @@ def render_vantage_tab():
                         pie_title = f"{mode_label} Volume Share — {intersection}"
                         names = "intersection_name"
 
+                # Build the turn pie (orange) ONLY if All Turns and we have multiple turn types
+                show_turn_pie = (
+                    (turn_filter == "All Turns") and
+                    ("turn_type" in raw.columns) and
+                    (raw["turn_type"].nunique() > 1)
+                )
+                if show_turn_pie:
+                    turn_df = raw.groupby("turn_type", as_index=False)["volume"].sum().sort_values("volume", ascending=False)
+
                 if not pie_df.empty:
-                    # Sort descending; pull the largest slice slightly
                     pie_df = pie_df.sort_values("volume", ascending=False)
                     pull = [0.06] + [0]*(len(pie_df)-1)
+                    # When we have turn pie, show side-by-side; otherwise, center the main pie
+                    if show_turn_pie:
+                        c1, c2 = st.columns(2)
+                    else:
+                        c1 = st.container()
+                        c2 = None
 
-                    fig_pie = px.pie(
-                        pie_df,
-                        names=names,
-                        values="volume",
-                        title=pie_title,
-                        hole=0.45,
-                        template="simple_white",
-                        color_discrete_sequence=px.colors.sequential.Blues
-                    )
-                    fig_pie.update_traces(
-                        sort=False,
-                        pull=pull,
-                        textposition="inside",
-                        texttemplate="%{label}<br>%{percent} • %{value:,.0f}",
-                        hovertemplate="<b>%{label}</b><br>Volume: %{value:,.0f}<br>Share: %{percent}<extra></extra>",
-                        marker=dict(line=dict(color="white", width=1))
-                    )
-                    fig_pie.update_layout(
-                        margin=dict(l=10, r=10, t=50, b=10),
-                        height=460,
-                        legend=dict(orientation="v", yanchor="middle", y=0.5),
-                    )
-                    st.plotly_chart(fig_pie, use_container_width=True, config=PLOTLY_CONFIG)
+                    with c1:
+                        fig_pie = px.pie(
+                            pie_df,
+                            names=names,
+                            values="volume",
+                            title=pie_title,
+                            hole=0.45,
+                            template="simple_white",
+                            color_discrete_sequence=px.colors.sequential.Blues,
+                        )
+                        fig_pie.update_traces(
+                            sort=False,
+                            pull=pull,
+                            textposition="inside",
+                            texttemplate="%{label}<br>%{percent} • %{value:,.0f}",
+                            hovertemplate="<b>%{label}</b><br>Volume: %{value:,.0f}<br>Share: %{percent}<extra></extra>",
+                            marker=dict(line=dict(color="white", width=1)),
+                        )
+                        fig_pie.update_layout(
+                            margin=dict(l=10, r=10, t=50, b=10),
+                            height=460,
+                            legend=dict(orientation="v", yanchor="middle", y=0.5),
+                        )
+                        st.plotly_chart(fig_pie, use_container_width=True, config=PLOTLY_CONFIG)
+
+                    if show_turn_pie and c2 is not None and not turn_df.empty:
+                        with c2:
+                            pull2 = [0.06] + [0]*(len(turn_df)-1)
+                            fig_turn = px.pie(
+                                turn_df,
+                                names="turn_type",
+                                values="volume",
+                                title="Turn Volume Share (All Turns)",
+                                hole=0.45,
+                                template="simple_white",
+                                color_discrete_sequence=px.colors.sequential.Oranges,
+                            )
+                            fig_turn.update_traces(
+                                sort=False,
+                                pull=pull2,
+                                textposition="inside",
+                                texttemplate="%{label}<br>%{percent} • %{value:,.0f}",
+                                hovertemplate="<b>%{label}</b><br>Volume: %{value:,.0f}<br>Share: %{percent}<extra></extra>",
+                                marker=dict(line=dict(color="white", width=1)),
+                            )
+                            fig_turn.update_layout(
+                                margin=dict(l=10, r=10, t=50, b=10),
+                                height=460,
+                                legend=dict(orientation="v", yanchor="middle", y=0.5),
+                            )
+                            st.plotly_chart(fig_turn, use_container_width=True, config=PLOTLY_CONFIG)
                 else:
                     st.info("No data available to render the share (pie) view.")
             else:
