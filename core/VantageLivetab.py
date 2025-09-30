@@ -60,7 +60,16 @@ def load_vantage_bikes() -> pd.DataFrame:
     url = "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/Iteris_VantageLive/WashingtonStreet_ALL_Bikes.csv"
     try:
         df = pd.read_csv(url)
-        df["local_datetime"] = pd.to_datetime(df["local_datetime"], errors="coerce")
+
+        # Debug: show raw date column before parsing
+        st.write("DEBUG - First 5 raw dates (bikes):", df["local_datetime"].head())
+
+        # Try explicit date format if you know it (common formats: "%Y-%m-%d %H:%M:%S" or "%m/%d/%Y")
+        df["local_datetime"] = pd.to_datetime(df["local_datetime"], format="%Y-%m-%d", errors="coerce")
+
+        # Debug: show parsed dates
+        st.write("DEBUG - After parsing (bikes):", df["local_datetime"].min(), "to", df["local_datetime"].max())
+
         df = df.dropna(subset=["local_datetime"])
 
         # Map segment_id to intersection names
@@ -82,7 +91,16 @@ def load_vantage_vehicles() -> pd.DataFrame:
     url = "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/Iteris_VantageLive/WashingtonStreet_ALL_vehicles.csv"
     try:
         df = pd.read_csv(url)
-        df["local_datetime"] = pd.to_datetime(df["local_datetime"], errors="coerce")
+
+        # Debug: show raw date column before parsing
+        st.write("DEBUG - First 5 raw dates (vehicles):", df["local_datetime"].head())
+
+        # Try explicit date format
+        df["local_datetime"] = pd.to_datetime(df["local_datetime"], format="%Y-%m-%d", errors="coerce")
+
+        # Debug: show parsed dates
+        st.write("DEBUG - After parsing (vehicles):", df["local_datetime"].min(), "to", df["local_datetime"].max())
+
         df = df.dropna(subset=["local_datetime"])
 
         # Map segment_id to intersection names
