@@ -6,7 +6,6 @@ import numpy as np
 from datetime import datetime, timedelta
 import plotly.graph_objects as go
 import plotly.express as px
-from plotly.subplots import make_subplots
 
 # Import shared utilities
 from sidebar_functions import (
@@ -20,23 +19,85 @@ from Map import build_intersections_overview
 # =========================
 # Constants
 # =========================
-THEORETICAL_LINK_CAPACITY_VPH = 1800
-HIGH_VOLUME_THRESHOLD_VPH = 1200
+# Vehicles (unchanged)
+VEH_CAPACITY_VPH = 1800
+VEH_HIGH_THRESHOLD_VPH = 1200
 
-# Segment mapping (from south to north along Washington Street)
-SEGMENT_ID_TO_NAME = {
-    1: "Washington & Avenue 52",
-    2: "Washington and Calle Tampico",
-    3: "Washington and Village Shopping Center",
-    4: "Washington and Avenue 50",
-    5: "Washington and Sagebrush Avenue",
-    6: "Washington and Eisenhower Drive",
-    7: "Washington and Avenue 48",
-    8: "Washington and Avenue 47",
-    9: "Washington and Point Happy Way",
+# Bikes — much lower so lines are visible at daily granularity
+BIKE_CAPACITY_VPH = 200
+BIKE_HIGH_THRESHOLD_VPH = 60
+
+# Intersection list (exact order requested)
+CANONICAL_INTERSECTIONS = [
+    "Washington and Avenue 52",
+    "Washington and Calle Tampico",
+    "Washington and Village Shopping Center",
+    "Washington and Avenue 50",
+    "Washington and Sagebrush Avenue",
+    "Washington and Eisenhower Drive",
+    "Washington and Avenue 48",
+    "Washington and Avenue 47",
+    "Washington and Point Happy Way",
+]
+
+# Map label aliases so the map highlights correctly (matches your Tab 2 map labels)
+MAP_LABEL_ALIASES = {
+    "Washington and Avenue 52": "Washington St & Avenue52",
+    "Washington and Calle Tampico": "Washington St & Calle Tampico",
+    "Washington and Village Shopping Center": "Washington St & Village Shop Ctr",
+    "Washington and Avenue 50": "Washington St & Avenue50",
+    "Washington and Sagebrush Avenue": "Washington St & Sagebrush Ave",
+    "Washington and Eisenhower Drive": "Washington St & Eisenhower Dr",
+    "Washington and Avenue 48": "Washington St & Avenue48",
+    "Washington and Avenue 47": "Washington St & Avenue47",
+    "Washington and Point Happy Way": "Washington St & Point Happy Way",
 }
 
-# Aggregation metadata (matching Tab 2 pattern)
+# Aliases found in raw files that should normalize to your canonical 9 names
+INTERSECTION_ALIASES = {
+    "Washington Street & Avenue 52": "Washington and Avenue 52",
+    "Washington Street and Avenue 52": "Washington and Avenue 52",
+    "Washington St & Avenue52": "Washington and Avenue 52",
+    "Washington St & Ave 52": "Washington and Avenue 52",
+
+    "Washington Street & Calle Tampico": "Washington and Calle Tampico",
+    "Washington Street and Calle Tampico": "Washington and Calle Tampico",
+    "Washington St & Calle Tampico": "Washington and Calle Tampico",
+
+    "Washington Street & Village Shop Ctr": "Washington and Village Shopping Center",
+    "Washington Street and Village Shop Ctr": "Washington and Village Shopping Center",
+    "Washington St & Village Shop Ctr": "Washington and Village Shopping Center",
+    "Washington and Village Shop Ctr": "Washington and Village Shopping Center",
+
+    "Washington Street & Avenue 50": "Washington and Avenue 50",
+    "Washington Street and Avenue 50": "Washington and Avenue 50",
+    "Washington St & Avenue50": "Washington and Avenue 50",
+    "Washington St & Ave 50": "Washington and Avenue 50",
+
+    "Washington Street & Sagebrush Ave": "Washington and Sagebrush Avenue",
+    "Washington Street and Sagebrush Ave": "Washington and Sagebrush Avenue",
+    "Washington St & Sagebrush Ave": "Washington and Sagebrush Avenue",
+
+    "Washington Street & Eisenhower Dr": "Washington and Eisenhower Drive",
+    "Washington Street and Eisenhower Dr": "Washington and Eisenhower Drive",
+    "Washington St & Eisenhower Dr": "Washington and Eisenhower Drive",
+
+    "Washington Street & Avenue 48": "Washington and Avenue 48",
+    "Washington Street and Avenue 48": "Washington and Avenue 48",
+    "Washington St & Avenue48": "Washington and Avenue 48",
+    "Washington St & Ave 48": "Washington and Avenue 48",
+
+    "Washington Street & Avenue 47": "Washington and Avenue 47",
+    "Washington Street and Avenue 47": "Washington and Avenue 47",
+    "Washington St & Avenue47": "Washington and Avenue 47",
+    "Washington St & Ave 47": "Washington and Avenue 47",
+
+    "Washington Street & Point Happy Way": "Washington and Point Happy Way",
+    "Washington Street and Point Happy Way": "Washington and Point Happy Way",
+    "Washington St & Point Happy Way": "Washington and Point Happy Way",
+}
+
+# Aggregation metadata
 AGG_META = {
     "Hourly": {"unit": "vph", "bucket": "H", "label": "hour", "fixed_hours": 1},
     "Daily": {"unit": "vpd", "bucket": "D", "label": "day", "fixed_hours": 24},
@@ -52,6 +113,42 @@ MAP_HEIGHT = 900
 
 
 # =========================
+# Helpers (names, capacity params)
+# =========================
+def _canonicalize_intersection(name: str) -> str:
+    """Map raw names to one of the 9 canonical intersection labels, else return ''."""
+    if not isinstance(name, str):
+        return ""
+    s = " ".join(name.strip().split())
+    if s in CANONICAL_INTERSECTIONS:
+        return s
+    if s in INTERSECTION_ALIASES:
+        return INTERSECTION_ALIASES[s]
+    # Heuristics for minor formatting: "&"->"and", remove "Street"/"St", insert space in "Avenue50"
+    s2 = s.replace("&", "and").replace("Street", "").replace("St", " ").replace("  ", " ").strip()
+    s2 = s2.replace("Avenue50", "Avenue 50").replace("Avenue52", "Avenue 52").replace("Avenue48", "Avenue 48").replace("Avenue47", "Avenue 47")
+    s2 = s2.replace("Sagebrush Ave", "Sagebrush Avenue").replace("Eisenhower Dr", "Eisenhower Drive").replace("Village Shop Ctr", "Village Shopping Center")
+    if s2 in CANONICAL_INTERSECTIONS:
+        return s2
+    if s2 in INTERSECTION_ALIASES:
+        return INTERSECTION_ALIASES[s2]
+    return ""  # not recognized; we’ll drop these rows
+
+
+def _map_label_for(name: str) -> str:
+    """Return the map label alias if we have one, else the original."""
+    return MAP_LABEL_ALIASES.get(name, name)
+
+
+def _mode_caps(mode_label: str):
+    """Return (capacity_vph, high_threshold_vph) by mode."""
+    if mode_label == "Bikes":
+        return BIKE_CAPACITY_VPH, BIKE_HIGH_THRESHOLD_VPH
+    # Use vehicle parameters for Vehicles and Both (Combined)
+    return VEH_CAPACITY_VPH, VEH_HIGH_THRESHOLD_VPH
+
+
+# =========================
 # Data Loading
 # =========================
 @st.cache_data(show_spinner=False)
@@ -60,29 +157,19 @@ def load_vantage_bikes() -> pd.DataFrame:
     url = "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/Iteris_VantageLive/WashingtonStreet_ALL_Bikes.csv"
     try:
         df = pd.read_csv(url)
-
-        # Dates are daily (MM/DD/YYYY). If a time ever shows up, this still works.
         df["local_datetime"] = pd.to_datetime(df["local_datetime"], format="%m/%d/%Y", errors="coerce")
         df = df.dropna(subset=["local_datetime"])
 
-        # If segment_id is numeric, map; if it's already a name, use it directly.
-        if pd.api.types.is_numeric_dtype(df["segment_id"]):
-            df["intersection_name"] = df["segment_id"].map(SEGMENT_ID_TO_NAME)
-        else:
-            df["intersection_name"] = df["segment_id"].astype(str).str.strip()
+        # segment_id is already a name in your files; keep and canonicalize
+        df["intersection_name"] = df["segment_id"].astype(str).apply(_canonicalize_intersection)
+        df = df[df["intersection_name"].isin(CANONICAL_INTERSECTIONS)]
 
-        df = df.dropna(subset=["intersection_name"])
-
-        # Normalize direction to NB/SB/EB/WB if present
         if "direction" in df.columns:
             df["direction"] = df["direction"].astype(str).str.strip().str.upper()
-
-        # Bikes don’t have turn_type; add a dummy so downstream code stays uniform
         if "turn_type" not in df.columns:
             df["turn_type"] = "Through"
 
         df["volume"] = pd.to_numeric(df["volume"], errors="coerce").fillna(0)
-
         return df.sort_values("local_datetime").reset_index(drop=True)
     except Exception as e:
         st.error(f"Error loading bike data: {e}")
@@ -95,29 +182,23 @@ def load_vantage_vehicles() -> pd.DataFrame:
     url = "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/Iteris_VantageLive/WashingtonStreet_ALL_vehicles.csv"
     try:
         df = pd.read_csv(url)
-
         df["local_datetime"] = pd.to_datetime(df["local_datetime"], format="%m/%d/%Y", errors="coerce")
         df = df.dropna(subset=["local_datetime"])
 
-        if pd.api.types.is_numeric_dtype(df["segment_id"]):
-            df["intersection_name"] = df["segment_id"].map(SEGMENT_ID_TO_NAME)
-        else:
-            df["intersection_name"] = df["segment_id"].astype(str).str.strip()
+        df["intersection_name"] = df["segment_id"].astype(str).apply(_canonicalize_intersection)
+        df = df[df["intersection_name"].isin(CANONICAL_INTERSECTIONS)]
 
-        df = df.dropna(subset=["intersection_name"])
-
-        # Normalize direction & turn_type casing
         if "direction" in df.columns:
             df["direction"] = df["direction"].astype(str).str.strip().str.upper()
         if "turn_type" in df.columns:
             df["turn_type"] = df["turn_type"].astype(str).str.strip().str.title()
 
         df["volume"] = pd.to_numeric(df["volume"], errors="coerce").fillna(0)
-
         return df.sort_values("local_datetime").reset_index(drop=True)
     except Exception as e:
         st.error(f"Error loading vehicle data: {e}")
         return pd.DataFrame()
+
 
 # =========================
 # Processing Helpers
@@ -125,7 +206,7 @@ def load_vantage_vehicles() -> pd.DataFrame:
 def _prep_bucket(df: pd.DataFrame, granularity: str) -> pd.DataFrame:
     """
     Aggregate records to the selected bucket (sum of volumes).
-    Returns: df with columns [local_datetime, intersection_name, volume, bucket_hours, direction?(optional)].
+    Returns: df with columns [local_datetime, intersection_name, (optional direction), volume, bucket_hours].
     """
     if df.empty:
         return df.copy()
@@ -170,23 +251,11 @@ def _cap_series_for_x(x_df: pd.DataFrame, cap_vph: float, high_vph: float) -> pd
     return xs
 
 
-def _fmt_period(ts: pd.Timestamp, granularity: str) -> str:
-    ts = pd.to_datetime(ts)
-    if granularity == "Hourly":
-        return ts.strftime("%b %d, %Y %H:%M")
-    if granularity == "Daily":
-        return ts.strftime("%b %d, %Y")
-    if granularity == "Weekly":
-        wk = ts.to_period("W")
-        return f"Week of {wk.start_time.strftime('%b %d, %Y')}"
-    return ts.strftime("%b %Y")
-
-
 # =========================
 # Chart Helpers
 # =========================
 def create_volume_charts(
-        raw_hourly_df: pd.DataFrame,
+        raw_df: pd.DataFrame,
         granularity: str,
         cap_vph: float,
         high_vph: float,
@@ -199,19 +268,25 @@ def create_volume_charts(
     - fig_box:   Distribution of bucket totals by intersection.
     - fig_matrix: Average bucket total by intersection (ranking).
     """
-    if raw_hourly_df.empty:
+    if raw_df.empty:
         return None, None, None
 
     # Aggregate to the selected bucket
-    agg = _prep_bucket(raw_hourly_df, granularity)
-    if agg.empty:
+    agg_all = _prep_bucket(raw_df, granularity)
+    if agg_all.empty:
         return None, None, None
 
+    # Sum across directions for the plotting series so each intersection has one line
+    agg_for_plot = (
+        agg_all.groupby(["local_datetime", "intersection_name"], as_index=False)["volume"]
+        .sum()
+    )
+
     # Limit to top intersections by mean demand
-    order = agg.groupby("intersection_name")["volume"].mean().sort_values(ascending=False)
+    order = agg_for_plot.groupby("intersection_name")["volume"].mean().sort_values(ascending=False)
     keep = order.index[:max(1, min(top_k, len(order)))]
 
-    plot_df = agg[agg["intersection_name"].isin(keep)].copy().sort_values("local_datetime")
+    plot_df = agg_for_plot[agg_for_plot["intersection_name"].isin(keep)].copy().sort_values("local_datetime")
     unit = AGG_META[granularity]["unit"]
     label = AGG_META[granularity]["label"]
 
@@ -227,12 +302,11 @@ def create_volume_charts(
                 y=g["volume"],
                 mode=mode,
                 name=name,
-                hovertemplate=(
-                    f"<b>%{{fullData.name}}</b><br>%{{x|{xfmt}}}<br>{mode_label}: %{{y:,.0f}} {unit}<extra></extra>"),
+                hovertemplate=(f"<b>%{{fullData.name}}</b><br>%{{x|{xfmt}}}<br>{mode_label}: %{{y:,.0f}} {unit}<extra></extra>"),
             )
         )
 
-    xs = _cap_series_for_x(plot_df, cap_vph, high_vph)
+    xs = _cap_series_for_x(agg_all[["local_datetime", "bucket_hours"]].drop_duplicates(), cap_vph, high_vph)
     fig_trend.add_trace(
         go.Scatter(
             x=xs["local_datetime"], y=xs["capacity"],
@@ -310,7 +384,7 @@ def render_vantage_tab():
 
     # -------- Sidebar controls --------
     with st.sidebar:
-        with st.expander("⚙️ Pg.4 ITERIS VANTAGE LIVE SETTINGS", expanded=False):
+        with st.expander("⚙️ Pg.4 SETTINGS", expanded=True):
             st.caption("Select Mode, Intersection(s) and Date Range")
             st.caption("Data: Bike & Vehicle Volume from Iteris VantageLive")
 
@@ -322,22 +396,16 @@ def render_vantage_tab():
                 key="vantage_mode",
             )
 
-            # Intersection selector
-            all_intersections = sorted(list(SEGMENT_ID_TO_NAME.values()))
-            # Also add any intersections present as names in the data but not in the dict
-            if not bikes_df.empty:
-                all_intersections = sorted(set(all_intersections) | set(bikes_df["intersection_name"].unique()))
-            if not vehicles_df.empty:
-                all_intersections = sorted(set(all_intersections) | set(vehicles_df["intersection_name"].unique()))
-
+            # Intersection selector — EXACTLY your 9 + All, in your order
             st.markdown("## 🚦 Select Intersection")
             intersection = st.selectbox(
                 "Intersection",
-                ["All Intersections"] + all_intersections,
+                ["All Intersections"] + CANONICAL_INTERSECTIONS,
                 key="vantage_intersection",
             )
 
             # Date range
+            # Use data-driven bounds but they don't affect the intersection list
             if mode == "Bikes" and not bikes_df.empty:
                 min_date = bikes_df["local_datetime"].dt.date.min()
                 max_date = bikes_df["local_datetime"].dt.date.max()
@@ -383,6 +451,16 @@ def render_vantage_tab():
                     key="turn_filter_vantage",
                 )
 
+            # Chart type toggle (Trend vs Pie)
+            st.markdown("## 📊 Chart Type")
+            chart_type = st.radio(
+                "Visualization",
+                ["Trend (Line)", "Share (Pie)"],
+                index=0 if mode != "Bikes" else 1,  # default to Pie for Bikes
+                horizontal=True,
+                key="vantage_chart_type",
+            )
+
             # Track uncommitted controls
             vantage_current = {
                 "mode": mode,
@@ -391,6 +469,7 @@ def render_vantage_tab():
                 "granularity": granularity,
                 "direction_filter": direction_filter,
                 "turn_filter": turn_filter,
+                "chart_type": chart_type,
             }
             st.session_state["vantage_current"] = vantage_current
 
@@ -412,6 +491,7 @@ def render_vantage_tab():
     granularity = vantage_params.get("granularity", "Daily")
     direction_filter = vantage_params.get("direction_filter", "All Directions")
     turn_filter = vantage_params.get("turn_filter", "All Turns")
+    chart_type = vantage_params.get("chart_type", "Trend (Line)")
 
     if not date_range or len(date_range) != 2:
         st.warning("⚠️ Please select both start and end dates to proceed.")
@@ -451,13 +531,11 @@ def render_vantage_tab():
             mode_label = "Vehicles"
         else:  # Both (Combined)
             if not working_bikes.empty and not working_vehicles.empty:
-                # Aggregate vehicles by intersection/datetime (sum across turns)
                 if "turn_type" in working_vehicles.columns:
                     working_vehicles = working_vehicles.groupby(
                         ["local_datetime", "intersection_name", "direction"],
                         as_index=False
                     )["volume"].sum()
-
                 working_bikes["mode"] = "Bikes"
                 working_vehicles["mode"] = "Vehicles"
                 analysis_df = pd.concat([working_bikes, working_vehicles], ignore_index=True)
@@ -473,6 +551,9 @@ def render_vantage_tab():
             st.warning("⚠️ No data available for the selected filters.")
             return
 
+        # Mode-specific capacity parameters
+        CAP_VPH, HIGH_VPH = _mode_caps(mode_label if mode_label != "Bikes + Vehicles" else "Vehicles")
+
         # Two-column layout with sticky right rail
         content_col, right_col = st.columns([7, 3.5], gap="large")
 
@@ -482,9 +563,8 @@ def render_vantage_tab():
             st.markdown("##### Corridor Map", help="Stays visible while you scroll the analysis on the left.")
 
             try:
-                fig_map = build_intersections_overview(
-                    selected_label=None if intersection == "All Intersections" else intersection
-                )
+                selected_map_label = None if intersection == "All Intersections" else _map_label_for(intersection)
+                fig_map = build_intersections_overview(selected_label=selected_map_label)
             except Exception:
                 fig_map = None
 
@@ -508,7 +588,13 @@ def render_vantage_tab():
             span = (date_range[1] - date_range[0]).days + 1
             total_obs = len(analysis_df)
 
-            # Gradient header (matching Tab 2)
+            # Header title includes the intersection
+            header_title = (
+                f"{mode_label} Volume Analysis: {intersection}"
+                if intersection != "All Intersections" else
+                f"{mode_label} Volume Analysis: Washington Street Corridor"
+            )
+
             st.markdown(
                 f"""
                 <div style="
@@ -520,12 +606,12 @@ def render_vantage_tab():
                                 display:flex;align-items:center;justify-content:center;
                                 box-shadow:inset 0 0 0 1px rgba(255,255,255,.15);">📊</div>
                     <div style="font-size:1.9rem;font-weight:800; letter-spacing:.2px;">
-                      Iteris VantageLive Analysis: {mode_label}
+                      {header_title}
                     </div>
                   </div>
                   <div style="margin-top:10px;display:flex;flex-direction:column;gap:6px;">
                     <div>📅 {date_range[0].strftime('%b %d, %Y')} to {date_range[1].strftime('%b %d, %Y')} ({span} days) • {granularity} Aggregation</div>
-                    <div>✅ {total_obs:,} observations • Intersection: {intersection} • Direction: {direction_filter}</div>
+                    <div>✅ {total_obs:,} observations • Direction: {direction_filter}</div>
                   </div>
                 </div>
                 """,
@@ -546,7 +632,7 @@ def render_vantage_tab():
                 else:
                     bucket_all["bucket_hours"] = AGG_META[granularity]["fixed_hours"]
 
-                bucket_all["cap"] = bucket_all["bucket_hours"] * THEORETICAL_LINK_CAPACITY_VPH
+                bucket_all["cap"] = bucket_all["bucket_hours"] * CAP_VPH
                 util_series = np.where(bucket_all["cap"] > 0, bucket_all["volume"] / bucket_all["cap"] * 100, np.nan)
 
                 # Peak bucket
@@ -559,15 +645,13 @@ def render_vantage_tab():
                 avg_bucket_val = float(bucket_all["volume"].mean())
                 avg_util_pct = float(np.nanmean(util_series)) if np.isfinite(util_series).any() else 0.0
 
-                # Hourly stats (per-row for hourly; otherwise raw rows are daily/weekly/monthly)
                 hourly_avg = float(np.nanmean(raw["volume"])) if raw["volume"].notna().any() else 0.0
-                cv_hourly = (float(np.nanstd(raw["volume"])) / hourly_avg * 100) if hourly_avg > 0 else 0.0
                 cv_bucket = (float(np.nanstd(bucket_all["volume"])) / avg_bucket_val * 100) if avg_bucket_val > 0 else 0.0
 
                 # Risk vs threshold using bucketed totals
                 unit = AGG_META[granularity]["unit"]
                 label = AGG_META[granularity]["label"]  # hour/day/week/month
-                bucket_all["threshold"] = bucket_all["bucket_hours"] * HIGH_VOLUME_THRESHOLD_VPH
+                bucket_all["threshold"] = bucket_all["bucket_hours"] * HIGH_VPH
                 high_periods = int((bucket_all["volume"] > bucket_all["threshold"]).sum())
                 total_periods = int(len(bucket_all))
                 risk_pct = (high_periods / total_periods * 100) if total_periods > 0 else 0.0
@@ -607,30 +691,24 @@ def render_vantage_tab():
 
                 with col2:
                     st.metric(f"📊 {avg_label}", f"{avg_bucket_val:,.0f} {avg_suffix}")
-                    if granularity == "Hourly":
-                        avg_util_pct_hourly = (hourly_avg / THEORETICAL_LINK_CAPACITY_VPH * 100) if THEORETICAL_LINK_CAPACITY_VPH else 0.0
-                        badge2 = "badge-good" if avg_util_pct_hourly <= 40 else ("badge-fair" if avg_util_pct_hourly <= 60 else "badge-poor")
-                        st.markdown(
-                            f'<span class="performance-badge {badge2}">{avg_util_pct_hourly:.0f}% Avg Util</span>',
-                            unsafe_allow_html=True,
-                        )
-                    else:
-                        badge2 = "badge-good" if avg_util_pct <= 40 else ("badge-fair" if avg_util_pct <= 60 else "badge-poor")
-                        st.markdown(
-                            f'<span class="performance-badge {badge2}">{avg_util_pct:.0f}% Avg Util</span>',
-                            unsafe_allow_html=True,
-                        )
+                    avg_util_pct_hourly = (hourly_avg / CAP_VPH * 100) if CAP_VPH else 0.0
+                    badge2 = "badge-good" if avg_util_pct_hourly <= 40 else ("badge-fair" if avg_util_pct_hourly <= 60 else "badge-poor")
+                    st.markdown(
+                        f'<span class="performance-badge {badge2}">{(avg_util_pct if granularity != "Hourly" else avg_util_pct_hourly):.0f}% Avg Util</span>',
+                        unsafe_allow_html=True,
+                    )
 
                 with col3:
                     total_volume = float(np.nansum(raw["volume"]))
+                    cap_total = CAP_VPH * float(bucket_all["bucket_hours"].sum())
                     st.metric(f"🚗 Total {mode_label} (period)", f"{total_volume:,.0f}")
-                    state_badge = (
-                        "badge-good" if total_volume < 0.4 * THEORETICAL_LINK_CAPACITY_VPH * 24
-                        else "badge-fair" if total_volume < 0.7 * THEORETICAL_LINK_CAPACITY_VPH * 24
-                        else "badge-poor"
-                    )
+                    if cap_total > 0:
+                        ratio = total_volume / cap_total
+                        state_badge = "badge-good" if ratio < 0.40 else ("badge-fair" if ratio < 0.70 else "badge-poor")
+                    else:
+                        state_badge = "badge-good"
                     st.markdown(
-                        f'<span class="performance-badge {state_badge}">Period Total</span>',
+                        f'<span class="performance-badge {state_badge}">vs. period capacity</span>',
                         unsafe_allow_html=True,
                     )
 
@@ -662,36 +740,68 @@ def render_vantage_tab():
                         unsafe_allow_html=True,
                     )
 
-            # -------- Charts Section --------
+            # -------- Visualizations Section --------
             st.subheader(f"📈 {mode_label} Volume Visualizations")
-            if len(analysis_df) > 1:
-                try:
-                    fig_trend, fig_box, fig_matrix = create_volume_charts(
-                        raw_hourly_df=raw,
-                        granularity=granularity,
-                        cap_vph=THEORETICAL_LINK_CAPACITY_VPH,
-                        high_vph=HIGH_VOLUME_THRESHOLD_VPH,
-                        mode_label=mode_label,
+
+            if chart_type == "Share (Pie)":
+                # Distribution by intersection (or by direction if a single intersection is selected)
+                if intersection == "All Intersections":
+                    pie_df = raw.groupby("intersection_name", as_index=False)["volume"].sum()
+                    pie_title = f"{mode_label} Volume Share by Intersection"
+                    names = "intersection_name"
+                else:
+                    if "direction" in raw.columns:
+                        pie_df = raw.groupby("direction", as_index=False)["volume"].sum()
+                        pie_title = f"{mode_label} Volume Share by Direction — {intersection}"
+                        names = "direction"
+                    else:
+                        pie_df = raw.groupby("intersection_name", as_index=False)["volume"].sum()
+                        pie_title = f"{mode_label} Volume Share — {intersection}"
+                        names = "intersection_name"
+
+                if not pie_df.empty:
+                    fig_pie = px.pie(
+                        pie_df,
+                        names=names,
+                        values="volume",
+                        title=pie_title,
+                        hole=0.35,
+                        template="simple_white",
                     )
-                    if fig_trend:
-                        st.plotly_chart(fig_trend, use_container_width=True, config=PLOTLY_CONFIG)
-                    colA, colB = st.columns(2)
-                    with colA:
-                        if fig_box:
-                            st.plotly_chart(fig_box, use_container_width=True, config=PLOTLY_CONFIG)
-                    with colB:
-                        if fig_matrix:
-                            st.plotly_chart(fig_matrix, use_container_width=True, config=PLOTLY_CONFIG)
-                except Exception as e:
-                    st.error(f"❌ Error creating volume charts: {e}")
+                    fig_pie.update_traces(textposition="inside", textinfo="label+percent")
+                    fig_pie.update_layout(margin=dict(l=10, r=10, t=50, b=10), height=420)
+                    st.plotly_chart(fig_pie, use_container_width=True, config=PLOTLY_CONFIG)
+                else:
+                    st.info("No data available to render the share (pie) view.")
+            else:
+                # Trend + box + ranking matrix
+                if len(analysis_df) > 1:
+                    try:
+                        fig_trend, fig_box, fig_matrix = create_volume_charts(
+                            raw_df=raw,
+                            granularity=granularity,
+                            cap_vph=CAP_VPH,
+                            high_vph=HIGH_VPH,
+                            mode_label=mode_label,
+                        )
+                        if fig_trend:
+                            st.plotly_chart(fig_trend, use_container_width=True, config=PLOTLY_CONFIG)
+                        colA, colB = st.columns(2)
+                        with colA:
+                            if fig_box:
+                                st.plotly_chart(fig_box, use_container_width=True, config=PLOTLY_CONFIG)
+                        with colB:
+                            if fig_matrix:
+                                st.plotly_chart(fig_matrix, use_container_width=True, config=PLOTLY_CONFIG)
+                    except Exception as e:
+                        st.error(f"❌ Error creating volume charts: {e}")
 
             # -------- Risk Analysis Table (granularity-aware) --------
             st.subheader(f"🚨 Intersection Volume & Capacity Risk Analysis ({mode_label})")
             try:
-                # Work at the selected bucket so periods (day/week/month) are apples-to-apples
                 bucketed = _prep_bucket(raw, granularity)
 
-                # Per-hour equivalent for utilization vs capacity
+                # Hourly-equivalent for utilization vs capacity
                 bucketed["per_hour_equiv"] = np.where(
                     bucketed["bucket_hours"] > 0,
                     bucketed["volume"] / bucketed["bucket_hours"],
@@ -712,8 +822,8 @@ def render_vantage_tab():
                 ).reset_index()
 
                 # Capacity utilization based on per-hour equivalent
-                g["Peak_Capacity_Util"] = (g["hr_max"] / THEORETICAL_LINK_CAPACITY_VPH * 100).round(1)
-                g["Avg_Capacity_Util"] = (g["hr_mean"] / THEORETICAL_LINK_CAPACITY_VPH * 100).round(1)
+                g["Peak_Capacity_Util"] = (g["hr_max"] / CAP_VPH * 100).round(1)
+                g["Avg_Capacity_Util"] = (g["hr_mean"] / CAP_VPH * 100).round(1)
 
                 # Peaking/variability based on bucket totals
                 g["Volume_Variability"] = (
@@ -746,36 +856,33 @@ def render_vantage_tab():
                 unit = AGG_META[granularity]["unit"]
                 label = AGG_META[granularity]["label"]
 
-                final = g[
-                    [
-                        "intersection_name",
-                        *(["direction"] if "direction" in g.columns else []),
-                        "⚠️ Risk Level",
-                        "🎯 Action Priority",
-                        "🚨 Risk Score",
-                        "Peak_Capacity_Util",
-                        "Avg_Capacity_Util",
-                        "volume_mean",
-                        "volume_max",
-                        "Peak_Avg_Ratio",
-                        "volume_count",
-                    ]
-                ].rename(
+                # Build final table with optional Direction column
+                cols = ["intersection_name"]
+                if "direction" in g.columns:
+                    cols.append("direction")
+                cols += [
+                    "⚠️ Risk Level",
+                    "🎯 Action Priority",
+                    "🚨 Risk Score",
+                    "Peak_Capacity_Util",
+                    "Avg_Capacity_Util",
+                    "volume_mean",
+                    "volume_max",
+                    "Peak_Avg_Ratio",
+                    "volume_count",
+                ]
+
+                final = g[cols].rename(
                     columns={
                         "intersection_name": "Intersection",
-                        "direction": "Dir" if "direction" in g.columns else None,
+                        **({"direction": "Dir"} if "direction" in g.columns else {}),
                         "Peak_Capacity_Util": "📊 Peak Capacity %",
                         "Avg_Capacity_Util": "📊 Avg Capacity %",
                         "volume_mean": f"Avg {mode_label} ({unit})",
                         "volume_max": f"Peak {mode_label} ({unit})",
                         "volume_count": f"{label.capitalize()}s",
                     }
-                )
-
-                # Clean any None keys that can appear in rename when direction not present
-                final.columns = [c if c is not None else "Dir" for c in final.columns]
-
-                final = final.sort_values("🚨 Risk Score", ascending=False)
+                ).sort_values("🚨 Risk Score", ascending=False)
 
                 st.dataframe(
                     final.head(15),
@@ -806,8 +913,7 @@ def render_vantage_tab():
             st.subheader("🔄 Cycle Length Recommendations for CVAG")
             try:
                 # Prepare data for cycle length function.
-                # The recommender expects something like hourly demand;
-                # so we pass hourly-equivalent (bucket total / bucket_hours) to 'total_volume'.
+                # The recommender expects hourly demand; pass hourly-equivalent (bucket total / bucket_hours).
                 cycle_bucketed = _prep_bucket(raw, granularity)
                 cycle_bucketed["total_volume"] = np.where(
                     cycle_bucketed["bucket_hours"] > 0,
