@@ -1,637 +1,826 @@
-# cycle_length_recommendations.py
+# VantageLivetab.py - Tab 4: Iteris VantageLive Analysis (Bikes + Vehicles)
+
 import streamlit as st
 import pandas as pd
-import plotly.express as px
+import numpy as np
+from datetime import datetime, timedelta
 import plotly.graph_objects as go
-from typing import Optional
+import plotly.express as px
+from plotly.subplots import make_subplots
 
-# -------------------------
-# Time-period filter (AM/MD/PM/ALL)
-# -------------------------
-@st.cache_data
-def filter_by_period(df: pd.DataFrame, time_col: str, period: str) -> pd.DataFrame:
-    """Filter dataframe by time period (AM 05–10, MD 11–15, PM 16–20, ALL)."""
-    if time_col not in df.columns or df.empty:
-        return df
-    df_copy = df.copy()
-    df_copy[time_col] = pd.to_datetime(df_copy[time_col], errors="coerce")
+# Import shared utilities
+from sidebar_functions import (
+    date_range_preset_controls,
+    render_badge,
+    get_performance_rating,
+)
+from cycle_length_recommendations import render_cycle_length_section
+from Map import build_intersections_overview
 
-    if period == "AM":
-        return df_copy[(df_copy[time_col].dt.hour >= 5) & (df_copy[time_col].dt.hour <= 10)]
-    if period == "MD":
-        return df_copy[(df_copy[time_col].dt.hour >= 11) & (df_copy[time_col].dt.hour <= 15)]
-    if period == "PM":
-        return df_copy[(df_copy[time_col].dt.hour >= 16) & (df_copy[time_col].dt.hour <= 20)]
-    return df_copy
+# =========================
+# Constants
+# =========================
+THEORETICAL_LINK_CAPACITY_VPH = 1800
+HIGH_VOLUME_THRESHOLD_VPH = 1200
+
+# Segment mapping (from south to north along Washington Street)
+SEGMENT_ID_TO_NAME = {
+    1: "Washington & Avenue 52",
+    2: "Washington and Calle Tampico",
+    3: "Washington and Village Shopping Center",
+    4: "Washington and Avenue 50",
+    5: "Washington and Sagebrush Avenue",
+    6: "Washington and Eisenhower Drive",
+    7: "Washington and Avenue 48",
+    8: "Washington and Avenue 47",
+    9: "Washington and Point Happy Way",
+}
+
+# Aggregation metadata (matching Tab 2 pattern)
+AGG_META = {
+    "Hourly": {"unit": "vph", "bucket": "H", "label": "hour", "fixed_hours": 1},
+    "Daily": {"unit": "vpd", "bucket": "D", "label": "day", "fixed_hours": 24},
+    "Weekly": {"unit": "vpw", "bucket": "W", "label": "week", "fixed_hours": 24 * 7},
+    "Monthly": {"unit": "vpm", "bucket": "M", "label": "month", "fixed_hours": None},
+}
+
+PLOTLY_CONFIG = {
+    "displaylogo": False,
+    "modeBarButtonsToRemove": ["lasso2d", "select2d", "toggleSpikelines"]
+}
+MAP_HEIGHT = 900
 
 
-# -------------------------
-# Cycle length thresholds
-# -------------------------
-@st.cache_data
-def get_hourly_cycle_length(volume):
+# =========================
+# Data Loading
+# =========================
+@st.cache_data(show_spinner=False)
+def load_vantage_bikes() -> pd.DataFrame:
+    """Load bike volume data from VantageLive."""
+    url = "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/Iteris_VantageLive/WashingtonStreet_ALL_Bikes.csv"
+    try:
+        df = pd.read_csv(url)
+
+        # Dates are daily (MM/DD/YYYY). If a time ever shows up, this still works.
+        df["local_datetime"] = pd.to_datetime(df["local_datetime"], format="%m/%d/%Y", errors="coerce")
+        df = df.dropna(subset=["local_datetime"])
+
+        # If segment_id is numeric, map; if it's already a name, use it directly.
+        if pd.api.types.is_numeric_dtype(df["segment_id"]):
+            df["intersection_name"] = df["segment_id"].map(SEGMENT_ID_TO_NAME)
+        else:
+            df["intersection_name"] = df["segment_id"].astype(str).str.strip()
+
+        df = df.dropna(subset=["intersection_name"])
+
+        # Normalize direction to NB/SB/EB/WB if present
+        if "direction" in df.columns:
+            df["direction"] = df["direction"].astype(str).str.strip().str.upper()
+
+        # Bikes don’t have turn_type; add a dummy so downstream code stays uniform
+        if "turn_type" not in df.columns:
+            df["turn_type"] = "Through"
+
+        df["volume"] = pd.to_numeric(df["volume"], errors="coerce").fillna(0)
+
+        return df.sort_values("local_datetime").reset_index(drop=True)
+    except Exception as e:
+        st.error(f"Error loading bike data: {e}")
+        return pd.DataFrame()
+
+
+@st.cache_data(show_spinner=False)
+def load_vantage_vehicles() -> pd.DataFrame:
+    """Load vehicle volume data from VantageLive."""
+    url = "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/Iteris_VantageLive/WashingtonStreet_ALL_vehicles.csv"
+    try:
+        df = pd.read_csv(url)
+
+        df["local_datetime"] = pd.to_datetime(df["local_datetime"], format="%m/%d/%Y", errors="coerce")
+        df = df.dropna(subset=["local_datetime"])
+
+        if pd.api.types.is_numeric_dtype(df["segment_id"]):
+            df["intersection_name"] = df["segment_id"].map(SEGMENT_ID_TO_NAME)
+        else:
+            df["intersection_name"] = df["segment_id"].astype(str).str.strip()
+
+        df = df.dropna(subset=["intersection_name"])
+
+        # Normalize direction & turn_type casing
+        if "direction" in df.columns:
+            df["direction"] = df["direction"].astype(str).str.strip().str.upper()
+        if "turn_type" in df.columns:
+            df["turn_type"] = df["turn_type"].astype(str).str.strip().str.title()
+
+        df["volume"] = pd.to_numeric(df["volume"], errors="coerce").fillna(0)
+
+        return df.sort_values("local_datetime").reset_index(drop=True)
+    except Exception as e:
+        st.error(f"Error loading vehicle data: {e}")
+        return pd.DataFrame()
+
+# =========================
+# Processing Helpers
+# =========================
+def _prep_bucket(df: pd.DataFrame, granularity: str) -> pd.DataFrame:
     """
-    Return recommended cycle length:
-    ≥2400 → 140 sec, ≥1500 → 130 sec, ≥600 → 120 sec, ≥300 → 110 sec, else Free mode
+    Aggregate records to the selected bucket (sum of volumes).
+    Returns: df with columns [local_datetime, intersection_name, volume, bucket_hours, direction?(optional)].
     """
-    if pd.isna(volume) or volume <= 0:
-        return "Free mode"
-    if volume >= 2400:
-        return "140 sec"
-    if volume >= 1500:
-        return "130 sec"
-    if volume >= 600:
-        return "120 sec"
-    if volume >= 300:
-        return "110 sec"
-    return "Free mode"
+    if df.empty:
+        return df.copy()
 
+    g = granularity
+    meta = AGG_META[g]
+    d = df.copy()
+    d["local_datetime"] = pd.to_datetime(d["local_datetime"])
 
-def _get_status(recommended: str, current: str) -> str:
-    """Compare recommended cycle vs current and return status label."""
-    if recommended == current:
-        return "🟢 OPTIMAL"
-    if recommended == "Free mode" and current != "Free mode":
-        return "🔽 REDUCE"
-    if recommended != "Free mode" and current == "Free mode":
-        return "⬆️ INCREASE"
-    rec_val = int(recommended.split()[0]) if recommended != "Free mode" else 0
-    cur_val = int(current.split()[0]) if current != "Free mode" else 0
-    if rec_val > cur_val:
-        return "⬆️ INCREASE"
-    if rec_val < cur_val:
-        return "🔽 REDUCE"
-    return "🟢 OPTIMAL"
+    if g == "Hourly":
+        d["bucket"] = d["local_datetime"].dt.floor("H")
+    elif g == "Daily":
+        d["bucket"] = d["local_datetime"].dt.floor("D")
+    elif g == "Weekly":
+        d["bucket"] = d["local_datetime"].dt.to_period("W").dt.start_time
+    else:  # Monthly
+        d["bucket"] = d["local_datetime"].dt.to_period("M").dt.start_time
 
+    group_cols = ["bucket", "intersection_name"]
+    if "direction" in d.columns:
+        group_cols.append("direction")
 
-# -------------------------
-# Visual helpers (legend + colors) — theme-able & colorblind-safe
-# -------------------------
-CYCLE_ORDER = ["Free mode", "110 sec", "120 sec", "130 sec", "140 sec"]
-THRESHOLD_TEXT = {
-    "140 sec": "≥ 2400 vph",
-    "130 sec": "≥ 1500 vph",
-    "120 sec": "≥ 600 vph",
-    "110 sec": "≥ 300 vph",
-    "Free mode": "< 300 vph",
-}
-
-def _get_palettes(theme: str):
-    """
-    Returns (cycle_colors, status_colors, pattern_map) for the selected theme.
-    Default is Okabe–Ito colorblind-safe palette.
-    """
-    if theme == "High Contrast":
-        cycle_colors = {
-            "Free mode": "#808080",
-            "110 sec": "#1B9E77",
-            "120 sec": "#386CB0",
-            "130 sec": "#FDC827",
-            "140 sec": "#D62728",
-        }
-        status_colors = {"🟢 OPTIMAL": "#1B9E77", "⬆️ INCREASE": "#D62728", "🔽 REDUCE": "#386CB0"}
-    elif theme == "Greens → Red":
-        cycle_colors = {
-            "Free mode": "#9E9E9E",
-            "110 sec": "#2ECC71",
-            "120 sec": "#27AE60",
-            "130 sec": "#E67E22",
-            "140 sec": "#E74C3C",
-        }
-        status_colors = {"🟢 OPTIMAL": "#27AE60", "⬆️ INCREASE": "#E74C3C", "🔽 REDUCE": "#2E86C1"}
-    elif theme == "Monochrome + Accents":
-        cycle_colors = {
-            "Free mode": "#95A5A6",
-            "110 sec": "#34495E",
-            "120 sec": "#2C3E50",
-            "130 sec": "#8E44AD",
-            "140 sec": "#E74C3C",
-        }
-        status_colors = {"🟢 OPTIMAL": "#2ECC71", "⬆️ INCREASE": "#E74C3C", "🔽 REDUCE": "#8E44AD"}
-    else:  # "Colorblind Safe" (Okabe–Ito)
-        cycle_colors = {
-            "Free mode": "#8C8C8C",   # gray
-            "110 sec": "#009E73",     # bluish green
-            "120 sec": "#0072B2",     # blue
-            "130 sec": "#E69F00",     # orange
-            "140 sec": "#D55E00",     # vermillion
-        }
-        status_colors = {"🟢 OPTIMAL": "#009E73", "⬆️ INCREASE": "#D55E00", "🔽 REDUCE": "#0072B2"}
-
-    pattern_map = {
-        "Free mode": "",
-        "110 sec": "/",
-        "120 sec": "\\",
-        "130 sec": "x",
-        "140 sec": ".",
-    }
-    return cycle_colors, status_colors, pattern_map
-
-
-def _inject_kpi_css():
-    """Theme-aware CSS for legend and KPI cards (robust dark-mode support)."""
-    st.markdown(
-        """
-<style>
-/* ---------- Light defaults ---------- */
-:root{
-  /* Legend */
-  --legend-bg: rgba(15,47,82,.06);
-  --legend-border: rgba(79,172,254,.28);
-  --legend-title: #0f2f52;
-
-  /* KPI tiles */
-  --kpi-bg: linear-gradient(135deg, rgba(79,172,254,.06), rgba(0,242,254,.04));
-  --kpi-border: rgba(79,172,254,.28);
-  --kpi-text: #0f2f52;
-  --kpi-title: #0f2f52;   /* explicit */
-  --kpi-muted: rgba(15,47,82,.78);
-  --kpi-shadow: 0 8px 20px rgba(79,172,254,.10);
-  --kpi-good: #2ecc71;
-  --kpi-warn: #f39c12;
-  --kpi-bad: #e74c3c;
-  --kpi-pill: rgba(255,255,255,.65);
-}
-
-/* ---------- Dark mode overrides ---------- */
-html.dark, [Prediction-theme="dark"], [Prediction-base-theme="dark"], body[Prediction-theme="dark"]{
-  --legend-bg: rgba(255,255,255,.08);
-  --legend-border: rgba(255,255,255,.18);
-  --legend-title: #ffffff;
-
-  --kpi-bg: rgba(255,255,255,.07);
-  --kpi-border: rgba(255,255,255,.22);
-  --kpi-text: #ffffff;
-  --kpi-title: #ffffff;
-  --kpi-muted: rgba(255,255,255,.82);
-  --kpi-shadow: 0 10px 26px rgba(0,0,0,.35);
-  --kpi-pill: rgba(255,255,255,.10);
-}
-
-/* ---------- Legend block ---------- */
-.cvag-legend{
-  border:1px solid var(--legend-border);
-  background: var(--legend-bg);
-  border-radius:12px;
-  padding:.6rem 1rem;
-  box-shadow:0 8px 24px rgba(0,0,0,.10);
-  margin-top:.25rem;
-}
-.cvag-legend-title{
-  font-weight:800;
-  color:var(--legend-title) !important;
-  margin-bottom:.35rem;
-}
-
-/* ---------- KPI grid/cards ---------- */
-.cvag-kpi-grid{ display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:12px; margin:4px 0 10px; }
-@media (max-width:1500px){ .cvag-kpi-grid{ grid-template-columns:repeat(3,1fr);} }
-@media (max-width:900px){ .cvag-kpi-grid{ grid-template-columns:repeat(2,1fr);} }
-@media (max-width:600px){ .cvag-kpi-grid{ grid-template-columns:1fr;} }
-
-.cvag-kpi-card{
-  border-radius:16px; padding:14px 16px;
-  background:var(--kpi-bg);
-  border:1px solid var(--kpi-border);
-  box-shadow:var(--kpi-shadow);
-  color:var(--kpi-text);
-}
-.cvag-kpi-title{
-  font-weight:800; font-size:.95rem; letter-spacing:.2px;
-  color: var(--kpi-title) !important;
-}
-.cvag-kpi-value{
-  font-size:2.0rem; line-height:1.05; font-weight:800; margin-top:.25rem; letter-spacing:.3px;
-  color: var(--kpi-title) !important;
-}
-.cvag-kpi-delta{ margin-top:.15rem; font-size:.95rem; font-weight:700; color:var(--kpi-muted); }
-.cvag-kpi-delta.good{ color:#2ECC71; } .cvag-kpi-delta.warn{ color:#F39C12; } .cvag-kpi-delta.bad{ color:#E74C3C; }
-.cvag-kpi-foot{ margin-top:.35rem; font-size:.85rem; color:var(--kpi-muted); }
-.cvag-pill{ display:inline-flex; align-items:center; gap:.4rem; padding:.25rem .55rem; border-radius:999px; background:var(--kpi-pill); font-weight:700; font-size:.82rem; }
-</style>
-        """,
-        unsafe_allow_html=True,
+    agg = (
+        d.groupby(group_cols, as_index=False)
+        .agg(volume=("volume", "sum"))
+        .rename(columns={"bucket": "local_datetime"})
     )
 
-
-def _legend_html(cycle_colors: dict) -> str:
-    """HTML legend for cycle length thresholds, generated from active palette."""
-    pill_items = []
-    for label in ["140 sec", "130 sec", "120 sec", "110 sec", "Free mode"]:
-        color = cycle_colors.get(label, "#9A9A9A")
-        text = THRESHOLD_TEXT[label]
-        pill_items.append(
-            f'<span style="display:inline-flex;align-items:center;margin:.25rem .5rem;'
-            f'padding:.3rem .6rem;border-radius:999px;background:{color};color:#fff;'
-            f'font-weight:800;font-size:.85rem;">{label}</span>'
-            f'<span style="margin-right:1rem;opacity:.85;font-size:.9rem">{text}</span>'
-        )
-    return (
-        '<div class="cvag-legend">'
-        '<div class="cvag-legend-title">Cycle Length Thresholds</div>'
-        + "".join(pill_items) +
-        '</div>'
-    )
-
-
-def _sec_value(label: str) -> int:
-    """Map label to numeric seconds for sorting/plotting."""
-    return int(label.split()[0]) if label != "Free mode" else 0
-
-
-# -------------------------
-# Help / onboarding
-# -------------------------
-def render_howto_sidebar() -> None:
-    """Sidebar expander with the exact workflow steps you provided."""
-    with st.sidebar.expander("ℹ️ How to use Cycle Length Calculator (4 steps)", expanded=False):
-        st.markdown(
-            """
-**Step 1. Select Intersection**  
-Pick the corridor/intersection you want to analyze.
-
-**Step 2. Date Range → Custom**  
-Choose a **single specific day**.
-
-**Step 3. Granularity → Direction**  
-Select **Northbound** or **Southbound**.
-
-**Step 4. Hit Search**  
-The calculator below will use your selections.
-            """
-        )
-
-
-def _build_header_html(
-    intersection_label: str,
-    direction_label: str,
-    start_label: str,
-    end_label: str,
-    time_period_label: str,
-    current_cycle: str,
-) -> str:
-    """Header with gradient + right-aligned pill for Current Cycle."""
-    return f"""
-<div style="background: linear-gradient(135deg, #2b77e5 0%, #19c3e6 100%);
-            border-radius: 16px; padding: 22px 24px 20px; color: #fff;
-            box-shadow: 0 10px 26px rgba(25,115,210,.25); margin: 8px 0 16px;">
-  <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
-    <div style="display:flex; align-items:center; gap:12px;">
-      <div style="width:40px; height:40px; border-radius:10px; background: rgba(255,255,255,.18);
-                  display:flex; align-items:center; justify-content:center;
-                  box-shadow: inset 0 0 0 1px rgba(255,255,255,.15);">
-        <span style="font-size:20px;">🔁</span>
-      </div>
-      <div style="font-size:2.1rem; font-weight:800; letter-spacing:.2px; line-height:1.1;">
-        Cycle Length Recommendations for CVAG
-      </div>
-    </div>
-    <span title="Current cycle used for comparison"
-          style="display:inline-flex; align-items:center; gap:6px; padding:8px 12px;
-                 border-radius:999px; background: rgba(255,255,255,.18);
-                 font-weight:800; font-size:.95rem;
-                 box-shadow: inset 0 0 0 1px rgba(255,255,255,.18);">
-      ⚙️ Current Cycle: {current_cycle}
-    </span>
-  </div>
-
-  <div style="display:flex; flex-wrap:wrap; gap:8px 10px; margin:12px 0 6px;">
-    <span style="display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px;
-                 background: rgba(255,255,255,.16); font-weight:700; font-size:.95rem;
-                 box-shadow: inset 0 0 0 1px rgba(255,255,255,.18);">
-      <span style="opacity:.9;">Intersection:</span><span style="opacity:1;">{intersection_label}</span>
-    </span>
-    <span style="display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px;
-                 background: rgba(255,255,255,.16); font-weight:700; font-size:.95rem;
-                 box-shadow: inset 0 0 0 1px rgba(255,255,255,.18);">
-      <span style="opacity:.9;">Direction:</span><span style="opacity:1;">{direction_label}</span>
-    </span>
-    <span style="display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px;
-                 background: rgba(255,255,255,.16); font-weight:700; font-size:.95rem;
-                 box-shadow: inset 0 0 0 1px rgba(255,255,255,.18);">
-      <span style="opacity:.9;">Time Period:</span><span style="opacity:1;">{time_period_label}</span>
-    </span>
-    <span style="display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px;
-                 background: rgba(255,255,255,.16); font-weight:700; font-size:.95rem;
-                 box-shadow: inset 0 0 0 1px rgba(255,255,255,.18);">
-      <span style="opacity:.9;">Study Type:</span><span style="opacity:1;">Hourly Analysis</span>
-    </span>
-  </div>
-
-  <div style="display:flex; align-items:center; gap:8px; margin-top:2px;">
-    <span style="width:24px; height:24px; border-radius:8px; background: rgba(255,255,255,.18);
-                 display:inline-flex; align-items:center; justify-content:center; font-size:13px;
-                 box-shadow: inset 0 0 0 1px rgba(255,255,255,.16);">📅</span>
-    <span style="font-size:1.05rem; font-weight:600; opacity:.95;">{start_label} — {end_label}</span>
-  </div>
-</div>
-"""
-
-
-# -------------------------
-# KPI-card HTML
-# -------------------------
-def _kpi_card(title: str, value_html: str, delta_text: str, tone: str = "neutral",
-              foot1: Optional[str] = None, foot2: Optional[str] = None) -> str:
-    tone = tone if tone in {"good", "warn", "bad", "neutral"} else "neutral"
-    foot1_html = f'<div class="cvag-kpi-foot">{foot1}</div>' if foot1 else ""
-    foot2_html = f'<div class="cvag-kpi-foot">{foot2}</div>' if foot2 else ""
-    tone_class = f" {tone}" if tone != "neutral" else " neutral"
-    return f"""
-    <div class="cvag-kpi-card">
-      <div class="cvag-kpi-title">{title}</div>
-      <div class="cvag-kpi-value">{value_html}</div>
-      <div class="cvag-kpi-delta{tone_class}">{delta_text}</div>
-      {foot1_html}{foot2_html}
-    </div>
-    """
-
-
-# -------------------------
-# Main renderer
-# -------------------------
-def render_cycle_length_section(raw: pd.DataFrame, key_prefix: str = "cycle") -> None:
-    """Render the Cycle Length Recommendations section with theme-aware styles."""
-    # Sidebar "how to" (safe to call even if parent already has sidebar items)
-    render_howto_sidebar()
-
-    if raw is None or raw.empty:
-        st.info("No hourly volume Prediction available for cycle length recommendations.")
-        return
-    if "local_datetime" not in raw.columns or "total_volume" not in raw.columns:
-        st.info("Required columns not found: 'local_datetime', 'total_volume'.")
-        return
-
-    # Make styles available BEFORE any HTML so colors work immediately
-    _inject_kpi_css()
-
-    # ---- Context values for header (static bits) ----
-    raw = raw.copy()
-    raw["local_datetime"] = pd.to_datetime(raw["local_datetime"], errors="coerce")
-
-    start_dt = raw["local_datetime"].min()
-    end_dt = raw["local_datetime"].max()
-    start_label = start_dt.strftime("%A, %b %d, %Y") if pd.notnull(start_dt) else "N/A"
-    end_label = end_dt.strftime("%A, %b %d, %Y") if pd.notnull(end_dt) else "N/A"
-
-    intersections = sorted(raw["intersection_name"].dropna().unique().tolist()) if "intersection_name" in raw else []
-    if len(intersections) == 1:
-        intersection_label = intersections[0]
-    elif len(intersections) > 1:
-        intersection_label = f"{len(intersections)} Intersections"
+    # Hours in the bucket (for capacity/threshold scaling)
+    if g == "Monthly":
+        agg["bucket_hours"] = pd.to_datetime(agg["local_datetime"]).dt.days_in_month * 24
     else:
-        intersection_label = "N/A"
-
-    directions = sorted(raw["direction"].dropna().unique().tolist()) if "direction" in raw else []
-    if len(directions) == 1:
-        direction_label = directions[0]
-    elif len(directions) > 1:
-        direction_label = "All Directions"
-    else:
-        direction_label = "N/A"
-
-    # Placeholder so we can render the header AFTER we know current_cycle/time period
-    header_slot = st.empty()
-
-    # -------------------------
-    # Controls (user selections)
-    # -------------------------
-    c1, c2, c3 = st.columns([2, 1.6, 1.5])
-    with c1:
-        time_period = st.selectbox(
-            "🕐 Time Period",
-            ["AM (05:00-10:00)", "MD (11:00-15:00)", "PM (16:00-20:00)", "All Day"],
-            index=0,
-            help="Filter to AM, Midday, PM, or all hours.",
-            key=f"{key_prefix}_period",
-        )
-    with c2:
-        current_cycle = st.selectbox(
-            "⚙️ Current System Cycle",
-            CYCLE_ORDER[::-1],  # 140, 130, 120, 110, Free
-            index=0,
-            help="Sets the corridor's **current** cycle length used for comparison.",
-            key=f"{key_prefix}_current",
-        )
-    with c3:
-        theme_choice = st.selectbox(
-            "🎨 Color Theme",
-            ["Colorblind Safe", "High Contrast", "Greens → Red", "Monochrome + Accents"],
-            index=0,
-            help="Pick a palette that's easy to read for presentations and printouts.",
-            key=f"{key_prefix}_theme",
-        )
+        agg["bucket_hours"] = meta["fixed_hours"]
+    return agg
 
 
+def _cap_series_for_x(x_df: pd.DataFrame, cap_vph: float, high_vph: float) -> pd.DataFrame:
+    """Given unique x (local_datetime) and bucket_hours, produce y series for capacity/threshold."""
+    xs = x_df[["local_datetime", "bucket_hours"]].drop_duplicates().sort_values("local_datetime")
+    xs["capacity"] = xs["bucket_hours"] * float(cap_vph)
+    xs["high"] = xs["bucket_hours"] * float(high_vph)
+    return xs
 
-    # Resolve palettes & patterns from theme
-    CYCLE_COLORS, STATUS_COLORS, PATTERN_MAP = _get_palettes(theme_choice)
 
-    # Legend (uses theme variables, not hard-coded colors)
-    st.markdown(_legend_html(CYCLE_COLORS), unsafe_allow_html=True)
+def _fmt_period(ts: pd.Timestamp, granularity: str) -> str:
+    ts = pd.to_datetime(ts)
+    if granularity == "Hourly":
+        return ts.strftime("%b %d, %Y %H:%M")
+    if granularity == "Daily":
+        return ts.strftime("%b %d, %Y")
+    if granularity == "Weekly":
+        wk = ts.to_period("W")
+        return f"Week of {wk.start_time.strftime('%b %d, %Y')}"
+    return ts.strftime("%b %Y")
 
-    # Time period filtering
-    period_map = {"AM (05:00-10:00)": "AM", "MD (11:00-15:00)": "MD", "PM (16:00-20:00)": "PM", "All Day": "ALL"}
-    selected_period = period_map[time_period]
-    period_data = raw if selected_period == "ALL" else filter_by_period(raw, "local_datetime", selected_period)
-    if period_data.empty:
-        # Render the header (with current cycle bubble) even if no Prediction to show
-        header_slot.markdown(
-            _build_header_html(
-                intersection_label, direction_label, start_label, end_label, time_period, current_cycle
-            ),
-            unsafe_allow_html=True,
-        )
-        st.warning("⚠️ No Prediction available for the selected time period.")
-        return
 
-    # Now that we know the user's choices, render the header with the bubble
-    header_slot.markdown(
-        _build_header_html(
-            intersection_label, direction_label, start_label, end_label, time_period, current_cycle
-        ),
-        unsafe_allow_html=True,
-    )
-
-    # Hour window label for KPIs
-    period_windows = {"AM": "05:00–10:00", "MD": "11:00–15:00", "PM": "16:00–20:00", "ALL": "00:00–23:00"}
-    hours_window_str = period_windows.get(selected_period, "—")
-
-    # Hourly aggregation
-    period_data["hour"] = period_data["local_datetime"].dt.hour
-    hourly = period_data.groupby("hour", as_index=False)["total_volume"].mean()
-    hourly["Volume"] = hourly["total_volume"].fillna(0).round().astype(int)
-
-    # Recommendations + Status
-    hourly["CVAG Recommendation"] = hourly["Volume"].apply(get_hourly_cycle_length)
-    hourly["Status"] = hourly["CVAG Recommendation"].apply(lambda rec: _get_status(rec, current_cycle))
-    hourly["Hour"] = hourly["hour"].apply(lambda x: f"{x:02d}:00")
-    hourly["Rec (sec)"] = hourly["CVAG Recommendation"].apply(_sec_value)
-
-    # --- KPI calculations ---
-    total_hours = len(hourly)
-    optimal_hours = int((hourly["Status"] == "🟢 OPTIMAL").sum())
-    changes_needed = total_hours - optimal_hours
-
-    # Lists of hours needing changes (for display)
-    inc_hours_list = hourly.loc[hourly["Status"] == "⬆️ INCREASE", "Hour"].tolist()
-    red_hours_list = hourly.loc[hourly["Status"] == "🔽 REDUCE", "Hour"].tolist()
-
-    # High-volume threshold KPI (based on raw rows in selected period)
-    HIGH_VOLUME_THRESHOLD_VPH = 1200
-    period_data["total_volume"] = pd.to_numeric(period_data["total_volume"], errors="coerce")
-    total_rows = int(period_data["total_volume"].count())
-    high_rows = period_data.loc[period_data["total_volume"] > HIGH_VOLUME_THRESHOLD_VPH]
-    high_hours = int(len(high_rows)) if total_rows > 0 else 0
-    high_share = (high_hours / total_rows * 100) if total_rows > 0 else 0.0
-
-    # Unique hour-of-day labels that exceeded threshold
-    exceed_hour_ids = sorted(high_rows["local_datetime"].dt.hour.unique().tolist()) if len(high_rows) else []
-    exceed_hour_labels = [f"{h:02d}:00" for h in exceed_hour_ids]
-
-    # Peak capacity utilization
-    INTERSECTION_CAPACITY_VPH = 1800
-    peak_volume_pd = float(period_data["total_volume"].max()) if total_rows > 0 else 0.0
-    peak_capacity_util = (peak_volume_pd / INTERSECTION_CAPACITY_VPH * 100) if INTERSECTION_CAPACITY_VPH else 0.0
-
-    # Helper to summarize lists
-    def _hours_preview(lst, max_items=8):
-        if not lst:
-            return "None"
-        tail = "" if len(lst) <= max_items else f" (+{len(lst)-max_items} more)"
-        return ", ".join(lst[:max_items]) + tail
-
-    # -------------------------
-    # BOXED KPIs (card grid)
-    # -------------------------
-    system_eff = (optimal_hours / total_hours * 100) if total_hours else 0
-    tone_eff = "good" if system_eff >= 80 else ("warn" if system_eff >= 60 else "bad")
-    tone_changes = "good" if changes_needed == 0 else ("warn" if changes_needed <= (total_hours * 0.4) else "bad")
-    tone_high = "bad" if high_share > 25 else ("warn" if high_share > 10 else "good")
-    tone_util = "bad" if peak_capacity_util > 90 else ("warn" if peak_capacity_util > 75 else "good")
-
-    cards_html = f"""
-    <div class="cvag-kpi-grid">
-      {_kpi_card("📅 Hours Analyzed", f"{total_hours}", hours_window_str, "neutral")}
-      {_kpi_card("✅ Optimal Hours", f"{optimal_hours}", f"{system_eff:.0f}% efficiency", tone_eff)}
-      {_kpi_card("🔧 Changes Needed", f"{changes_needed}", f"↑ {len(inc_hours_list)} • ↓ {len(red_hours_list)}", tone_changes)}
-      {_kpi_card("⚠️ Hours Above High-Volume Threshold", f"{high_hours}", f"{high_share:.1f}% of time",
-                 tone_high, foot1=f"Threshold: > {HIGH_VOLUME_THRESHOLD_VPH:,} vph",
-                 foot2=f"Hours: {_hours_preview(exceed_hour_labels)}")}
-      {_kpi_card("🚦 Peak Capacity Utilization", f"{peak_capacity_util:.0f}%", f"Peak {int(peak_volume_pd):,} vph",
-                 tone_util, foot1=f"Capacity: {INTERSECTION_CAPACITY_VPH:,} vph")}
-    </div>
+# =========================
+# Chart Helpers
+# =========================
+def create_volume_charts(
+        raw_hourly_df: pd.DataFrame,
+        granularity: str,
+        cap_vph: float,
+        high_vph: float,
+        mode_label: str = "Vehicles",
+        top_k: int = 10
+):
     """
-    st.markdown(cards_html, unsafe_allow_html=True)
+    Returns (fig_trend, fig_box, fig_matrix)
+    - fig_trend: Time series per intersection with scaled capacity/threshold overlays.
+    - fig_box:   Distribution of bucket totals by intersection.
+    - fig_matrix: Average bucket total by intersection (ranking).
+    """
+    if raw_hourly_df.empty:
+        return None, None, None
 
-    # -------------------------
-    # Charts
-    # -------------------------
-    ch1, ch2 = st.columns([2.2, 1.8])
-    with ch1:
-        # Bar chart colored by recommended cycle (palette + patterns + outlines)
-        fig = px.bar(
-            hourly.sort_values("hour"),
-            x="Hour",
-            y="Volume",
-            color="CVAG Recommendation",
-            color_discrete_map=CYCLE_COLORS,
-            category_orders={"CVAG Recommendation": CYCLE_ORDER, "Hour": [f"{h:02d}:00" for h in range(24)]},
-            title="Hourly Volume with Recommended Cycle Length",
-            labels={"Volume": "Avg Volume (vph)", "Hour": "Hour of Day"},
-            template="simple_white",
-        )
-        for tr in fig.data:
-            tr.update(marker_line_color="rgba(0,0,0,0.30)", marker_line_width=0.7)
-            if tr.name in PATTERN_MAP:
-                tr.update(marker_pattern=dict(shape=PATTERN_MAP[tr.name], size=4, solidity=0.25, fillmode="overlay"))
+    # Aggregate to the selected bucket
+    agg = _prep_bucket(raw_hourly_df, granularity)
+    if agg.empty:
+        return None, None, None
 
-        status_symbols = {"🟢 OPTIMAL": "circle", "⬆️ INCREASE": "triangle-up", "🔽 REDUCE": "triangle-down"}
-        fig.add_trace(
+    # Limit to top intersections by mean demand
+    order = agg.groupby("intersection_name")["volume"].mean().sort_values(ascending=False)
+    keep = order.index[:max(1, min(top_k, len(order)))]
+
+    plot_df = agg[agg["intersection_name"].isin(keep)].copy().sort_values("local_datetime")
+    unit = AGG_META[granularity]["unit"]
+    label = AGG_META[granularity]["label"]
+
+    # ---------- Trend ----------
+    fig_trend = go.Figure()
+    mode = "lines" if granularity == "Hourly" else "lines+markers"
+    xfmt = "%Y-%m-%d %H:%M" if granularity == "Hourly" else "%Y-%m-%d"
+
+    for name, g in plot_df.groupby("intersection_name"):
+        fig_trend.add_trace(
             go.Scatter(
-                x=hourly["Hour"],
-                y=hourly["Volume"],
-                mode="markers",
-                marker=dict(
-                    size=11,
-                    color=[_ for _ in (STATUS_COLORS[s] for s in hourly["Status"])],
-                    symbol=[status_symbols[s] for s in hourly["Status"]],
-                    line=dict(width=1, color="white"),
-                ),
-                name="Status",
-                hovertemplate="Hour=%{x}<br>Volume=%{y:.0f}<extra></extra>",
+                x=g["local_datetime"],
+                y=g["volume"],
+                mode=mode,
+                name=name,
+                hovertemplate=(
+                    f"<b>%{{fullData.name}}</b><br>%{{x|{xfmt}}}<br>{mode_label}: %{{y:,.0f}} {unit}<extra></extra>"),
             )
         )
-        fig.update_layout(
-            height=420,
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-            margin=dict(l=10, r=10, t=50, b=10),
-            bargap=0.15,
+
+    xs = _cap_series_for_x(plot_df, cap_vph, high_vph)
+    fig_trend.add_trace(
+        go.Scatter(
+            x=xs["local_datetime"], y=xs["capacity"],
+            name=f"Theoretical Capacity ({unit})", mode="lines",
+            line=dict(dash="dash", color="red"),
+            hovertemplate=(f"%{{x|{xfmt}}}<br>Capacity: %{{y:,.0f}} {unit}<extra></extra>"),
         )
-        fig.update_xaxes(showgrid=False)
-        fig.update_yaxes(gridcolor="rgba(0,0,0,0.08)")
-        st.plotly_chart(fig, use_container_width=True)
-
-    with ch2:
-        status_counts = hourly["Status"].value_counts().reindex(["🟢 OPTIMAL", "⬆️ INCREASE", "🔽 REDUCE"], fill_value=0)
-        pie = px.pie(
-            names=status_counts.index,
-            values=status_counts.values,
-            title="Hours by Status",
-            color=status_counts.index,
-            color_discrete_map={
-                "🟢 OPTIMAL": STATUS_COLORS["🟢 OPTIMAL"],
-                "⬆️ INCREASE": STATUS_COLORS["⬆️ INCREASE"],
-                "🔽 REDUCE": STATUS_COLORS["🔽 REDUCE"],
-            },
-            hole=0.35,
-            template="simple_white",
+    )
+    fig_trend.add_trace(
+        go.Scatter(
+            x=xs["local_datetime"], y=xs["high"],
+            name=f"High Volume Threshold ({unit})", mode="lines",
+            line=dict(dash="dot", color="orange"),
+            hovertemplate=(f"%{{x|{xfmt}}}<br>Threshold: %{{y:,.0f}} {unit}<extra></extra>"),
         )
-        pie.update_traces(textposition="inside", textinfo="label+percent")
-        pie.update_layout(height=420, margin=dict(l=10, r=10, t=50, b=10))
-        st.plotly_chart(pie, use_container_width=True)
-
-    # Stylized table
-    hourly_display = hourly[["Hour", "Volume", "CVAG Recommendation", "Status"]].rename(
-        columns={"Volume": "Avg Volume (vph)"}
     )
-    st.dataframe(
-        hourly_display,
-        use_container_width=True,
-        column_config={
-            "Hour": st.column_config.TextColumn("Hour", width="small"),
-            "Avg Volume (vph)": st.column_config.NumberColumn(
-                "Total Vehicle Volume (Throughs, lefts, and rights)", format="%d"
-            ),
-            "CVAG Recommendation": st.column_config.TextColumn("Cycle Length Recommendation For CVAG", width="medium"),
-            "Status": st.column_config.TextColumn("Cycle Length Status", width="medium"),
-        },
+    fig_trend.update_layout(
+        title=f"{mode_label} Volume Trends - {granularity}",
+        xaxis_title="Date/Time",
+        yaxis_title=f"{mode_label} Volume ({unit})",
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0),
+        margin=dict(l=10, r=10, t=40, b=10),
+        template="plotly_white",
     )
 
-    # Insights + download
-    if len(hourly):
-        peak_volume = int(hourly["Volume"].max())
-        peak_hour = hourly.loc[hourly["Volume"].idxmax(), "Hour"]
-    else:
-        peak_volume, peak_hour = 0, "—"
-
-    st.markdown(
-        f"""
-        <div class="insight-box" style="margin-top:.5rem;">
-            <h4>💡 Cycle Length Optimization Insights</h4>
-            <p><strong>📊 System Efficiency:</strong> {optimal_hours}/{total_hours} hours optimal ({(optimal_hours/total_hours*100 if total_hours else 0):.0f}%)</p>
-            <p><strong>📈 Volume Profile:</strong> Peak {peak_volume:,} vph at {peak_hour} • Threshold exceedance: {high_hours} hours ({high_share:.1f}% of time)</p>
-            <p><strong>🔧 Actions:</strong> ↑ {int((hourly["Status"] == "⬆️ INCREASE").sum())} hours need longer cycles • ↓ {int((hourly["Status"] == "🔽 REDUCE").sum())} hours need shorter cycles</p>
-            <p><strong>🚦 Capacity:</strong> Peak utilization {peak_capacity_util:.0f}% of intersection capacity ({INTERSECTION_CAPACITY_VPH:,} vph)</p>
-        </div>
-        """,
-        unsafe_allow_html=True,
+    # ---------- Box ----------
+    cat_order = order[order.index.isin(keep)].index.tolist()
+    fig_box = px.box(
+        plot_df, x="intersection_name", y="volume",
+        category_orders={"intersection_name": cat_order},
+        points=False,
+        title=f"{mode_label} Volume Distribution by Intersection — {granularity}"
+    )
+    fig_box.update_layout(
+        xaxis_title="Intersection",
+        yaxis_title=f"{mode_label} Volume per {label} ({unit})",
+        margin=dict(l=10, r=10, t=40, b=10),
+        template="plotly_white",
     )
 
-    st.download_button(
-        "⬇️ Download Cycle Length Analysis (CSV)",
-        data=hourly_display.to_csv(index=False).encode("utf-8"),
-        file_name=f"cycle_length_recommendations_{selected_period.lower()}.csv",
-        mime="text/csv",
-        key=f"{key_prefix}_download",
+    # ---------- Matrix ----------
+    mat = (
+        plot_df.groupby("intersection_name", as_index=False)["volume"]
+        .mean()
+        .rename(columns={"volume": f"Avg {label} Volume"})
     )
+    mat["Rank"] = mat[f"Avg {label} Volume"].rank(ascending=False, method="dense").astype(int)
+    mat = mat.sort_values("Rank")
+    fig_matrix = px.bar(
+        mat, y="intersection_name", x=f"Avg {label} Volume",
+        orientation="h", text=f"Avg {label} Volume",
+        title=f"Average {label.capitalize()} {mode_label} Volume by Intersection"
+    )
+    fig_matrix.update_traces(texttemplate="%{text:,.0f}", textposition="outside", cliponaxis=False)
+    fig_matrix.update_layout(
+        xaxis_title=f"Average {label} volume ({unit})",
+        yaxis_title="",
+        margin=dict(l=10, r=10, t=40, b=10),
+        template="plotly_white",
+    )
+    return fig_trend, fig_box, fig_matrix
+
+
+# =========================
+# Main Renderer
+# =========================
+def render_vantage_tab():
+    """
+    Main renderer for Tab 4: Iteris VantageLive (Bikes + Vehicles).
+    Matches Tab 2 style with search-gated results.
+    """
+    # Load data once
+    bikes_df = load_vantage_bikes()
+    vehicles_df = load_vantage_vehicles()
+
+    # -------- Sidebar controls --------
+    with st.sidebar:
+        with st.expander("⚙️ Pg.4 SETTINGS", expanded=True):
+            st.caption("Select Mode, Intersection(s) and Date Range")
+            st.caption("Data: Bike & Vehicle Volume from Iteris VantageLive")
+
+            # Mode selector
+            st.markdown("## 🚲 Select Mode")
+            mode = st.selectbox(
+                "Analysis Mode",
+                ["Vehicles", "Bikes", "Both (Combined)"],
+                key="vantage_mode",
+            )
+
+            # Intersection selector
+            all_intersections = sorted(list(SEGMENT_ID_TO_NAME.values()))
+            # Also add any intersections present as names in the data but not in the dict
+            if not bikes_df.empty:
+                all_intersections = sorted(set(all_intersections) | set(bikes_df["intersection_name"].unique()))
+            if not vehicles_df.empty:
+                all_intersections = sorted(set(all_intersections) | set(vehicles_df["intersection_name"].unique()))
+
+            st.markdown("## 🚦 Select Intersection")
+            intersection = st.selectbox(
+                "Intersection",
+                ["All Intersections"] + all_intersections,
+                key="vantage_intersection",
+            )
+
+            # Date range
+            if mode == "Bikes" and not bikes_df.empty:
+                min_date = bikes_df["local_datetime"].dt.date.min()
+                max_date = bikes_df["local_datetime"].dt.date.max()
+            elif mode == "Vehicles" and not vehicles_df.empty:
+                min_date = vehicles_df["local_datetime"].dt.date.min()
+                max_date = vehicles_df["local_datetime"].dt.date.max()
+            elif not bikes_df.empty and not vehicles_df.empty:
+                min_date = min(bikes_df["local_datetime"].dt.date.min(),
+                               vehicles_df["local_datetime"].dt.date.min())
+                max_date = max(bikes_df["local_datetime"].dt.date.max(),
+                               vehicles_df["local_datetime"].dt.date.max())
+            else:
+                min_date = datetime.today().date() - timedelta(days=7)
+                max_date = datetime.today().date()
+
+            st.markdown("## 📅 Date And Time")
+            date_range = date_range_preset_controls(min_date, max_date, key_prefix="vantage")
+
+            # Granularity
+            st.markdown("## Granularity")
+            granularity = st.selectbox(
+                "Data Aggregation",
+                ["Hourly", "Daily", "Weekly", "Monthly"],
+                index=1,  # default to Daily
+                key="granularity_vantage",
+            )
+
+            # Direction filter
+            st.markdown("## 🔄 Direction Filter")
+            direction_filter = st.selectbox(
+                "Direction",
+                ["All Directions", "NB", "SB", "EB", "WB"],
+                key="direction_filter_vantage",
+            )
+
+            # Turn type filter (vehicles only)
+            turn_filter = None
+            if mode in ["Vehicles", "Both (Combined)"]:
+                st.markdown("## 🔄 Turn Type Filter")
+                turn_filter = st.selectbox(
+                    "Turn Type",
+                    ["All Turns", "Through", "Left", "Right"],
+                    key="turn_filter_vantage",
+                )
+
+            # Track uncommitted controls
+            vantage_current = {
+                "mode": mode,
+                "intersection": intersection,
+                "date_range": tuple(date_range) if date_range else None,
+                "granularity": granularity,
+                "direction_filter": direction_filter,
+                "turn_filter": turn_filter,
+            }
+            st.session_state["vantage_current"] = vantage_current
+
+            if st.button("🔍 **Search**", key="search_vantage", type="primary", use_container_width=True):
+                st.session_state["vantage_params"] = vantage_current
+                st.session_state["vantage_ready"] = True
+
+    # -------- Main content area --------
+    vantage_ready = st.session_state.get("vantage_ready", False)
+
+    if not vantage_ready:
+        st.info("Choose your Mode, Intersection and Date Range in the settings to the left.")
+        return
+
+    vantage_params = st.session_state.get("vantage_params", {})
+    mode = vantage_params.get("mode", "Vehicles")
+    intersection = vantage_params.get("intersection", "All Intersections")
+    date_range = vantage_params.get("date_range")
+    granularity = vantage_params.get("granularity", "Daily")
+    direction_filter = vantage_params.get("direction_filter", "All Directions")
+    turn_filter = vantage_params.get("turn_filter", "All Turns")
+
+    if not date_range or len(date_range) != 2:
+        st.warning("⚠️ Please select both start and end dates to proceed.")
+        return
+
+    try:
+        # Prepare working datasets
+        def apply_filters(df: pd.DataFrame) -> pd.DataFrame:
+            if df.empty:
+                return df
+            out = df[
+                (df["local_datetime"].dt.date >= date_range[0]) &
+                (df["local_datetime"].dt.date <= date_range[1])
+            ].copy()
+
+            if intersection != "All Intersections":
+                out = out[out["intersection_name"] == intersection]
+
+            if direction_filter != "All Directions" and "direction" in out.columns:
+                out = out[out["direction"].str.upper() == direction_filter]
+
+            return out
+
+        working_bikes = apply_filters(bikes_df.copy()) if not bikes_df.empty else pd.DataFrame()
+        working_vehicles = apply_filters(vehicles_df.copy()) if not vehicles_df.empty else pd.DataFrame()
+
+        # Apply turn filter to vehicles
+        if turn_filter and turn_filter != "All Turns" and not working_vehicles.empty and "turn_type" in working_vehicles.columns:
+            working_vehicles = working_vehicles[working_vehicles["turn_type"] == turn_filter]
+
+        # Select data based on mode
+        if mode == "Bikes":
+            analysis_df = working_bikes
+            mode_label = "Bikes"
+        elif mode == "Vehicles":
+            analysis_df = working_vehicles
+            mode_label = "Vehicles"
+        else:  # Both (Combined)
+            if not working_bikes.empty and not working_vehicles.empty:
+                # Aggregate vehicles by intersection/datetime (sum across turns)
+                if "turn_type" in working_vehicles.columns:
+                    working_vehicles = working_vehicles.groupby(
+                        ["local_datetime", "intersection_name", "direction"],
+                        as_index=False
+                    )["volume"].sum()
+
+                working_bikes["mode"] = "Bikes"
+                working_vehicles["mode"] = "Vehicles"
+                analysis_df = pd.concat([working_bikes, working_vehicles], ignore_index=True)
+                mode_label = "Bikes + Vehicles"
+            elif not working_bikes.empty:
+                analysis_df = working_bikes
+                mode_label = "Bikes"
+            else:
+                analysis_df = working_vehicles
+                mode_label = "Vehicles"
+
+        if analysis_df.empty:
+            st.warning("⚠️ No data available for the selected filters.")
+            return
+
+        # Two-column layout with sticky right rail
+        content_col, right_col = st.columns([7, 3.5], gap="large")
+
+        # Right rail (sticky map)
+        with right_col:
+            st.markdown('<div id="vantage-map-anchor"></div>', unsafe_allow_html=True)
+            st.markdown("##### Corridor Map", help="Stays visible while you scroll the analysis on the left.")
+
+            try:
+                fig_map = build_intersections_overview(
+                    selected_label=None if intersection == "All Intersections" else intersection
+                )
+            except Exception:
+                fig_map = None
+
+            if fig_map:
+                try:
+                    fig_map.update_layout(height=MAP_HEIGHT, margin=dict(l=0, r=0, t=32, b=0))
+                except Exception:
+                    pass
+                st.markdown('<div class="cvag-map-card">', unsafe_allow_html=True)
+                st.plotly_chart(fig_map, use_container_width=True, config=PLOTLY_CONFIG)
+                if intersection != "All Intersections":
+                    st.caption(f"Selected: **{intersection}**")
+                st.markdown('</div>', unsafe_allow_html=True)
+            else:
+                st.markdown('<div class="cvag-map-card">', unsafe_allow_html=True)
+                st.caption("Map: Washington Street Corridor")
+                st.markdown('</div>', unsafe_allow_html=True)
+
+        # Main analysis content
+        with content_col:
+            span = (date_range[1] - date_range[0]).days + 1
+            total_obs = len(analysis_df)
+
+            # Gradient header (matching Tab 2)
+            st.markdown(
+                f"""
+                <div style="
+                    background: linear-gradient(135deg, #2b77e5 0%, #19c3e6 100%);
+                    border-radius:16px; padding:18px 20px; color:#fff; margin:8px 0 14px;
+                    box-shadow:0 10px 26px rgba(25,115,210,.25); text-align:left;">
+                  <div style="display:flex; align-items:center; gap:10px;">
+                    <div style="width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,.18);
+                                display:flex;align-items:center;justify-content:center;
+                                box-shadow:inset 0 0 0 1px rgba(255,255,255,.15);">📊</div>
+                    <div style="font-size:1.9rem;font-weight:800; letter-spacing:.2px;">
+                      Iteris VantageLive Analysis: {mode_label}
+                    </div>
+                  </div>
+                  <div style="margin-top:10px;display:flex;flex-direction:column;gap:6px;">
+                    <div>📅 {date_range[0].strftime('%b %d, %Y')} to {date_range[1].strftime('%b %d, %Y')} ({span} days) • {granularity} Aggregation</div>
+                    <div>✅ {total_obs:,} observations • Intersection: {intersection} • Direction: {direction_filter}</div>
+                  </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+            # Prepare aggregated data
+            raw = analysis_df.copy()
+            raw["volume"] = pd.to_numeric(raw["volume"], errors="coerce")
+            raw["local_datetime"] = pd.to_datetime(raw["local_datetime"])
+
+            # -------- KPIs Section --------
+            st.subheader(f"🚦 {mode_label} Volume Performance Indicators")
+            if not raw.empty and raw["volume"].notna().any():
+                bucket_all = _prep_bucket(raw, granularity).groupby("local_datetime", as_index=False)["volume"].sum().sort_values("local_datetime")
+                if granularity == "Monthly":
+                    bucket_all["bucket_hours"] = pd.to_datetime(bucket_all["local_datetime"]).dt.days_in_month * 24
+                else:
+                    bucket_all["bucket_hours"] = AGG_META[granularity]["fixed_hours"]
+
+                bucket_all["cap"] = bucket_all["bucket_hours"] * THEORETICAL_LINK_CAPACITY_VPH
+                util_series = np.where(bucket_all["cap"] > 0, bucket_all["volume"] / bucket_all["cap"] * 100, np.nan)
+
+                # Peak bucket
+                peak_idx = int(bucket_all["volume"].idxmax())
+                peak_val = float(bucket_all.loc[peak_idx, "volume"])
+                peak_cap = float(bucket_all.loc[peak_idx, "cap"])
+                peak_util_pct = (peak_val / peak_cap * 100) if peak_cap > 0 else 0.0
+
+                p95_val = float(np.nanpercentile(bucket_all["volume"], 95)) if bucket_all["volume"].notna().any() else 0.0
+                avg_bucket_val = float(bucket_all["volume"].mean())
+                avg_util_pct = float(np.nanmean(util_series)) if np.isfinite(util_series).any() else 0.0
+
+                # Hourly stats (per-row for hourly; otherwise raw rows are daily/weekly/monthly)
+                hourly_avg = float(np.nanmean(raw["volume"])) if raw["volume"].notna().any() else 0.0
+                cv_hourly = (float(np.nanstd(raw["volume"])) / hourly_avg * 100) if hourly_avg > 0 else 0.0
+                cv_bucket = (float(np.nanstd(bucket_all["volume"])) / avg_bucket_val * 100) if avg_bucket_val > 0 else 0.0
+
+                # Risk vs threshold using bucketed totals
+                unit = AGG_META[granularity]["unit"]
+                label = AGG_META[granularity]["label"]  # hour/day/week/month
+                bucket_all["threshold"] = bucket_all["bucket_hours"] * HIGH_VOLUME_THRESHOLD_VPH
+                high_periods = int((bucket_all["volume"] > bucket_all["threshold"]).sum())
+                total_periods = int(len(bucket_all))
+                risk_pct = (high_periods / total_periods * 100) if total_periods > 0 else 0.0
+
+                # Dynamic labels
+                if granularity == "Hourly":
+                    avg_label = f"Average Hourly {mode_label}"
+                    peak_label = f"🔥 Peak Hourly {mode_label}"
+                    avg_suffix = "vph"
+                elif granularity == "Daily":
+                    avg_label = f"Average Daily {mode_label}"
+                    peak_label = f"🔥 Peak Daily {mode_label}"
+                    avg_suffix = "vpd"
+                elif granularity == "Weekly":
+                    avg_label = f"Average Weekly {mode_label}"
+                    peak_label = f"🔥 Peak Weekly {mode_label}"
+                    avg_suffix = "vpw"
+                else:
+                    avg_label = f"Average Monthly {mode_label}"
+                    peak_label = f"🔥 Peak Monthly {mode_label}"
+                    avg_suffix = "vpm"
+
+                col1, col2, col3, col4, col5 = st.columns(5)
+
+                with col1:
+                    badge = (
+                        "badge-critical" if peak_util_pct > 90 else
+                        "badge-poor" if peak_util_pct > 75 else
+                        "badge-fair" if peak_util_pct > 60 else
+                        "badge-good"
+                    )
+                    st.metric(peak_label, f"{peak_val:,.0f} {unit}", delta=f"95th: {p95_val:,.0f} {unit}")
+                    st.markdown(
+                        f'<span class="performance-badge {badge}">{peak_util_pct:.0f}% of Capacity</span>',
+                        unsafe_allow_html=True,
+                    )
+
+                with col2:
+                    st.metric(f"📊 {avg_label}", f"{avg_bucket_val:,.0f} {avg_suffix}")
+                    if granularity == "Hourly":
+                        avg_util_pct_hourly = (hourly_avg / THEORETICAL_LINK_CAPACITY_VPH * 100) if THEORETICAL_LINK_CAPACITY_VPH else 0.0
+                        badge2 = "badge-good" if avg_util_pct_hourly <= 40 else ("badge-fair" if avg_util_pct_hourly <= 60 else "badge-poor")
+                        st.markdown(
+                            f'<span class="performance-badge {badge2}">{avg_util_pct_hourly:.0f}% Avg Util</span>',
+                            unsafe_allow_html=True,
+                        )
+                    else:
+                        badge2 = "badge-good" if avg_util_pct <= 40 else ("badge-fair" if avg_util_pct <= 60 else "badge-poor")
+                        st.markdown(
+                            f'<span class="performance-badge {badge2}">{avg_util_pct:.0f}% Avg Util</span>',
+                            unsafe_allow_html=True,
+                        )
+
+                with col3:
+                    total_volume = float(np.nansum(raw["volume"]))
+                    st.metric(f"🚗 Total {mode_label} (period)", f"{total_volume:,.0f}")
+                    state_badge = (
+                        "badge-good" if total_volume < 0.4 * THEORETICAL_LINK_CAPACITY_VPH * 24
+                        else "badge-fair" if total_volume < 0.7 * THEORETICAL_LINK_CAPACITY_VPH * 24
+                        else "badge-poor"
+                    )
+                    st.markdown(
+                        f'<span class="performance-badge {state_badge}">Period Total</span>',
+                        unsafe_allow_html=True,
+                    )
+
+                with col4:
+                    st.metric("🎯 Demand Consistency", f"{max(0, 100 - cv_bucket):.0f}%", delta=f"CV: {cv_bucket:.1f}%")
+                    label_cons = "Consistent" if cv_bucket < 30 else ("Variable" if cv_bucket < 50 else "Highly Variable")
+                    badge_cons = "badge-good" if cv_bucket < 30 else ("badge-fair" if cv_bucket < 50 else "badge-poor")
+                    st.markdown(
+                        f'<span class="performance-badge {badge_cons}">{label_cons}</span>',
+                        unsafe_allow_html=True,
+                    )
+
+                with col5:
+                    st.metric(f"⚠️ High Volume {label.capitalize()}s", f"{high_periods}", delta=f"{risk_pct:.1f}% of {label}s")
+                    level_badge = (
+                        "badge-critical" if risk_pct > 25 else
+                        "badge-poor" if risk_pct > 15 else
+                        "badge-fair" if risk_pct > 5 else
+                        "badge-good"
+                    )
+                    level = (
+                        "Very High" if risk_pct > 25 else
+                        "High" if risk_pct > 15 else
+                        "Moderate" if risk_pct > 5 else
+                        "Low"
+                    )
+                    st.markdown(
+                        f'<span class="performance-badge {level_badge}">{level} Risk</span>',
+                        unsafe_allow_html=True,
+                    )
+
+            # -------- Charts Section --------
+            st.subheader(f"📈 {mode_label} Volume Visualizations")
+            if len(analysis_df) > 1:
+                try:
+                    fig_trend, fig_box, fig_matrix = create_volume_charts(
+                        raw_hourly_df=raw,
+                        granularity=granularity,
+                        cap_vph=THEORETICAL_LINK_CAPACITY_VPH,
+                        high_vph=HIGH_VOLUME_THRESHOLD_VPH,
+                        mode_label=mode_label,
+                    )
+                    if fig_trend:
+                        st.plotly_chart(fig_trend, use_container_width=True, config=PLOTLY_CONFIG)
+                    colA, colB = st.columns(2)
+                    with colA:
+                        if fig_box:
+                            st.plotly_chart(fig_box, use_container_width=True, config=PLOTLY_CONFIG)
+                    with colB:
+                        if fig_matrix:
+                            st.plotly_chart(fig_matrix, use_container_width=True, config=PLOTLY_CONFIG)
+                except Exception as e:
+                    st.error(f"❌ Error creating volume charts: {e}")
+
+            # -------- Risk Analysis Table (granularity-aware) --------
+            st.subheader(f"🚨 Intersection Volume & Capacity Risk Analysis ({mode_label})")
+            try:
+                # Work at the selected bucket so periods (day/week/month) are apples-to-apples
+                bucketed = _prep_bucket(raw, granularity)
+
+                # Per-hour equivalent for utilization vs capacity
+                bucketed["per_hour_equiv"] = np.where(
+                    bucketed["bucket_hours"] > 0,
+                    bucketed["volume"] / bucketed["bucket_hours"],
+                    np.nan
+                )
+
+                group_cols = ["intersection_name"]
+                if "direction" in bucketed.columns:
+                    group_cols.append("direction")
+
+                g = bucketed.groupby(group_cols).agg(
+                    volume_mean=("volume", "mean"),
+                    volume_max=("volume", "max"),
+                    volume_std=("volume", "std"),
+                    volume_count=("volume", "count"),
+                    hr_mean=("per_hour_equiv", "mean"),
+                    hr_max=("per_hour_equiv", "max"),
+                ).reset_index()
+
+                # Capacity utilization based on per-hour equivalent
+                g["Peak_Capacity_Util"] = (g["hr_max"] / THEORETICAL_LINK_CAPACITY_VPH * 100).round(1)
+                g["Avg_Capacity_Util"] = (g["hr_mean"] / THEORETICAL_LINK_CAPACITY_VPH * 100).round(1)
+
+                # Peaking/variability based on bucket totals
+                g["Volume_Variability"] = (
+                    g["volume_std"] / g["volume_mean"] * 100
+                ).replace([np.inf, -np.inf], np.nan).fillna(0).round(1)
+                g["Peak_Avg_Ratio"] = (
+                    g["volume_max"] / g["volume_mean"]
+                ).replace([np.inf, -np.inf], 0).fillna(0).round(2)
+
+                # Composite risk
+                g["🚨 Risk Score"] = (
+                    0.5 * g["Peak_Capacity_Util"]
+                    + 0.3 * g["Avg_Capacity_Util"]
+                    + 0.2 * (g["Peak_Avg_Ratio"] * 10)
+                ).round(1)
+
+                g["⚠️ Risk Level"] = pd.cut(
+                    g["🚨 Risk Score"],
+                    bins=[0, 40, 60, 80, 90, 999],
+                    labels=["🟢 Low Risk", "🟡 Moderate Risk", "🟠 High Risk", "🔴 Critical Risk", "🚨 Severe Risk"],
+                    include_lowest=True,
+                )
+                g["🎯 Action Priority"] = pd.cut(
+                    g["Peak_Capacity_Util"],
+                    bins=[0, 60, 75, 90, 999],
+                    labels=["🟢 Monitor", "🟡 Optimize", "🟠 Upgrade", "🔴 Urgent"],
+                    include_lowest=True,
+                )
+
+                unit = AGG_META[granularity]["unit"]
+                label = AGG_META[granularity]["label"]
+
+                final = g[
+                    [
+                        "intersection_name",
+                        *(["direction"] if "direction" in g.columns else []),
+                        "⚠️ Risk Level",
+                        "🎯 Action Priority",
+                        "🚨 Risk Score",
+                        "Peak_Capacity_Util",
+                        "Avg_Capacity_Util",
+                        "volume_mean",
+                        "volume_max",
+                        "Peak_Avg_Ratio",
+                        "volume_count",
+                    ]
+                ].rename(
+                    columns={
+                        "intersection_name": "Intersection",
+                        "direction": "Dir" if "direction" in g.columns else None,
+                        "Peak_Capacity_Util": "📊 Peak Capacity %",
+                        "Avg_Capacity_Util": "📊 Avg Capacity %",
+                        "volume_mean": f"Avg {mode_label} ({unit})",
+                        "volume_max": f"Peak {mode_label} ({unit})",
+                        "volume_count": f"{label.capitalize()}s",
+                    }
+                )
+
+                # Clean any None keys that can appear in rename when direction not present
+                final.columns = [c if c is not None else "Dir" for c in final.columns]
+
+                final = final.sort_values("🚨 Risk Score", ascending=False)
+
+                st.dataframe(
+                    final.head(15),
+                    use_container_width=True,
+                    column_config={
+                        "🚨 Risk Score": st.column_config.NumberColumn(
+                            "🚨 Capacity Risk Score",
+                            help="Composite of peak/avg util + peaking",
+                            format="%.1f",
+                            min_value=0,
+                            max_value=120,
+                        ),
+                        "📊 Peak Capacity %": st.column_config.NumberColumn("📊 Peak Capacity %", format="%.1f%%"),
+                        "📊 Avg Capacity %": st.column_config.NumberColumn("📊 Avg Capacity %", format="%.1f%%"),
+                    },
+                )
+
+                st.download_button(
+                    "⬇️ Download Risk Analysis Table (CSV)",
+                    data=final.to_csv(index=False).encode("utf-8"),
+                    file_name=f"vantage_{mode.lower()}_risk.csv",
+                    mime="text/csv",
+                )
+            except Exception as e:
+                st.error(f"❌ Error in risk analysis: {e}")
+
+            # -------- Cycle Length Recommendations (granularity-aware feed) --------
+            st.subheader("🔄 Cycle Length Recommendations for CVAG")
+            try:
+                # Prepare data for cycle length function.
+                # The recommender expects something like hourly demand;
+                # so we pass hourly-equivalent (bucket total / bucket_hours) to 'total_volume'.
+                cycle_bucketed = _prep_bucket(raw, granularity)
+                cycle_bucketed["total_volume"] = np.where(
+                    cycle_bucketed["bucket_hours"] > 0,
+                    cycle_bucketed["volume"] / cycle_bucketed["bucket_hours"],
+                    cycle_bucketed["volume"]
+                )
+                st.caption("Note: Using hourly-equivalent demand (bucket total ÷ hours in bucket) for cycle estimation.")
+                render_cycle_length_section(cycle_bucketed)
+            except Exception as e:
+                st.error(f"❌ Error rendering cycle length section: {e}")
+
+    except Exception as e:
+        st.error(f"❌ Error processing VantageLive data: {e}")
+        import traceback
+        st.text("Debug info:")
+        st.text(traceback.format_exc())
