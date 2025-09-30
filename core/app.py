@@ -517,7 +517,7 @@ def improved_volume_charts_for_tab2(
 # Tabs
 # =========================
 st.markdown("## Select Page")
-tab1, tab2, tab3, tab4, = st.tabs(["Pg.1 ITERIS CLEARGUIDE", "Pg.2 KINETIC MOBILITY", "Pg.3 ACYCLICA", "Pg.4 Iteris VantageLive"])
+tab1, tab2, tab3, tab4, = st.tabs(["Pg.1 ITERIS CLEARGUIDE", "Pg.2 KINETIC MOBILITY", "Pg.3 ACYCLICA", "Pg.4 ITERIS VANTAGE LIVE"])
 
 # -------------------------
 # TAB 1: Performance / Travel Time (Search-gated, NO forms)
@@ -532,7 +532,7 @@ with tab1:
         st.image("Logos/ACE-logo-HiRes.jpg", width=210)
         st.image("Logos/CV Sync__.jpg", width=205)
 
-        with st.expander("⚙️ Pg.1 SETTINGS", expanded=False):
+        with st.expander("⚙️ Pg.1 ITERIS CLEARGUIDE SETTINGS", expanded=False):
             st.caption("Select Route and Date Range")
             st.caption("Data: Vehicle Speed, Delay, and Travel Time")
             st.markdown("## 🗺️ Select Route")
@@ -1029,7 +1029,7 @@ with tab2:
     volume_df = get_volume_df()
 
     with st.sidebar:
-        with st.expander("⚙️ Pg.2 SETTINGS", expanded=False):
+        with st.expander("⚙️ Pg.2 KINETIC MOBILITY SETTINGS", expanded=False):
 
             st.caption("Select Intersection(s) and Date Range")
             st.caption("Data: Vehicle Volume")

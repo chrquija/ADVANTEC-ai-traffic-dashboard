@@ -310,7 +310,7 @@ def render_vantage_tab():
 
     # -------- Sidebar controls --------
     with st.sidebar:
-        with st.expander("⚙️ Pg.4 SETTINGS", expanded=False):
+        with st.expander("⚙️ Pg.4 ITERIS VANTAGE LIVE SETTINGS", expanded=False):
             st.caption("Select Mode, Intersection(s) and Date Range")
             st.caption("Data: Bike & Vehicle Volume from Iteris VantageLive")
 
