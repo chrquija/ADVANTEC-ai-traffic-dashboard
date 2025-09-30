@@ -442,7 +442,7 @@ def render_cycle_length_section(raw: pd.DataFrame, key_prefix: str = "cycle") ->
             ),
             unsafe_allow_html=True,
         )
-        st.warning("⚠️ No Prediction available for the selected time period.")
+        st.warning("⚠️ No Prediction available for the selected time period. Check if Hourly Data is Available")
         return
 
     # Now that we know the user's choices, render the header with the bubble
