@@ -1,0 +1,1249 @@
+﻿local_datetime,segment_id,direction,turn_type,volume
+6/15/2025,Washington and Avenue 52,eb,Right,2
+6/15/2025,Washington and Avenue 52,eb,Through,4
+6/15/2025,Washington and Avenue 52,eb,Left,6
+6/16/2025,Washington and Avenue 52,eb,Right,256
+6/16/2025,Washington and Avenue 52,eb,Through,1062
+6/16/2025,Washington and Avenue 52,eb,Left,1261
+6/17/2025,Washington and Avenue 52,eb,Right,248
+6/17/2025,Washington and Avenue 52,eb,Through,1120
+6/17/2025,Washington and Avenue 52,eb,Left,1314
+6/18/2025,Washington and Avenue 52,eb,Right,351
+6/18/2025,Washington and Avenue 52,eb,Through,1135
+6/18/2025,Washington and Avenue 52,eb,Left,1225
+6/19/2025,Washington and Avenue 52,eb,Right,233
+6/19/2025,Washington and Avenue 52,eb,Through,1072
+6/19/2025,Washington and Avenue 52,eb,Left,1244
+6/20/2025,Washington and Avenue 52,eb,Right,260
+6/20/2025,Washington and Avenue 52,eb,Through,1199
+6/20/2025,Washington and Avenue 52,eb,Left,1313
+6/21/2025,Washington and Avenue 52,eb,Right,275
+6/21/2025,Washington and Avenue 52,eb,Through,907
+6/21/2025,Washington and Avenue 52,eb,Left,1117
+6/22/2025,Washington and Avenue 52,eb,Right,236
+6/22/2025,Washington and Avenue 52,eb,Through,823
+6/22/2025,Washington and Avenue 52,eb,Left,1014
+6/23/2025,Washington and Avenue 52,eb,Right,719
+6/23/2025,Washington and Avenue 52,eb,Through,2389
+6/23/2025,Washington and Avenue 52,eb,Left,2534
+6/24/2025,Washington and Avenue 52,eb,Right,1127
+6/24/2025,Washington and Avenue 52,eb,Through,3434
+6/24/2025,Washington and Avenue 52,eb,Left,4043
+6/25/2025,Washington and Avenue 52,eb,Right,902
+6/25/2025,Washington and Avenue 52,eb,Through,3528
+6/25/2025,Washington and Avenue 52,eb,Left,3896
+6/26/2025,Washington and Avenue 52,eb,Right,962
+6/26/2025,Washington and Avenue 52,eb,Through,3532
+6/26/2025,Washington and Avenue 52,eb,Left,3996
+6/27/2025,Washington and Avenue 52,eb,Right,1009
+6/27/2025,Washington and Avenue 52,eb,Through,3524
+6/27/2025,Washington and Avenue 52,eb,Left,3878
+6/28/2025,Washington and Avenue 52,eb,Right,849
+6/28/2025,Washington and Avenue 52,eb,Through,2925
+6/28/2025,Washington and Avenue 52,eb,Left,3358
+6/29/2025,Washington and Avenue 52,eb,Right,703
+6/29/2025,Washington and Avenue 52,eb,Through,2499
+6/29/2025,Washington and Avenue 52,eb,Left,2949
+6/30/2025,Washington and Avenue 52,eb,Right,832
+6/30/2025,Washington and Avenue 52,eb,Through,3299
+6/30/2025,Washington and Avenue 52,eb,Left,3700
+6/15/2025,Washington and Avenue 52,sb,Right,10
+6/15/2025,Washington and Avenue 52,sb,Through,0
+6/15/2025,Washington and Avenue 52,sb,Left,5
+6/16/2025,Washington and Avenue 52,sb,Right,1969
+6/16/2025,Washington and Avenue 52,sb,Through,116
+6/16/2025,Washington and Avenue 52,sb,Left,1365
+6/17/2025,Washington and Avenue 52,sb,Right,2041
+6/17/2025,Washington and Avenue 52,sb,Through,109
+6/17/2025,Washington and Avenue 52,sb,Left,1466
+6/18/2025,Washington and Avenue 52,sb,Right,1866
+6/18/2025,Washington and Avenue 52,sb,Through,129
+6/18/2025,Washington and Avenue 52,sb,Left,1473
+6/19/2025,Washington and Avenue 52,sb,Right,1971
+6/19/2025,Washington and Avenue 52,sb,Through,120
+6/19/2025,Washington and Avenue 52,sb,Left,1421
+6/20/2025,Washington and Avenue 52,sb,Right,2014
+6/20/2025,Washington and Avenue 52,sb,Through,97
+6/20/2025,Washington and Avenue 52,sb,Left,1384
+6/21/2025,Washington and Avenue 52,sb,Right,1725
+6/21/2025,Washington and Avenue 52,sb,Through,107
+6/21/2025,Washington and Avenue 52,sb,Left,1048
+6/22/2025,Washington and Avenue 52,sb,Right,1542
+6/22/2025,Washington and Avenue 52,sb,Through,58
+6/22/2025,Washington and Avenue 52,sb,Left,767
+6/23/2025,Washington and Avenue 52,sb,Right,4812
+6/23/2025,Washington and Avenue 52,sb,Through,239
+6/23/2025,Washington and Avenue 52,sb,Left,3060
+6/24/2025,Washington and Avenue 52,sb,Right,6092
+6/24/2025,Washington and Avenue 52,sb,Through,281
+6/24/2025,Washington and Avenue 52,sb,Left,4157
+6/25/2025,Washington and Avenue 52,sb,Right,6123
+6/25/2025,Washington and Avenue 52,sb,Through,228
+6/25/2025,Washington and Avenue 52,sb,Left,4095
+6/26/2025,Washington and Avenue 52,sb,Right,6242
+6/26/2025,Washington and Avenue 52,sb,Through,319
+6/26/2025,Washington and Avenue 52,sb,Left,4025
+6/27/2025,Washington and Avenue 52,sb,Right,5900
+6/27/2025,Washington and Avenue 52,sb,Through,356
+6/27/2025,Washington and Avenue 52,sb,Left,4209
+6/28/2025,Washington and Avenue 52,sb,Right,5179
+6/28/2025,Washington and Avenue 52,sb,Through,274
+6/28/2025,Washington and Avenue 52,sb,Left,2935
+6/29/2025,Washington and Avenue 52,sb,Right,4704
+6/29/2025,Washington and Avenue 52,sb,Through,201
+6/29/2025,Washington and Avenue 52,sb,Left,2197
+6/30/2025,Washington and Avenue 52,sb,Right,5831
+6/30/2025,Washington and Avenue 52,sb,Through,277
+6/30/2025,Washington and Avenue 52,sb,Left,3983
+6/15/2025,Washington and Avenue 52,nb,Right,0
+6/15/2025,Washington and Avenue 52,nb,Through,0
+6/15/2025,Washington and Avenue 52,nb,Left,0
+6/16/2025,Washington and Avenue 52,nb,Right,116
+6/16/2025,Washington and Avenue 52,nb,Through,58
+6/16/2025,Washington and Avenue 52,nb,Left,16
+6/17/2025,Washington and Avenue 52,nb,Right,127
+6/17/2025,Washington and Avenue 52,nb,Through,50
+6/17/2025,Washington and Avenue 52,nb,Left,18
+6/18/2025,Washington and Avenue 52,nb,Right,145
+6/18/2025,Washington and Avenue 52,nb,Through,54
+6/18/2025,Washington and Avenue 52,nb,Left,9
+6/19/2025,Washington and Avenue 52,nb,Right,102
+6/19/2025,Washington and Avenue 52,nb,Through,54
+6/19/2025,Washington and Avenue 52,nb,Left,18
+6/20/2025,Washington and Avenue 52,nb,Right,85
+6/20/2025,Washington and Avenue 52,nb,Through,48
+6/20/2025,Washington and Avenue 52,nb,Left,17
+6/21/2025,Washington and Avenue 52,nb,Right,65
+6/21/2025,Washington and Avenue 52,nb,Through,38
+6/21/2025,Washington and Avenue 52,nb,Left,10
+6/22/2025,Washington and Avenue 52,nb,Right,51
+6/22/2025,Washington and Avenue 52,nb,Through,32
+6/22/2025,Washington and Avenue 52,nb,Left,7
+6/23/2025,Washington and Avenue 52,nb,Right,205
+6/23/2025,Washington and Avenue 52,nb,Through,144
+6/23/2025,Washington and Avenue 52,nb,Left,33
+6/24/2025,Washington and Avenue 52,nb,Right,288
+6/24/2025,Washington and Avenue 52,nb,Through,112
+6/24/2025,Washington and Avenue 52,nb,Left,79
+6/25/2025,Washington and Avenue 52,nb,Right,363
+6/25/2025,Washington and Avenue 52,nb,Through,97
+6/25/2025,Washington and Avenue 52,nb,Left,50
+6/26/2025,Washington and Avenue 52,nb,Right,508
+6/26/2025,Washington and Avenue 52,nb,Through,197
+6/26/2025,Washington and Avenue 52,nb,Left,60
+6/27/2025,Washington and Avenue 52,nb,Right,384
+6/27/2025,Washington and Avenue 52,nb,Through,193
+6/27/2025,Washington and Avenue 52,nb,Left,41
+6/28/2025,Washington and Avenue 52,nb,Right,266
+6/28/2025,Washington and Avenue 52,nb,Through,109
+6/28/2025,Washington and Avenue 52,nb,Left,40
+6/29/2025,Washington and Avenue 52,nb,Right,142
+6/29/2025,Washington and Avenue 52,nb,Through,97
+6/29/2025,Washington and Avenue 52,nb,Left,35
+6/30/2025,Washington and Avenue 52,nb,Right,450
+6/30/2025,Washington and Avenue 52,nb,Through,138
+6/30/2025,Washington and Avenue 52,nb,Left,59
+6/15/2025,Washington and Avenue 52,wb,Right,3
+6/15/2025,Washington and Avenue 52,wb,Through,1
+6/15/2025,Washington and Avenue 52,wb,Left,0
+6/16/2025,Washington and Avenue 52,wb,Right,1685
+6/16/2025,Washington and Avenue 52,wb,Through,1009
+6/16/2025,Washington and Avenue 52,wb,Left,102
+6/17/2025,Washington and Avenue 52,wb,Right,1792
+6/17/2025,Washington and Avenue 52,wb,Through,1059
+6/17/2025,Washington and Avenue 52,wb,Left,98
+6/18/2025,Washington and Avenue 52,wb,Right,1652
+6/18/2025,Washington and Avenue 52,wb,Through,1087
+6/18/2025,Washington and Avenue 52,wb,Left,95
+6/19/2025,Washington and Avenue 52,wb,Right,1755
+6/19/2025,Washington and Avenue 52,wb,Through,1022
+6/19/2025,Washington and Avenue 52,wb,Left,88
+6/20/2025,Washington and Avenue 52,wb,Right,1752
+6/20/2025,Washington and Avenue 52,wb,Through,1041
+6/20/2025,Washington and Avenue 52,wb,Left,97
+6/21/2025,Washington and Avenue 52,wb,Right,1345
+6/21/2025,Washington and Avenue 52,wb,Through,987
+6/21/2025,Washington and Avenue 52,wb,Left,33
+6/22/2025,Washington and Avenue 52,wb,Right,936
+6/22/2025,Washington and Avenue 52,wb,Through,802
+6/22/2025,Washington and Avenue 52,wb,Left,9
+6/23/2025,Washington and Avenue 52,wb,Right,3291
+6/23/2025,Washington and Avenue 52,wb,Through,2497
+6/23/2025,Washington and Avenue 52,wb,Left,156
+6/24/2025,Washington and Avenue 52,wb,Right,5325
+6/24/2025,Washington and Avenue 52,wb,Through,3260
+6/24/2025,Washington and Avenue 52,wb,Left,244
+6/25/2025,Washington and Avenue 52,wb,Right,5014
+6/25/2025,Washington and Avenue 52,wb,Through,3332
+6/25/2025,Washington and Avenue 52,wb,Left,161
+6/26/2025,Washington and Avenue 52,wb,Right,4912
+6/26/2025,Washington and Avenue 52,wb,Through,3379
+6/26/2025,Washington and Avenue 52,wb,Left,253
+6/27/2025,Washington and Avenue 52,wb,Right,4884
+6/27/2025,Washington and Avenue 52,wb,Through,3241
+6/27/2025,Washington and Avenue 52,wb,Left,287
+6/28/2025,Washington and Avenue 52,wb,Right,3704
+6/28/2025,Washington and Avenue 52,wb,Through,2704
+6/28/2025,Washington and Avenue 52,wb,Left,95
+6/29/2025,Washington and Avenue 52,wb,Right,2818
+6/29/2025,Washington and Avenue 52,wb,Through,2410
+6/29/2025,Washington and Avenue 52,wb,Left,29
+6/30/2025,Washington and Avenue 52,wb,Right,4918
+6/30/2025,Washington and Avenue 52,wb,Through,2999
+6/30/2025,Washington and Avenue 52,wb,Left,261
+6/15/2025,Washington and Calle Tampico,eb,Right,0
+6/15/2025,Washington and Calle Tampico,eb,Through,9
+6/15/2025,Washington and Calle Tampico,eb,Left,0
+6/16/2025,Washington and Calle Tampico,eb,Right,1584
+6/16/2025,Washington and Calle Tampico,eb,Through,2406
+6/16/2025,Washington and Calle Tampico,eb,Left,100
+6/17/2025,Washington and Calle Tampico,eb,Right,1445
+6/17/2025,Washington and Calle Tampico,eb,Through,2356
+6/17/2025,Washington and Calle Tampico,eb,Left,112
+6/18/2025,Washington and Calle Tampico,eb,Right,1517
+6/18/2025,Washington and Calle Tampico,eb,Through,2383
+6/18/2025,Washington and Calle Tampico,eb,Left,112
+6/19/2025,Washington and Calle Tampico,eb,Right,1443
+6/19/2025,Washington and Calle Tampico,eb,Through,2460
+6/19/2025,Washington and Calle Tampico,eb,Left,106
+6/20/2025,Washington and Calle Tampico,eb,Right,1663
+6/20/2025,Washington and Calle Tampico,eb,Through,2396
+6/20/2025,Washington and Calle Tampico,eb,Left,126
+6/21/2025,Washington and Calle Tampico,eb,Right,1293
+6/21/2025,Washington and Calle Tampico,eb,Through,1908
+6/21/2025,Washington and Calle Tampico,eb,Left,111
+6/22/2025,Washington and Calle Tampico,eb,Right,1118
+6/22/2025,Washington and Calle Tampico,eb,Through,1623
+6/22/2025,Washington and Calle Tampico,eb,Left,90
+6/23/2025,Washington and Calle Tampico,eb,Right,3741
+6/23/2025,Washington and Calle Tampico,eb,Through,5466
+6/23/2025,Washington and Calle Tampico,eb,Left,241
+6/24/2025,Washington and Calle Tampico,eb,Right,4787
+6/24/2025,Washington and Calle Tampico,eb,Through,7220
+6/24/2025,Washington and Calle Tampico,eb,Left,334
+6/25/2025,Washington and Calle Tampico,eb,Right,4606
+6/25/2025,Washington and Calle Tampico,eb,Through,7163
+6/25/2025,Washington and Calle Tampico,eb,Left,362
+6/26/2025,Washington and Calle Tampico,eb,Right,4723
+6/26/2025,Washington and Calle Tampico,eb,Through,7000
+6/26/2025,Washington and Calle Tampico,eb,Left,334
+6/27/2025,Washington and Calle Tampico,eb,Right,4410
+6/27/2025,Washington and Calle Tampico,eb,Through,7253
+6/27/2025,Washington and Calle Tampico,eb,Left,361
+6/28/2025,Washington and Calle Tampico,eb,Right,3893
+6/28/2025,Washington and Calle Tampico,eb,Through,5644
+6/28/2025,Washington and Calle Tampico,eb,Left,294
+6/29/2025,Washington and Calle Tampico,eb,Right,3126
+6/29/2025,Washington and Calle Tampico,eb,Through,4598
+6/29/2025,Washington and Calle Tampico,eb,Left,254
+6/30/2025,Washington and Calle Tampico,eb,Right,4454
+6/30/2025,Washington and Calle Tampico,eb,Through,7009
+6/30/2025,Washington and Calle Tampico,eb,Left,320
+6/15/2025,Washington and Calle Tampico,sb,Right,0
+6/15/2025,Washington and Calle Tampico,sb,Through,0
+6/15/2025,Washington and Calle Tampico,sb,Left,0
+6/16/2025,Washington and Calle Tampico,sb,Right,367
+6/16/2025,Washington and Calle Tampico,sb,Through,231
+6/16/2025,Washington and Calle Tampico,sb,Left,1252
+6/17/2025,Washington and Calle Tampico,sb,Right,427
+6/17/2025,Washington and Calle Tampico,sb,Through,239
+6/17/2025,Washington and Calle Tampico,sb,Left,1226
+6/18/2025,Washington and Calle Tampico,sb,Right,312
+6/18/2025,Washington and Calle Tampico,sb,Through,278
+6/18/2025,Washington and Calle Tampico,sb,Left,1378
+6/19/2025,Washington and Calle Tampico,sb,Right,335
+6/19/2025,Washington and Calle Tampico,sb,Through,210
+6/19/2025,Washington and Calle Tampico,sb,Left,1146
+6/20/2025,Washington and Calle Tampico,sb,Right,443
+6/20/2025,Washington and Calle Tampico,sb,Through,267
+6/20/2025,Washington and Calle Tampico,sb,Left,1301
+6/21/2025,Washington and Calle Tampico,sb,Right,307
+6/21/2025,Washington and Calle Tampico,sb,Through,173
+6/21/2025,Washington and Calle Tampico,sb,Left,1101
+6/22/2025,Washington and Calle Tampico,sb,Right,230
+6/22/2025,Washington and Calle Tampico,sb,Through,144
+6/22/2025,Washington and Calle Tampico,sb,Left,891
+6/23/2025,Washington and Calle Tampico,sb,Right,935
+6/23/2025,Washington and Calle Tampico,sb,Through,554
+6/23/2025,Washington and Calle Tampico,sb,Left,2793
+6/24/2025,Washington and Calle Tampico,sb,Right,1382
+6/24/2025,Washington and Calle Tampico,sb,Through,753
+6/24/2025,Washington and Calle Tampico,sb,Left,3662
+6/25/2025,Washington and Calle Tampico,sb,Right,1151
+6/25/2025,Washington and Calle Tampico,sb,Through,723
+6/25/2025,Washington and Calle Tampico,sb,Left,3774
+6/26/2025,Washington and Calle Tampico,sb,Right,1016
+6/26/2025,Washington and Calle Tampico,sb,Through,743
+6/26/2025,Washington and Calle Tampico,sb,Left,3540
+6/27/2025,Washington and Calle Tampico,sb,Right,1195
+6/27/2025,Washington and Calle Tampico,sb,Through,800
+6/27/2025,Washington and Calle Tampico,sb,Left,3650
+6/28/2025,Washington and Calle Tampico,sb,Right,1041
+6/28/2025,Washington and Calle Tampico,sb,Through,576
+6/28/2025,Washington and Calle Tampico,sb,Left,3296
+6/29/2025,Washington and Calle Tampico,sb,Right,697
+6/29/2025,Washington and Calle Tampico,sb,Through,465
+6/29/2025,Washington and Calle Tampico,sb,Left,2547
+6/30/2025,Washington and Calle Tampico,sb,Right,1189
+6/30/2025,Washington and Calle Tampico,sb,Through,726
+6/30/2025,Washington and Calle Tampico,sb,Left,3609
+6/15/2025,Washington and Calle Tampico,nb,Right,0
+6/15/2025,Washington and Calle Tampico,nb,Through,7
+6/15/2025,Washington and Calle Tampico,nb,Left,0
+6/16/2025,Washington and Calle Tampico,nb,Right,378
+6/16/2025,Washington and Calle Tampico,nb,Through,2228
+6/16/2025,Washington and Calle Tampico,nb,Left,219
+6/17/2025,Washington and Calle Tampico,nb,Right,408
+6/17/2025,Washington and Calle Tampico,nb,Through,2371
+6/17/2025,Washington and Calle Tampico,nb,Left,236
+6/18/2025,Washington and Calle Tampico,nb,Right,524
+6/18/2025,Washington and Calle Tampico,nb,Through,2205
+6/18/2025,Washington and Calle Tampico,nb,Left,223
+6/19/2025,Washington and Calle Tampico,nb,Right,638
+6/19/2025,Washington and Calle Tampico,nb,Through,2305
+6/19/2025,Washington and Calle Tampico,nb,Left,196
+6/20/2025,Washington and Calle Tampico,nb,Right,385
+6/20/2025,Washington and Calle Tampico,nb,Through,2315
+6/20/2025,Washington and Calle Tampico,nb,Left,276
+6/21/2025,Washington and Calle Tampico,nb,Right,300
+6/21/2025,Washington and Calle Tampico,nb,Through,1848
+6/21/2025,Washington and Calle Tampico,nb,Left,186
+6/22/2025,Washington and Calle Tampico,nb,Right,248
+6/22/2025,Washington and Calle Tampico,nb,Through,1566
+6/22/2025,Washington and Calle Tampico,nb,Left,171
+6/23/2025,Washington and Calle Tampico,nb,Right,801
+6/23/2025,Washington and Calle Tampico,nb,Through,4352
+6/23/2025,Washington and Calle Tampico,nb,Left,453
+6/24/2025,Washington and Calle Tampico,nb,Right,1257
+6/24/2025,Washington and Calle Tampico,nb,Through,6862
+6/24/2025,Washington and Calle Tampico,nb,Left,605
+6/25/2025,Washington and Calle Tampico,nb,Right,1255
+6/25/2025,Washington and Calle Tampico,nb,Through,6643
+6/25/2025,Washington and Calle Tampico,nb,Left,612
+6/26/2025,Washington and Calle Tampico,nb,Right,1303
+6/26/2025,Washington and Calle Tampico,nb,Through,6801
+6/26/2025,Washington and Calle Tampico,nb,Left,643
+6/27/2025,Washington and Calle Tampico,nb,Right,1188
+6/27/2025,Washington and Calle Tampico,nb,Through,6638
+6/27/2025,Washington and Calle Tampico,nb,Left,612
+6/28/2025,Washington and Calle Tampico,nb,Right,862
+6/28/2025,Washington and Calle Tampico,nb,Through,5309
+6/28/2025,Washington and Calle Tampico,nb,Left,544
+6/29/2025,Washington and Calle Tampico,nb,Right,655
+6/29/2025,Washington and Calle Tampico,nb,Through,4264
+6/29/2025,Washington and Calle Tampico,nb,Left,431
+6/30/2025,Washington and Calle Tampico,nb,Right,1130
+6/30/2025,Washington and Calle Tampico,nb,Through,6375
+6/30/2025,Washington and Calle Tampico,nb,Left,593
+6/15/2025,Washington and Calle Tampico,wb,Right,0
+6/15/2025,Washington and Calle Tampico,wb,Through,0
+6/15/2025,Washington and Calle Tampico,wb,Left,0
+6/16/2025,Washington and Calle Tampico,wb,Right,309
+6/16/2025,Washington and Calle Tampico,wb,Through,122
+6/16/2025,Washington and Calle Tampico,wb,Left,66
+6/17/2025,Washington and Calle Tampico,wb,Right,295
+6/17/2025,Washington and Calle Tampico,wb,Through,94
+6/17/2025,Washington and Calle Tampico,wb,Left,58
+6/18/2025,Washington and Calle Tampico,wb,Right,315
+6/18/2025,Washington and Calle Tampico,wb,Through,96
+6/18/2025,Washington and Calle Tampico,wb,Left,73
+6/19/2025,Washington and Calle Tampico,wb,Right,315
+6/19/2025,Washington and Calle Tampico,wb,Through,87
+6/19/2025,Washington and Calle Tampico,wb,Left,41
+6/20/2025,Washington and Calle Tampico,wb,Right,437
+6/20/2025,Washington and Calle Tampico,wb,Through,143
+6/20/2025,Washington and Calle Tampico,wb,Left,52
+6/21/2025,Washington and Calle Tampico,wb,Right,219
+6/21/2025,Washington and Calle Tampico,wb,Through,89
+6/21/2025,Washington and Calle Tampico,wb,Left,70
+6/22/2025,Washington and Calle Tampico,wb,Right,209
+6/22/2025,Washington and Calle Tampico,wb,Through,59
+6/22/2025,Washington and Calle Tampico,wb,Left,23
+6/23/2025,Washington and Calle Tampico,wb,Right,694
+6/23/2025,Washington and Calle Tampico,wb,Through,254
+6/23/2025,Washington and Calle Tampico,wb,Left,122
+6/24/2025,Washington and Calle Tampico,wb,Right,1072
+6/24/2025,Washington and Calle Tampico,wb,Through,311
+6/24/2025,Washington and Calle Tampico,wb,Left,143
+6/25/2025,Washington and Calle Tampico,wb,Right,901
+6/25/2025,Washington and Calle Tampico,wb,Through,312
+6/25/2025,Washington and Calle Tampico,wb,Left,163
+6/26/2025,Washington and Calle Tampico,wb,Right,1025
+6/26/2025,Washington and Calle Tampico,wb,Through,333
+6/26/2025,Washington and Calle Tampico,wb,Left,152
+6/27/2025,Washington and Calle Tampico,wb,Right,945
+6/27/2025,Washington and Calle Tampico,wb,Through,365
+6/27/2025,Washington and Calle Tampico,wb,Left,159
+6/28/2025,Washington and Calle Tampico,wb,Right,769
+6/28/2025,Washington and Calle Tampico,wb,Through,279
+6/28/2025,Washington and Calle Tampico,wb,Left,151
+6/29/2025,Washington and Calle Tampico,wb,Right,574
+6/29/2025,Washington and Calle Tampico,wb,Through,220
+6/29/2025,Washington and Calle Tampico,wb,Left,107
+6/30/2025,Washington and Calle Tampico,wb,Right,917
+6/30/2025,Washington and Calle Tampico,wb,Through,330
+6/30/2025,Washington and Calle Tampico,wb,Left,176
+6/15/2025,Village Shopping Center,eb,Right,0
+6/15/2025,Village Shopping Center,eb,Left,0
+6/16/2025,Village Shopping Center,eb,Right,15
+6/16/2025,Village Shopping Center,eb,Left,351
+6/17/2025,Village Shopping Center,eb,Right,17
+6/17/2025,Village Shopping Center,eb,Left,343
+6/18/2025,Village Shopping Center,eb,Right,21
+6/18/2025,Village Shopping Center,eb,Left,357
+6/19/2025,Village Shopping Center,eb,Right,14
+6/19/2025,Village Shopping Center,eb,Left,377
+6/20/2025,Village Shopping Center,eb,Right,11
+6/20/2025,Village Shopping Center,eb,Left,415
+6/21/2025,Village Shopping Center,eb,Right,22
+6/21/2025,Village Shopping Center,eb,Left,381
+6/22/2025,Village Shopping Center,eb,Right,3
+6/22/2025,Village Shopping Center,eb,Left,293
+6/23/2025,Village Shopping Center,eb,Right,27
+6/23/2025,Village Shopping Center,eb,Left,837
+6/24/2025,Village Shopping Center,eb,Right,26
+6/24/2025,Village Shopping Center,eb,Left,1094
+6/25/2025,Village Shopping Center,eb,Right,37
+6/25/2025,Village Shopping Center,eb,Left,1144
+6/26/2025,Village Shopping Center,eb,Right,57
+6/26/2025,Village Shopping Center,eb,Left,1129
+6/27/2025,Village Shopping Center,eb,Right,40
+6/27/2025,Village Shopping Center,eb,Left,1221
+6/28/2025,Village Shopping Center,eb,Right,41
+6/28/2025,Village Shopping Center,eb,Left,1093
+6/29/2025,Village Shopping Center,eb,Right,73
+6/29/2025,Village Shopping Center,eb,Left,835
+6/30/2025,Village Shopping Center,eb,Right,98
+6/30/2025,Village Shopping Center,eb,Left,1149
+6/15/2025,Village Shopping Center,nb,Right,4
+6/15/2025,Village Shopping Center,nb,Through,6
+6/16/2025,Village Shopping Center,nb,Right,1445
+6/16/2025,Village Shopping Center,nb,Through,2219
+6/17/2025,Village Shopping Center,nb,Right,1496
+6/17/2025,Village Shopping Center,nb,Through,2335
+6/18/2025,Village Shopping Center,nb,Right,1604
+6/18/2025,Village Shopping Center,nb,Through,2438
+6/19/2025,Village Shopping Center,nb,Right,1464
+6/19/2025,Village Shopping Center,nb,Through,2325
+6/20/2025,Village Shopping Center,nb,Right,1606
+6/20/2025,Village Shopping Center,nb,Through,2467
+6/21/2025,Village Shopping Center,nb,Right,1318
+6/21/2025,Village Shopping Center,nb,Through,1973
+6/22/2025,Village Shopping Center,nb,Right,1193
+6/22/2025,Village Shopping Center,nb,Through,1747
+6/23/2025,Village Shopping Center,nb,Right,3549
+6/23/2025,Village Shopping Center,nb,Through,5625
+6/24/2025,Village Shopping Center,nb,Right,4712
+6/24/2025,Village Shopping Center,nb,Through,7455
+6/25/2025,Village Shopping Center,nb,Right,4643
+6/25/2025,Village Shopping Center,nb,Through,7278
+6/26/2025,Village Shopping Center,nb,Right,4597
+6/26/2025,Village Shopping Center,nb,Through,7090
+6/27/2025,Village Shopping Center,nb,Right,4468
+6/27/2025,Village Shopping Center,nb,Through,7102
+6/28/2025,Village Shopping Center,nb,Right,3930
+6/28/2025,Village Shopping Center,nb,Through,5770
+6/29/2025,Village Shopping Center,nb,Right,2836
+6/29/2025,Village Shopping Center,nb,Through,4110
+6/30/2025,Village Shopping Center,nb,Right,4081
+6/30/2025,Village Shopping Center,nb,Through,6363
+6/15/2025,Village Shopping Center,sb,Through,6
+6/15/2025,Village Shopping Center,sb,Left,0
+6/16/2025,Village Shopping Center,sb,Through,2777
+6/16/2025,Village Shopping Center,sb,Left,40
+6/17/2025,Village Shopping Center,sb,Through,2798
+6/17/2025,Village Shopping Center,sb,Left,39
+6/18/2025,Village Shopping Center,sb,Through,2601
+6/18/2025,Village Shopping Center,sb,Left,34
+6/19/2025,Village Shopping Center,sb,Through,2696
+6/19/2025,Village Shopping Center,sb,Left,39
+6/20/2025,Village Shopping Center,sb,Through,2854
+6/20/2025,Village Shopping Center,sb,Left,45
+6/21/2025,Village Shopping Center,sb,Through,2419
+6/21/2025,Village Shopping Center,sb,Left,34
+6/22/2025,Village Shopping Center,sb,Through,1965
+6/22/2025,Village Shopping Center,sb,Left,40
+6/23/2025,Village Shopping Center,sb,Through,5853
+6/23/2025,Village Shopping Center,sb,Left,84
+6/24/2025,Village Shopping Center,sb,Through,8756
+6/24/2025,Village Shopping Center,sb,Left,114
+6/25/2025,Village Shopping Center,sb,Through,8634
+6/25/2025,Village Shopping Center,sb,Left,127
+6/26/2025,Village Shopping Center,sb,Through,8663
+6/26/2025,Village Shopping Center,sb,Left,115
+6/27/2025,Village Shopping Center,sb,Through,8625
+6/27/2025,Village Shopping Center,sb,Left,114
+6/28/2025,Village Shopping Center,sb,Through,6307
+6/28/2025,Village Shopping Center,sb,Left,110
+6/29/2025,Village Shopping Center,sb,Through,4937
+6/29/2025,Village Shopping Center,sb,Left,86
+6/30/2025,Village Shopping Center,sb,Through,7555
+6/30/2025,Village Shopping Center,sb,Left,121
+6/15/2025,Washington and Avenue 50,sb,Right,1
+6/15/2025,Washington and Avenue 50,sb,Through,9
+6/15/2025,Washington and Avenue 50,sb,Left,0
+6/16/2025,Washington and Avenue 50,sb,Right,973
+6/16/2025,Washington and Avenue 50,sb,Through,3423
+6/16/2025,Washington and Avenue 50,sb,Left,522
+6/17/2025,Washington and Avenue 50,sb,Right,984
+6/17/2025,Washington and Avenue 50,sb,Through,3638
+6/17/2025,Washington and Avenue 50,sb,Left,528
+6/18/2025,Washington and Avenue 50,sb,Right,1068
+6/18/2025,Washington and Avenue 50,sb,Through,3773
+6/18/2025,Washington and Avenue 50,sb,Left,522
+6/19/2025,Washington and Avenue 50,sb,Right,1004
+6/19/2025,Washington and Avenue 50,sb,Through,3645
+6/19/2025,Washington and Avenue 50,sb,Left,517
+6/20/2025,Washington and Avenue 50,sb,Right,1109
+6/20/2025,Washington and Avenue 50,sb,Through,4041
+6/20/2025,Washington and Avenue 50,sb,Left,571
+6/21/2025,Washington and Avenue 50,sb,Right,841
+6/21/2025,Washington and Avenue 50,sb,Through,3332
+6/21/2025,Washington and Avenue 50,sb,Left,378
+6/22/2025,Washington and Avenue 50,sb,Right,618
+6/22/2025,Washington and Avenue 50,sb,Through,2663
+6/22/2025,Washington and Avenue 50,sb,Left,321
+6/23/2025,Washington and Avenue 50,sb,Right,2333
+6/23/2025,Washington and Avenue 50,sb,Through,9211
+6/23/2025,Washington and Avenue 50,sb,Left,1284
+6/24/2025,Washington and Avenue 50,sb,Right,3298
+6/24/2025,Washington and Avenue 50,sb,Through,12056
+6/24/2025,Washington and Avenue 50,sb,Left,1609
+6/25/2025,Washington and Avenue 50,sb,Right,2942
+6/25/2025,Washington and Avenue 50,sb,Through,11210
+6/25/2025,Washington and Avenue 50,sb,Left,1497
+6/26/2025,Washington and Avenue 50,sb,Right,3269
+6/26/2025,Washington and Avenue 50,sb,Through,11298
+6/26/2025,Washington and Avenue 50,sb,Left,1556
+6/27/2025,Washington and Avenue 50,sb,Right,3328
+6/27/2025,Washington and Avenue 50,sb,Through,11978
+6/27/2025,Washington and Avenue 50,sb,Left,1672
+6/28/2025,Washington and Avenue 50,sb,Right,2476
+6/28/2025,Washington and Avenue 50,sb,Through,9601
+6/28/2025,Washington and Avenue 50,sb,Left,1192
+6/29/2025,Washington and Avenue 50,sb,Right,1905
+6/29/2025,Washington and Avenue 50,sb,Through,7688
+6/29/2025,Washington and Avenue 50,sb,Left,971
+6/30/2025,Washington and Avenue 50,sb,Right,3320
+6/30/2025,Washington and Avenue 50,sb,Through,11537
+6/30/2025,Washington and Avenue 50,sb,Left,1690
+6/15/2025,Washington and Avenue 50,wb,Right,0
+6/15/2025,Washington and Avenue 50,wb,Through,0
+6/15/2025,Washington and Avenue 50,wb,Left,0
+6/16/2025,Washington and Avenue 50,wb,Right,766
+6/16/2025,Washington and Avenue 50,wb,Through,270
+6/16/2025,Washington and Avenue 50,wb,Left,389
+6/17/2025,Washington and Avenue 50,wb,Right,795
+6/17/2025,Washington and Avenue 50,wb,Through,307
+6/17/2025,Washington and Avenue 50,wb,Left,375
+6/18/2025,Washington and Avenue 50,wb,Right,859
+6/18/2025,Washington and Avenue 50,wb,Through,271
+6/18/2025,Washington and Avenue 50,wb,Left,427
+6/19/2025,Washington and Avenue 50,wb,Right,688
+6/19/2025,Washington and Avenue 50,wb,Through,280
+6/19/2025,Washington and Avenue 50,wb,Left,351
+6/20/2025,Washington and Avenue 50,wb,Right,809
+6/20/2025,Washington and Avenue 50,wb,Through,269
+6/20/2025,Washington and Avenue 50,wb,Left,395
+6/21/2025,Washington and Avenue 50,wb,Right,644
+6/21/2025,Washington and Avenue 50,wb,Through,268
+6/21/2025,Washington and Avenue 50,wb,Left,340
+6/22/2025,Washington and Avenue 50,wb,Right,467
+6/22/2025,Washington and Avenue 50,wb,Through,159
+6/22/2025,Washington and Avenue 50,wb,Left,300
+6/23/2025,Washington and Avenue 50,wb,Right,1663
+6/23/2025,Washington and Avenue 50,wb,Through,504
+6/23/2025,Washington and Avenue 50,wb,Left,842
+6/24/2025,Washington and Avenue 50,wb,Right,2569
+6/24/2025,Washington and Avenue 50,wb,Through,751
+6/24/2025,Washington and Avenue 50,wb,Left,1093
+6/25/2025,Washington and Avenue 50,wb,Right,2304
+6/25/2025,Washington and Avenue 50,wb,Through,703
+6/25/2025,Washington and Avenue 50,wb,Left,1103
+6/26/2025,Washington and Avenue 50,wb,Right,2535
+6/26/2025,Washington and Avenue 50,wb,Through,782
+6/26/2025,Washington and Avenue 50,wb,Left,1221
+6/27/2025,Washington and Avenue 50,wb,Right,2416
+6/27/2025,Washington and Avenue 50,wb,Through,861
+6/27/2025,Washington and Avenue 50,wb,Left,1254
+6/28/2025,Washington and Avenue 50,wb,Right,1840
+6/28/2025,Washington and Avenue 50,wb,Through,721
+6/28/2025,Washington and Avenue 50,wb,Left,1103
+6/29/2025,Washington and Avenue 50,wb,Right,1587
+6/29/2025,Washington and Avenue 50,wb,Through,521
+6/29/2025,Washington and Avenue 50,wb,Left,907
+6/30/2025,Washington and Avenue 50,wb,Right,2385
+6/30/2025,Washington and Avenue 50,wb,Through,714
+6/30/2025,Washington and Avenue 50,wb,Left,1208
+6/15/2025,Washington and Avenue 50,eb,Right,0
+6/15/2025,Washington and Avenue 50,eb,Through,2
+6/15/2025,Washington and Avenue 50,eb,Left,0
+6/16/2025,Washington and Avenue 50,eb,Right,322
+6/16/2025,Washington and Avenue 50,eb,Through,235
+6/16/2025,Washington and Avenue 50,eb,Left,58
+6/17/2025,Washington and Avenue 50,eb,Right,370
+6/17/2025,Washington and Avenue 50,eb,Through,246
+6/17/2025,Washington and Avenue 50,eb,Left,74
+6/18/2025,Washington and Avenue 50,eb,Right,365
+6/18/2025,Washington and Avenue 50,eb,Through,274
+6/18/2025,Washington and Avenue 50,eb,Left,76
+6/19/2025,Washington and Avenue 50,eb,Right,261
+6/19/2025,Washington and Avenue 50,eb,Through,168
+6/19/2025,Washington and Avenue 50,eb,Left,70
+6/20/2025,Washington and Avenue 50,eb,Right,0
+6/20/2025,Washington and Avenue 50,eb,Through,0
+6/20/2025,Washington and Avenue 50,eb,Left,0
+6/21/2025,Washington and Avenue 50,eb,Right,0
+6/21/2025,Washington and Avenue 50,eb,Through,0
+6/21/2025,Washington and Avenue 50,eb,Left,0
+6/22/2025,Washington and Avenue 50,eb,Right,0
+6/22/2025,Washington and Avenue 50,eb,Through,0
+6/22/2025,Washington and Avenue 50,eb,Left,0
+6/23/2025,Washington and Avenue 50,eb,Right,0
+6/23/2025,Washington and Avenue 50,eb,Through,0
+6/23/2025,Washington and Avenue 50,eb,Left,0
+6/24/2025,Washington and Avenue 50,eb,Right,0
+6/24/2025,Washington and Avenue 50,eb,Through,0
+6/24/2025,Washington and Avenue 50,eb,Left,0
+6/25/2025,Washington and Avenue 50,eb,Right,0
+6/25/2025,Washington and Avenue 50,eb,Through,0
+6/25/2025,Washington and Avenue 50,eb,Left,0
+6/26/2025,Washington and Avenue 50,eb,Right,0
+6/26/2025,Washington and Avenue 50,eb,Through,0
+6/26/2025,Washington and Avenue 50,eb,Left,0
+6/27/2025,Washington and Avenue 50,eb,Right,0
+6/27/2025,Washington and Avenue 50,eb,Through,0
+6/27/2025,Washington and Avenue 50,eb,Left,0
+6/28/2025,Washington and Avenue 50,eb,Right,0
+6/28/2025,Washington and Avenue 50,eb,Through,0
+6/28/2025,Washington and Avenue 50,eb,Left,0
+6/29/2025,Washington and Avenue 50,eb,Right,0
+6/29/2025,Washington and Avenue 50,eb,Through,0
+6/29/2025,Washington and Avenue 50,eb,Left,0
+6/30/2025,Washington and Avenue 50,eb,Right,0
+6/30/2025,Washington and Avenue 50,eb,Through,0
+6/30/2025,Washington and Avenue 50,eb,Left,0
+6/15/2025,Washington and Avenue 50,nb,Right,0
+6/15/2025,Washington and Avenue 50,nb,Through,6
+6/15/2025,Washington and Avenue 50,nb,Left,0
+6/16/2025,Washington and Avenue 50,nb,Right,826
+6/16/2025,Washington and Avenue 50,nb,Through,3383
+6/16/2025,Washington and Avenue 50,nb,Left,74
+6/17/2025,Washington and Avenue 50,nb,Right,838
+6/17/2025,Washington and Avenue 50,nb,Through,3528
+6/17/2025,Washington and Avenue 50,nb,Left,70
+6/18/2025,Washington and Avenue 50,nb,Right,890
+6/18/2025,Washington and Avenue 50,nb,Through,3435
+6/18/2025,Washington and Avenue 50,nb,Left,65
+6/19/2025,Washington and Avenue 50,nb,Right,916
+6/19/2025,Washington and Avenue 50,nb,Through,3266
+6/19/2025,Washington and Avenue 50,nb,Left,81
+6/20/2025,Washington and Avenue 50,nb,Right,981
+6/20/2025,Washington and Avenue 50,nb,Through,3514
+6/20/2025,Washington and Avenue 50,nb,Left,65
+6/21/2025,Washington and Avenue 50,nb,Right,740
+6/21/2025,Washington and Avenue 50,nb,Through,2836
+6/21/2025,Washington and Avenue 50,nb,Left,53
+6/22/2025,Washington and Avenue 50,nb,Right,581
+6/22/2025,Washington and Avenue 50,nb,Through,2425
+6/22/2025,Washington and Avenue 50,nb,Left,31
+6/23/2025,Washington and Avenue 50,nb,Right,1914
+6/23/2025,Washington and Avenue 50,nb,Through,7010
+6/23/2025,Washington and Avenue 50,nb,Left,128
+6/24/2025,Washington and Avenue 50,nb,Right,2768
+6/24/2025,Washington and Avenue 50,nb,Through,10408
+6/24/2025,Washington and Avenue 50,nb,Left,180
+6/25/2025,Washington and Avenue 50,nb,Right,2503
+6/25/2025,Washington and Avenue 50,nb,Through,9635
+6/25/2025,Washington and Avenue 50,nb,Left,146
+6/26/2025,Washington and Avenue 50,nb,Right,2757
+6/26/2025,Washington and Avenue 50,nb,Through,10085
+6/26/2025,Washington and Avenue 50,nb,Left,211
+6/27/2025,Washington and Avenue 50,nb,Right,2575
+6/27/2025,Washington and Avenue 50,nb,Through,10293
+6/27/2025,Washington and Avenue 50,nb,Left,184
+6/28/2025,Washington and Avenue 50,nb,Right,1984
+6/28/2025,Washington and Avenue 50,nb,Through,8556
+6/28/2025,Washington and Avenue 50,nb,Left,140
+6/29/2025,Washington and Avenue 50,nb,Right,1568
+6/29/2025,Washington and Avenue 50,nb,Through,6729
+6/29/2025,Washington and Avenue 50,nb,Left,100
+6/30/2025,Washington and Avenue 50,nb,Right,2734
+6/30/2025,Washington and Avenue 50,nb,Through,9801
+6/30/2025,Washington and Avenue 50,nb,Left,195
+6/15/2025,Washington and Sagebrush Avenue,wb,Right,0
+6/15/2025,Washington and Sagebrush Avenue,wb,Left,0
+6/16/2025,Washington and Sagebrush Avenue,wb,Right,151
+6/16/2025,Washington and Sagebrush Avenue,wb,Left,75
+6/17/2025,Washington and Sagebrush Avenue,wb,Right,225
+6/17/2025,Washington and Sagebrush Avenue,wb,Left,62
+6/18/2025,Washington and Sagebrush Avenue,wb,Right,177
+6/18/2025,Washington and Sagebrush Avenue,wb,Left,64
+6/19/2025,Washington and Sagebrush Avenue,wb,Right,197
+6/19/2025,Washington and Sagebrush Avenue,wb,Left,68
+6/20/2025,Washington and Sagebrush Avenue,wb,Right,222
+6/20/2025,Washington and Sagebrush Avenue,wb,Left,84
+6/21/2025,Washington and Sagebrush Avenue,wb,Right,148
+6/21/2025,Washington and Sagebrush Avenue,wb,Left,71
+6/22/2025,Washington and Sagebrush Avenue,wb,Right,170
+6/22/2025,Washington and Sagebrush Avenue,wb,Left,46
+6/23/2025,Washington and Sagebrush Avenue,wb,Right,361
+6/23/2025,Washington and Sagebrush Avenue,wb,Left,130
+6/24/2025,Washington and Sagebrush Avenue,wb,Right,606
+6/24/2025,Washington and Sagebrush Avenue,wb,Left,189
+6/25/2025,Washington and Sagebrush Avenue,wb,Right,573
+6/25/2025,Washington and Sagebrush Avenue,wb,Left,191
+6/26/2025,Washington and Sagebrush Avenue,wb,Right,577
+6/26/2025,Washington and Sagebrush Avenue,wb,Left,204
+6/27/2025,Washington and Sagebrush Avenue,wb,Right,634
+6/27/2025,Washington and Sagebrush Avenue,wb,Left,215
+6/28/2025,Washington and Sagebrush Avenue,wb,Right,493
+6/28/2025,Washington and Sagebrush Avenue,wb,Left,157
+6/29/2025,Washington and Sagebrush Avenue,wb,Right,454
+6/29/2025,Washington and Sagebrush Avenue,wb,Left,134
+6/30/2025,Washington and Sagebrush Avenue,wb,Right,680
+6/30/2025,Washington and Sagebrush Avenue,wb,Left,197
+6/15/2025,Washington and Sagebrush Avenue,sb,Through,8
+6/15/2025,Washington and Sagebrush Avenue,sb,Left,0
+6/16/2025,Washington and Sagebrush Avenue,sb,Through,3682
+6/16/2025,Washington and Sagebrush Avenue,sb,Left,108
+6/17/2025,Washington and Sagebrush Avenue,sb,Through,3839
+6/17/2025,Washington and Sagebrush Avenue,sb,Left,100
+6/18/2025,Washington and Sagebrush Avenue,sb,Through,3874
+6/18/2025,Washington and Sagebrush Avenue,sb,Left,124
+6/19/2025,Washington and Sagebrush Avenue,sb,Through,3901
+6/19/2025,Washington and Sagebrush Avenue,sb,Left,124
+6/20/2025,Washington and Sagebrush Avenue,sb,Through,3892
+6/20/2025,Washington and Sagebrush Avenue,sb,Left,125
+6/21/2025,Washington and Sagebrush Avenue,sb,Through,3093
+6/21/2025,Washington and Sagebrush Avenue,sb,Left,117
+6/22/2025,Washington and Sagebrush Avenue,sb,Through,2573
+6/22/2025,Washington and Sagebrush Avenue,sb,Left,88
+6/23/2025,Washington and Sagebrush Avenue,sb,Through,8899
+6/23/2025,Washington and Sagebrush Avenue,sb,Left,251
+6/24/2025,Washington and Sagebrush Avenue,sb,Through,11781
+6/24/2025,Washington and Sagebrush Avenue,sb,Left,332
+6/25/2025,Washington and Sagebrush Avenue,sb,Through,11661
+6/25/2025,Washington and Sagebrush Avenue,sb,Left,354
+6/26/2025,Washington and Sagebrush Avenue,sb,Through,11198
+6/26/2025,Washington and Sagebrush Avenue,sb,Left,338
+6/27/2025,Washington and Sagebrush Avenue,sb,Through,11463
+6/27/2025,Washington and Sagebrush Avenue,sb,Left,372
+6/28/2025,Washington and Sagebrush Avenue,sb,Through,8984
+6/28/2025,Washington and Sagebrush Avenue,sb,Left,272
+6/29/2025,Washington and Sagebrush Avenue,sb,Through,7200
+6/29/2025,Washington and Sagebrush Avenue,sb,Left,250
+6/30/2025,Washington and Sagebrush Avenue,sb,Through,11109
+6/30/2025,Washington and Sagebrush Avenue,sb,Left,322
+6/15/2025,Washington and Sagebrush Avenue,nb,Right,0
+6/15/2025,Washington and Sagebrush Avenue,nb,Through,0
+6/16/2025,Washington and Sagebrush Avenue,nb,Right,88
+6/16/2025,Washington and Sagebrush Avenue,nb,Through,3699
+6/17/2025,Washington and Sagebrush Avenue,nb,Right,66
+6/17/2025,Washington and Sagebrush Avenue,nb,Through,3907
+6/18/2025,Washington and Sagebrush Avenue,nb,Right,72
+6/18/2025,Washington and Sagebrush Avenue,nb,Through,3811
+6/19/2025,Washington and Sagebrush Avenue,nb,Right,72
+6/19/2025,Washington and Sagebrush Avenue,nb,Through,3753
+6/20/2025,Washington and Sagebrush Avenue,nb,Right,78
+6/20/2025,Washington and Sagebrush Avenue,nb,Through,4031
+6/21/2025,Washington and Sagebrush Avenue,nb,Right,83
+6/21/2025,Washington and Sagebrush Avenue,nb,Through,3090
+6/22/2025,Washington and Sagebrush Avenue,nb,Right,49
+6/22/2025,Washington and Sagebrush Avenue,nb,Through,2644
+6/23/2025,Washington and Sagebrush Avenue,nb,Right,171
+6/23/2025,Washington and Sagebrush Avenue,nb,Through,7845
+6/24/2025,Washington and Sagebrush Avenue,nb,Right,263
+6/24/2025,Washington and Sagebrush Avenue,nb,Through,11547
+6/25/2025,Washington and Sagebrush Avenue,nb,Right,220
+6/25/2025,Washington and Sagebrush Avenue,nb,Through,11300
+6/26/2025,Washington and Sagebrush Avenue,nb,Right,251
+6/26/2025,Washington and Sagebrush Avenue,nb,Through,11422
+6/27/2025,Washington and Sagebrush Avenue,nb,Right,284
+6/27/2025,Washington and Sagebrush Avenue,nb,Through,11510
+6/28/2025,Washington and Sagebrush Avenue,nb,Right,206
+6/28/2025,Washington and Sagebrush Avenue,nb,Through,9115
+6/29/2025,Washington and Sagebrush Avenue,nb,Right,192
+6/29/2025,Washington and Sagebrush Avenue,nb,Through,7320
+6/30/2025,Washington and Sagebrush Avenue,nb,Right,239
+6/30/2025,Washington and Sagebrush Avenue,nb,Through,10920
+6/15/2025,Washington and Eisenhower Drive,eb,Right,2
+6/15/2025,Washington and Eisenhower Drive,eb,Through,0
+6/15/2025,Washington and Eisenhower Drive,eb,Left,10
+6/16/2025,Washington and Eisenhower Drive,eb,Right,428
+6/16/2025,Washington and Eisenhower Drive,eb,Through,28
+6/16/2025,Washington and Eisenhower Drive,eb,Left,2417
+6/17/2025,Washington and Eisenhower Drive,eb,Right,494
+6/17/2025,Washington and Eisenhower Drive,eb,Through,25
+6/17/2025,Washington and Eisenhower Drive,eb,Left,2556
+6/18/2025,Washington and Eisenhower Drive,eb,Right,648
+6/18/2025,Washington and Eisenhower Drive,eb,Through,26
+6/18/2025,Washington and Eisenhower Drive,eb,Left,2537
+6/19/2025,Washington and Eisenhower Drive,eb,Right,535
+6/19/2025,Washington and Eisenhower Drive,eb,Through,21
+6/19/2025,Washington and Eisenhower Drive,eb,Left,2540
+6/20/2025,Washington and Eisenhower Drive,eb,Right,640
+6/20/2025,Washington and Eisenhower Drive,eb,Through,23
+6/20/2025,Washington and Eisenhower Drive,eb,Left,2836
+6/21/2025,Washington and Eisenhower Drive,eb,Right,367
+6/21/2025,Washington and Eisenhower Drive,eb,Through,21
+6/21/2025,Washington and Eisenhower Drive,eb,Left,2342
+6/22/2025,Washington and Eisenhower Drive,eb,Right,257
+6/22/2025,Washington and Eisenhower Drive,eb,Through,15
+6/22/2025,Washington and Eisenhower Drive,eb,Left,1900
+6/23/2025,Washington and Eisenhower Drive,eb,Right,1112
+6/23/2025,Washington and Eisenhower Drive,eb,Through,45
+6/23/2025,Washington and Eisenhower Drive,eb,Left,5041
+6/24/2025,Washington and Eisenhower Drive,eb,Right,1527
+6/24/2025,Washington and Eisenhower Drive,eb,Through,85
+6/24/2025,Washington and Eisenhower Drive,eb,Left,7754
+6/25/2025,Washington and Eisenhower Drive,eb,Right,1562
+6/25/2025,Washington and Eisenhower Drive,eb,Through,82
+6/25/2025,Washington and Eisenhower Drive,eb,Left,7625
+6/26/2025,Washington and Eisenhower Drive,eb,Right,1325
+6/26/2025,Washington and Eisenhower Drive,eb,Through,50
+6/26/2025,Washington and Eisenhower Drive,eb,Left,4164
+6/27/2025,Washington and Eisenhower Drive,eb,Right,1590
+6/27/2025,Washington and Eisenhower Drive,eb,Through,64
+6/27/2025,Washington and Eisenhower Drive,eb,Left,7282
+6/28/2025,Washington and Eisenhower Drive,eb,Right,1502
+6/28/2025,Washington and Eisenhower Drive,eb,Through,55
+6/28/2025,Washington and Eisenhower Drive,eb,Left,6349
+6/29/2025,Washington and Eisenhower Drive,eb,Right,1048
+6/29/2025,Washington and Eisenhower Drive,eb,Through,61
+6/29/2025,Washington and Eisenhower Drive,eb,Left,5942
+6/30/2025,Washington and Eisenhower Drive,eb,Right,1834
+6/30/2025,Washington and Eisenhower Drive,eb,Through,63
+6/30/2025,Washington and Eisenhower Drive,eb,Left,7173
+6/15/2025,Washington and Eisenhower Drive,wb,Right,7
+6/15/2025,Washington and Eisenhower Drive,wb,Through,10
+6/15/2025,Washington and Eisenhower Drive,wb,Left,0
+6/16/2025,Washington and Eisenhower Drive,wb,Right,1915
+6/16/2025,Washington and Eisenhower Drive,wb,Through,3996
+6/16/2025,Washington and Eisenhower Drive,wb,Left,44
+6/17/2025,Washington and Eisenhower Drive,wb,Right,2068
+6/17/2025,Washington and Eisenhower Drive,wb,Through,4141
+6/17/2025,Washington and Eisenhower Drive,wb,Left,50
+6/18/2025,Washington and Eisenhower Drive,wb,Right,1937
+6/18/2025,Washington and Eisenhower Drive,wb,Through,4091
+6/18/2025,Washington and Eisenhower Drive,wb,Left,48
+6/19/2025,Washington and Eisenhower Drive,wb,Right,1976
+6/19/2025,Washington and Eisenhower Drive,wb,Through,4335
+6/19/2025,Washington and Eisenhower Drive,wb,Left,51
+6/20/2025,Washington and Eisenhower Drive,wb,Right,2209
+6/20/2025,Washington and Eisenhower Drive,wb,Through,4358
+6/20/2025,Washington and Eisenhower Drive,wb,Left,58
+6/21/2025,Washington and Eisenhower Drive,wb,Right,1929
+6/21/2025,Washington and Eisenhower Drive,wb,Through,3372
+6/21/2025,Washington and Eisenhower Drive,wb,Left,55
+6/22/2025,Washington and Eisenhower Drive,wb,Right,1526
+6/22/2025,Washington and Eisenhower Drive,wb,Through,2812
+6/22/2025,Washington and Eisenhower Drive,wb,Left,44
+6/23/2025,Washington and Eisenhower Drive,wb,Right,4626
+6/23/2025,Washington and Eisenhower Drive,wb,Through,9706
+6/23/2025,Washington and Eisenhower Drive,wb,Left,113
+6/24/2025,Washington and Eisenhower Drive,wb,Right,6117
+6/24/2025,Washington and Eisenhower Drive,wb,Through,12808
+6/24/2025,Washington and Eisenhower Drive,wb,Left,155
+6/25/2025,Washington and Eisenhower Drive,wb,Right,6118
+6/25/2025,Washington and Eisenhower Drive,wb,Through,12733
+6/25/2025,Washington and Eisenhower Drive,wb,Left,169
+6/26/2025,Washington and Eisenhower Drive,wb,Right,3733
+6/26/2025,Washington and Eisenhower Drive,wb,Through,5590
+6/26/2025,Washington and Eisenhower Drive,wb,Left,84
+6/27/2025,Washington and Eisenhower Drive,wb,Right,6120
+6/27/2025,Washington and Eisenhower Drive,wb,Through,11888
+6/27/2025,Washington and Eisenhower Drive,wb,Left,150
+6/28/2025,Washington and Eisenhower Drive,wb,Right,5173
+6/28/2025,Washington and Eisenhower Drive,wb,Through,10113
+6/28/2025,Washington and Eisenhower Drive,wb,Left,168
+6/29/2025,Washington and Eisenhower Drive,wb,Right,4659
+6/29/2025,Washington and Eisenhower Drive,wb,Through,8176
+6/29/2025,Washington and Eisenhower Drive,wb,Left,142
+6/30/2025,Washington and Eisenhower Drive,wb,Right,5674
+6/30/2025,Washington and Eisenhower Drive,wb,Through,12722
+6/30/2025,Washington and Eisenhower Drive,wb,Left,163
+6/15/2025,Washington and Eisenhower Drive,sb,Right,7
+6/15/2025,Washington and Eisenhower Drive,sb,Through,10
+6/15/2025,Washington and Eisenhower Drive,sb,Left,0
+6/16/2025,Washington and Eisenhower Drive,sb,Right,1915
+6/16/2025,Washington and Eisenhower Drive,sb,Through,3996
+6/16/2025,Washington and Eisenhower Drive,sb,Left,44
+6/17/2025,Washington and Eisenhower Drive,sb,Right,2068
+6/17/2025,Washington and Eisenhower Drive,sb,Through,4141
+6/17/2025,Washington and Eisenhower Drive,sb,Left,50
+6/18/2025,Washington and Eisenhower Drive,sb,Right,1937
+6/18/2025,Washington and Eisenhower Drive,sb,Through,4091
+6/18/2025,Washington and Eisenhower Drive,sb,Left,48
+6/19/2025,Washington and Eisenhower Drive,sb,Right,1976
+6/19/2025,Washington and Eisenhower Drive,sb,Through,4335
+6/19/2025,Washington and Eisenhower Drive,sb,Left,51
+6/20/2025,Washington and Eisenhower Drive,sb,Right,2209
+6/20/2025,Washington and Eisenhower Drive,sb,Through,4358
+6/20/2025,Washington and Eisenhower Drive,sb,Left,58
+6/21/2025,Washington and Eisenhower Drive,sb,Right,1929
+6/21/2025,Washington and Eisenhower Drive,sb,Through,3372
+6/21/2025,Washington and Eisenhower Drive,sb,Left,55
+6/22/2025,Washington and Eisenhower Drive,sb,Right,1526
+6/22/2025,Washington and Eisenhower Drive,sb,Through,2812
+6/22/2025,Washington and Eisenhower Drive,sb,Left,44
+6/23/2025,Washington and Eisenhower Drive,sb,Right,4626
+6/23/2025,Washington and Eisenhower Drive,sb,Through,9706
+6/23/2025,Washington and Eisenhower Drive,sb,Left,113
+6/24/2025,Washington and Eisenhower Drive,sb,Right,6117
+6/24/2025,Washington and Eisenhower Drive,sb,Through,12808
+6/24/2025,Washington and Eisenhower Drive,sb,Left,155
+6/25/2025,Washington and Eisenhower Drive,sb,Right,6118
+6/25/2025,Washington and Eisenhower Drive,sb,Through,12733
+6/25/2025,Washington and Eisenhower Drive,sb,Left,169
+6/26/2025,Washington and Eisenhower Drive,sb,Right,3733
+6/26/2025,Washington and Eisenhower Drive,sb,Through,5590
+6/26/2025,Washington and Eisenhower Drive,sb,Left,84
+6/27/2025,Washington and Eisenhower Drive,sb,Right,6120
+6/27/2025,Washington and Eisenhower Drive,sb,Through,11888
+6/27/2025,Washington and Eisenhower Drive,sb,Left,150
+6/28/2025,Washington and Eisenhower Drive,sb,Right,5173
+6/28/2025,Washington and Eisenhower Drive,sb,Through,10113
+6/28/2025,Washington and Eisenhower Drive,sb,Left,168
+6/29/2025,Washington and Eisenhower Drive,sb,Right,4659
+6/29/2025,Washington and Eisenhower Drive,sb,Through,8176
+6/29/2025,Washington and Eisenhower Drive,sb,Left,142
+6/30/2025,Washington and Eisenhower Drive,sb,Right,5674
+6/30/2025,Washington and Eisenhower Drive,sb,Through,12722
+6/30/2025,Washington and Eisenhower Drive,sb,Left,163
+6/15/2025,Washington and Eisenhower Drive,nb,Right,0
+6/15/2025,Washington and Eisenhower Drive,nb,Through,5
+6/15/2025,Washington and Eisenhower Drive,nb,Left,0
+6/16/2025,Washington and Eisenhower Drive,nb,Right,86
+6/16/2025,Washington and Eisenhower Drive,nb,Through,4025
+6/16/2025,Washington and Eisenhower Drive,nb,Left,37
+6/17/2025,Washington and Eisenhower Drive,nb,Right,76
+6/17/2025,Washington and Eisenhower Drive,nb,Through,4198
+6/17/2025,Washington and Eisenhower Drive,nb,Left,38
+6/18/2025,Washington and Eisenhower Drive,nb,Right,134
+6/18/2025,Washington and Eisenhower Drive,nb,Through,3967
+6/18/2025,Washington and Eisenhower Drive,nb,Left,39
+6/19/2025,Washington and Eisenhower Drive,nb,Right,79
+6/19/2025,Washington and Eisenhower Drive,nb,Through,4049
+6/19/2025,Washington and Eisenhower Drive,nb,Left,49
+6/20/2025,Washington and Eisenhower Drive,nb,Right,63
+6/20/2025,Washington and Eisenhower Drive,nb,Through,4171
+6/20/2025,Washington and Eisenhower Drive,nb,Left,47
+6/21/2025,Washington and Eisenhower Drive,nb,Right,91
+6/21/2025,Washington and Eisenhower Drive,nb,Through,3390
+6/21/2025,Washington and Eisenhower Drive,nb,Left,42
+6/22/2025,Washington and Eisenhower Drive,nb,Right,61
+6/22/2025,Washington and Eisenhower Drive,nb,Through,2722
+6/22/2025,Washington and Eisenhower Drive,nb,Left,25
+6/23/2025,Washington and Eisenhower Drive,nb,Right,155
+6/23/2025,Washington and Eisenhower Drive,nb,Through,8051
+6/23/2025,Washington and Eisenhower Drive,nb,Left,103
+6/24/2025,Washington and Eisenhower Drive,nb,Right,380
+6/24/2025,Washington and Eisenhower Drive,nb,Through,11908
+6/24/2025,Washington and Eisenhower Drive,nb,Left,105
+6/25/2025,Washington and Eisenhower Drive,nb,Right,323
+6/25/2025,Washington and Eisenhower Drive,nb,Through,11849
+6/25/2025,Washington and Eisenhower Drive,nb,Left,95
+6/26/2025,Washington and Eisenhower Drive,nb,Right,500
+6/26/2025,Washington and Eisenhower Drive,nb,Through,6536
+6/26/2025,Washington and Eisenhower Drive,nb,Left,95
+6/27/2025,Washington and Eisenhower Drive,nb,Right,593
+6/27/2025,Washington and Eisenhower Drive,nb,Through,10927
+6/27/2025,Washington and Eisenhower Drive,nb,Left,135
+6/28/2025,Washington and Eisenhower Drive,nb,Right,431
+6/28/2025,Washington and Eisenhower Drive,nb,Through,9571
+6/28/2025,Washington and Eisenhower Drive,nb,Left,88
+6/29/2025,Washington and Eisenhower Drive,nb,Right,308
+6/29/2025,Washington and Eisenhower Drive,nb,Through,7888
+6/29/2025,Washington and Eisenhower Drive,nb,Left,75
+6/30/2025,Washington and Eisenhower Drive,nb,Right,403
+6/30/2025,Washington and Eisenhower Drive,nb,Through,11551
+6/30/2025,Washington and Eisenhower Drive,nb,Left,98
+6/15/2025,Washington and Avenue 48,wb,Right,6
+6/15/2025,Washington and Avenue 48,wb,Left,5
+6/16/2025,Washington and Avenue 48,wb,Right,1894
+6/16/2025,Washington and Avenue 48,wb,Left,1743
+6/17/2025,Washington and Avenue 48,wb,Right,2102
+6/17/2025,Washington and Avenue 48,wb,Left,1821
+6/18/2025,Washington and Avenue 48,wb,Right,1761
+6/18/2025,Washington and Avenue 48,wb,Left,1825
+6/19/2025,Washington and Avenue 48,wb,Right,1981
+6/19/2025,Washington and Avenue 48,wb,Left,1786
+6/20/2025,Washington and Avenue 48,wb,Right,1925
+6/20/2025,Washington and Avenue 48,wb,Left,1953
+6/21/2025,Washington and Avenue 48,wb,Right,1723
+6/21/2025,Washington and Avenue 48,wb,Left,1577
+6/22/2025,Washington and Avenue 48,wb,Right,1551
+6/22/2025,Washington and Avenue 48,wb,Left,1213
+6/23/2025,Washington and Avenue 48,wb,Right,3660
+6/23/2025,Washington and Avenue 48,wb,Left,4241
+6/24/2025,Washington and Avenue 48,wb,Right,5688
+6/24/2025,Washington and Avenue 48,wb,Left,5696
+6/25/2025,Washington and Avenue 48,wb,Right,5878
+6/25/2025,Washington and Avenue 48,wb,Left,5498
+6/26/2025,Washington and Avenue 48,wb,Right,5429
+6/26/2025,Washington and Avenue 48,wb,Left,4764
+6/27/2025,Washington and Avenue 48,wb,Right,6248
+6/27/2025,Washington and Avenue 48,wb,Left,5276
+6/28/2025,Washington and Avenue 48,wb,Right,5201
+6/28/2025,Washington and Avenue 48,wb,Left,4400
+6/29/2025,Washington and Avenue 48,wb,Right,4627
+6/29/2025,Washington and Avenue 48,wb,Left,3632
+6/30/2025,Washington and Avenue 48,wb,Right,5540
+6/30/2025,Washington and Avenue 48,wb,Left,5304
+6/15/2025,Washington and Avenue 48,sb,Through,13
+6/15/2025,Washington and Avenue 48,sb,Left,2
+6/16/2025,Washington and Avenue 48,sb,Through,5296
+6/16/2025,Washington and Avenue 48,sb,Left,594
+6/17/2025,Washington and Avenue 48,sb,Through,5197
+6/17/2025,Washington and Avenue 48,sb,Left,650
+6/18/2025,Washington and Avenue 48,sb,Through,5314
+6/18/2025,Washington and Avenue 48,sb,Left,648
+6/19/2025,Washington and Avenue 48,sb,Through,5141
+6/19/2025,Washington and Avenue 48,sb,Left,695
+6/20/2025,Washington and Avenue 48,sb,Through,5570
+6/20/2025,Washington and Avenue 48,sb,Left,715
+6/21/2025,Washington and Avenue 48,sb,Through,4483
+6/21/2025,Washington and Avenue 48,sb,Left,557
+6/22/2025,Washington and Avenue 48,sb,Through,3742
+6/22/2025,Washington and Avenue 48,sb,Left,535
+6/23/2025,Washington and Avenue 48,sb,Through,12153
+6/23/2025,Washington and Avenue 48,sb,Left,1591
+6/24/2025,Washington and Avenue 48,sb,Through,16458
+6/24/2025,Washington and Avenue 48,sb,Left,2006
+6/25/2025,Washington and Avenue 48,sb,Through,16104
+6/25/2025,Washington and Avenue 48,sb,Left,2048
+6/26/2025,Washington and Avenue 48,sb,Through,12977
+6/26/2025,Washington and Avenue 48,sb,Left,1609
+6/27/2025,Washington and Avenue 48,sb,Through,16160
+6/27/2025,Washington and Avenue 48,sb,Left,1991
+6/28/2025,Washington and Avenue 48,sb,Through,13608
+6/28/2025,Washington and Avenue 48,sb,Left,1592
+6/29/2025,Washington and Avenue 48,sb,Through,11363
+6/29/2025,Washington and Avenue 48,sb,Left,1649
+6/30/2025,Washington and Avenue 48,sb,Through,15910
+6/30/2025,Washington and Avenue 48,sb,Left,1979
+6/15/2025,Washington and Avenue 48,nb,Right,3
+6/15/2025,Washington and Avenue 48,nb,Through,11
+6/16/2025,Washington and Avenue 48,nb,Right,1526
+6/16/2025,Washington and Avenue 48,nb,Through,4832
+6/17/2025,Washington and Avenue 48,nb,Right,1603
+6/17/2025,Washington and Avenue 48,nb,Through,4866
+6/18/2025,Washington and Avenue 48,nb,Right,1552
+6/18/2025,Washington and Avenue 48,nb,Through,5016
+6/19/2025,Washington and Avenue 48,nb,Right,1447
+6/19/2025,Washington and Avenue 48,nb,Through,4808
+6/20/2025,Washington and Avenue 48,nb,Right,1558
+6/20/2025,Washington and Avenue 48,nb,Through,5161
+6/21/2025,Washington and Avenue 48,nb,Right,1233
+6/21/2025,Washington and Avenue 48,nb,Through,4182
+6/22/2025,Washington and Avenue 48,nb,Right,1039
+6/22/2025,Washington and Avenue 48,nb,Through,3471
+6/23/2025,Washington and Avenue 48,nb,Right,3239
+6/23/2025,Washington and Avenue 48,nb,Through,10029
+6/24/2025,Washington and Avenue 48,nb,Right,4865
+6/24/2025,Washington and Avenue 48,nb,Through,14771
+6/25/2025,Washington and Avenue 48,nb,Right,4499
+6/25/2025,Washington and Avenue 48,nb,Through,14806
+6/26/2025,Washington and Avenue 48,nb,Right,4062
+6/26/2025,Washington and Avenue 48,nb,Through,12173
+6/27/2025,Washington and Avenue 48,nb,Right,4473
+6/27/2025,Washington and Avenue 48,nb,Through,14390
+6/28/2025,Washington and Avenue 48,nb,Right,3728
+6/28/2025,Washington and Avenue 48,nb,Through,12028
+6/29/2025,Washington and Avenue 48,nb,Right,3095
+6/29/2025,Washington and Avenue 48,nb,Through,10018
+6/30/2025,Washington and Avenue 48,nb,Right,4395
+6/30/2025,Washington and Avenue 48,nb,Through,14176
+6/15/2025,Washington Avenue and Avenue 47,eb,Right,0
+6/15/2025,Washington Avenue and Avenue 47,eb,Through,0
+6/15/2025,Washington Avenue and Avenue 47,eb,Left,0
+6/16/2025,Washington Avenue and Avenue 47,eb,Right,96
+6/16/2025,Washington Avenue and Avenue 47,eb,Through,2
+6/16/2025,Washington Avenue and Avenue 47,eb,Left,48
+6/17/2025,Washington Avenue and Avenue 47,eb,Right,4
+6/17/2025,Washington Avenue and Avenue 47,eb,Through,0
+6/17/2025,Washington Avenue and Avenue 47,eb,Left,0
+6/18/2025,Washington Avenue and Avenue 47,eb,Right,14
+6/18/2025,Washington Avenue and Avenue 47,eb,Through,0
+6/18/2025,Washington Avenue and Avenue 47,eb,Left,0
+6/19/2025,Washington Avenue and Avenue 47,eb,Right,9
+6/19/2025,Washington Avenue and Avenue 47,eb,Through,0
+6/19/2025,Washington Avenue and Avenue 47,eb,Left,0
+6/20/2025,Washington Avenue and Avenue 47,eb,Right,11
+6/20/2025,Washington Avenue and Avenue 47,eb,Through,1
+6/20/2025,Washington Avenue and Avenue 47,eb,Left,0
+6/21/2025,Washington Avenue and Avenue 47,eb,Right,7
+6/21/2025,Washington Avenue and Avenue 47,eb,Through,1
+6/21/2025,Washington Avenue and Avenue 47,eb,Left,0
+6/22/2025,Washington Avenue and Avenue 47,eb,Right,10
+6/22/2025,Washington Avenue and Avenue 47,eb,Through,1
+6/22/2025,Washington Avenue and Avenue 47,eb,Left,2
+6/23/2025,Washington Avenue and Avenue 47,eb,Right,15
+6/23/2025,Washington Avenue and Avenue 47,eb,Through,0
+6/23/2025,Washington Avenue and Avenue 47,eb,Left,0
+6/24/2025,Washington Avenue and Avenue 47,eb,Right,22
+6/24/2025,Washington Avenue and Avenue 47,eb,Through,0
+6/24/2025,Washington Avenue and Avenue 47,eb,Left,0
+6/25/2025,Washington Avenue and Avenue 47,eb,Right,2
+6/25/2025,Washington Avenue and Avenue 47,eb,Through,0
+6/25/2025,Washington Avenue and Avenue 47,eb,Left,0
+6/26/2025,Washington Avenue and Avenue 47,eb,Right,12
+6/26/2025,Washington Avenue and Avenue 47,eb,Through,0
+6/26/2025,Washington Avenue and Avenue 47,eb,Left,0
+6/27/2025,Washington Avenue and Avenue 47,eb,Right,7
+6/27/2025,Washington Avenue and Avenue 47,eb,Through,0
+6/27/2025,Washington Avenue and Avenue 47,eb,Left,0
+6/28/2025,Washington Avenue and Avenue 47,eb,Right,2
+6/28/2025,Washington Avenue and Avenue 47,eb,Through,4
+6/28/2025,Washington Avenue and Avenue 47,eb,Left,0
+6/29/2025,Washington Avenue and Avenue 47,eb,Right,1
+6/29/2025,Washington Avenue and Avenue 47,eb,Through,1
+6/29/2025,Washington Avenue and Avenue 47,eb,Left,0
+6/30/2025,Washington Avenue and Avenue 47,eb,Right,9
+6/30/2025,Washington Avenue and Avenue 47,eb,Through,1
+6/30/2025,Washington Avenue and Avenue 47,eb,Left,0
+6/15/2025,Washington Avenue and Avenue 47,wb,Right,0
+6/15/2025,Washington Avenue and Avenue 47,wb,Through,0
+6/15/2025,Washington Avenue and Avenue 47,wb,Left,0
+6/16/2025,Washington Avenue and Avenue 47,wb,Right,277
+6/16/2025,Washington Avenue and Avenue 47,wb,Through,25
+6/16/2025,Washington Avenue and Avenue 47,wb,Left,320
+6/17/2025,Washington Avenue and Avenue 47,wb,Right,141
+6/17/2025,Washington Avenue and Avenue 47,wb,Through,3
+6/17/2025,Washington Avenue and Avenue 47,wb,Left,1
+6/18/2025,Washington Avenue and Avenue 47,wb,Right,100
+6/18/2025,Washington Avenue and Avenue 47,wb,Through,4
+6/18/2025,Washington Avenue and Avenue 47,wb,Left,3
+6/19/2025,Washington Avenue and Avenue 47,wb,Right,120
+6/19/2025,Washington Avenue and Avenue 47,wb,Through,5
+6/19/2025,Washington Avenue and Avenue 47,wb,Left,0
+6/20/2025,Washington Avenue and Avenue 47,wb,Right,97
+6/20/2025,Washington Avenue and Avenue 47,wb,Through,3
+6/20/2025,Washington Avenue and Avenue 47,wb,Left,1
+6/21/2025,Washington Avenue and Avenue 47,wb,Right,68
+6/21/2025,Washington Avenue and Avenue 47,wb,Through,2
+6/21/2025,Washington Avenue and Avenue 47,wb,Left,0
+6/22/2025,Washington Avenue and Avenue 47,wb,Right,69
+6/22/2025,Washington Avenue and Avenue 47,wb,Through,7
+6/22/2025,Washington Avenue and Avenue 47,wb,Left,0
+6/23/2025,Washington Avenue and Avenue 47,wb,Right,98
+6/23/2025,Washington Avenue and Avenue 47,wb,Through,3
+6/23/2025,Washington Avenue and Avenue 47,wb,Left,0
+6/24/2025,Washington Avenue and Avenue 47,wb,Right,137
+6/24/2025,Washington Avenue and Avenue 47,wb,Through,4
+6/24/2025,Washington Avenue and Avenue 47,wb,Left,0
+6/25/2025,Washington Avenue and Avenue 47,wb,Right,125
+6/25/2025,Washington Avenue and Avenue 47,wb,Through,6
+6/25/2025,Washington Avenue and Avenue 47,wb,Left,0
+6/26/2025,Washington Avenue and Avenue 47,wb,Right,112
+6/26/2025,Washington Avenue and Avenue 47,wb,Through,4
+6/26/2025,Washington Avenue and Avenue 47,wb,Left,1
+6/27/2025,Washington Avenue and Avenue 47,wb,Right,111
+6/27/2025,Washington Avenue and Avenue 47,wb,Through,5
+6/27/2025,Washington Avenue and Avenue 47,wb,Left,0
+6/28/2025,Washington Avenue and Avenue 47,wb,Right,51
+6/28/2025,Washington Avenue and Avenue 47,wb,Through,3
+6/28/2025,Washington Avenue and Avenue 47,wb,Left,0
+6/29/2025,Washington Avenue and Avenue 47,wb,Right,65
+6/29/2025,Washington Avenue and Avenue 47,wb,Through,0
+6/29/2025,Washington Avenue and Avenue 47,wb,Left,0
+6/30/2025,Washington Avenue and Avenue 47,wb,Right,101
+6/30/2025,Washington Avenue and Avenue 47,wb,Through,0
+6/30/2025,Washington Avenue and Avenue 47,wb,Left,0
+6/15/2025,Washington Avenue and Avenue 47,sb,Right,0
+6/15/2025,Washington Avenue and Avenue 47,sb,Through,5
+6/15/2025,Washington Avenue and Avenue 47,sb,Left,1
+6/16/2025,Washington Avenue and Avenue 47,sb,Right,619
+6/16/2025,Washington Avenue and Avenue 47,sb,Through,3089
+6/16/2025,Washington Avenue and Avenue 47,sb,Left,198
+6/17/2025,Washington Avenue and Avenue 47,sb,Right,94
+6/17/2025,Washington Avenue and Avenue 47,sb,Through,4390
+6/17/2025,Washington Avenue and Avenue 47,sb,Left,240
+6/18/2025,Washington Avenue and Avenue 47,sb,Right,59
+6/18/2025,Washington Avenue and Avenue 47,sb,Through,4613
+6/18/2025,Washington Avenue and Avenue 47,sb,Left,211
+6/19/2025,Washington Avenue and Avenue 47,sb,Right,77
+6/19/2025,Washington Avenue and Avenue 47,sb,Through,4525
+6/19/2025,Washington Avenue and Avenue 47,sb,Left,201
+6/20/2025,Washington Avenue and Avenue 47,sb,Right,72
+6/20/2025,Washington Avenue and Avenue 47,sb,Through,4751
+6/20/2025,Washington Avenue and Avenue 47,sb,Left,201
+6/21/2025,Washington Avenue and Avenue 47,sb,Right,78
+6/21/2025,Washington Avenue and Avenue 47,sb,Through,3858
+6/21/2025,Washington Avenue and Avenue 47,sb,Left,117
+6/22/2025,Washington Avenue and Avenue 47,sb,Right,47
+6/22/2025,Washington Avenue and Avenue 47,sb,Through,3150
+6/22/2025,Washington Avenue and Avenue 47,sb,Left,97
+6/23/2025,Washington Avenue and Avenue 47,sb,Right,49
+6/23/2025,Washington Avenue and Avenue 47,sb,Through,4354
+6/23/2025,Washington Avenue and Avenue 47,sb,Left,172
+6/24/2025,Washington Avenue and Avenue 47,sb,Right,78
+6/24/2025,Washington Avenue and Avenue 47,sb,Through,4724
+6/24/2025,Washington Avenue and Avenue 47,sb,Left,193
+6/25/2025,Washington Avenue and Avenue 47,sb,Right,52
+6/25/2025,Washington Avenue and Avenue 47,sb,Through,4686
+6/25/2025,Washington Avenue and Avenue 47,sb,Left,201
+6/26/2025,Washington Avenue and Avenue 47,sb,Right,84
+6/26/2025,Washington Avenue and Avenue 47,sb,Through,4617
+6/26/2025,Washington Avenue and Avenue 47,sb,Left,183
+6/27/2025,Washington Avenue and Avenue 47,sb,Right,63
+6/27/2025,Washington Avenue and Avenue 47,sb,Through,4582
+6/27/2025,Washington Avenue and Avenue 47,sb,Left,169
+6/28/2025,Washington Avenue and Avenue 47,sb,Right,66
+6/28/2025,Washington Avenue and Avenue 47,sb,Through,3619
+6/28/2025,Washington Avenue and Avenue 47,sb,Left,147
+6/29/2025,Washington Avenue and Avenue 47,sb,Right,42
+6/29/2025,Washington Avenue and Avenue 47,sb,Through,2862
+6/29/2025,Washington Avenue and Avenue 47,sb,Left,116
+6/30/2025,Washington Avenue and Avenue 47,sb,Right,73
+6/30/2025,Washington Avenue and Avenue 47,sb,Through,4061
+6/30/2025,Washington Avenue and Avenue 47,sb,Left,190
+6/15/2025,Washington Avenue and Avenue 47,nb,Right,3
+6/15/2025,Washington Avenue and Avenue 47,nb,Through,4
+6/15/2025,Washington Avenue and Avenue 47,nb,Left,0
+6/16/2025,Washington Avenue and Avenue 47,nb,Right,1018
+6/16/2025,Washington Avenue and Avenue 47,nb,Through,3957
+6/16/2025,Washington Avenue and Avenue 47,nb,Left,80
+6/17/2025,Washington Avenue and Avenue 47,nb,Right,1160
+6/17/2025,Washington Avenue and Avenue 47,nb,Through,5030
+6/17/2025,Washington Avenue and Avenue 47,nb,Left,8
+6/18/2025,Washington Avenue and Avenue 47,nb,Right,1334
+6/18/2025,Washington Avenue and Avenue 47,nb,Through,5072
+6/18/2025,Washington Avenue and Avenue 47,nb,Left,10
+6/19/2025,Washington Avenue and Avenue 47,nb,Right,1070
+6/19/2025,Washington Avenue and Avenue 47,nb,Through,4818
+6/19/2025,Washington Avenue and Avenue 47,nb,Left,12
+6/20/2025,Washington Avenue and Avenue 47,nb,Right,1424
+6/20/2025,Washington Avenue and Avenue 47,nb,Through,5395
+6/20/2025,Washington Avenue and Avenue 47,nb,Left,12
+6/21/2025,Washington Avenue and Avenue 47,nb,Right,1252
+6/21/2025,Washington Avenue and Avenue 47,nb,Through,4208
+6/21/2025,Washington Avenue and Avenue 47,nb,Left,11
+6/22/2025,Washington Avenue and Avenue 47,nb,Right,918
+6/22/2025,Washington Avenue and Avenue 47,nb,Through,3468
+6/22/2025,Washington Avenue and Avenue 47,nb,Left,17
+6/23/2025,Washington Avenue and Avenue 47,nb,Right,1236
+6/23/2025,Washington Avenue and Avenue 47,nb,Through,4703
+6/23/2025,Washington Avenue and Avenue 47,nb,Left,16
+6/24/2025,Washington Avenue and Avenue 47,nb,Right,1324
+6/24/2025,Washington Avenue and Avenue 47,nb,Through,5161
+6/24/2025,Washington Avenue and Avenue 47,nb,Left,13
+6/25/2025,Washington Avenue and Avenue 47,nb,Right,1202
+6/25/2025,Washington Avenue and Avenue 47,nb,Through,5047
+6/25/2025,Washington Avenue and Avenue 47,nb,Left,10
+6/26/2025,Washington Avenue and Avenue 47,nb,Right,1342
+6/26/2025,Washington Avenue and Avenue 47,nb,Through,5026
+6/26/2025,Washington Avenue and Avenue 47,nb,Left,9
+6/27/2025,Washington Avenue and Avenue 47,nb,Right,1256
+6/27/2025,Washington Avenue and Avenue 47,nb,Through,4989
+6/27/2025,Washington Avenue and Avenue 47,nb,Left,8
+6/28/2025,Washington Avenue and Avenue 47,nb,Right,1011
+6/28/2025,Washington Avenue and Avenue 47,nb,Through,3996
+6/28/2025,Washington Avenue and Avenue 47,nb,Left,10
+6/29/2025,Washington Avenue and Avenue 47,nb,Right,942
+6/29/2025,Washington Avenue and Avenue 47,nb,Through,3209
+6/29/2025,Washington Avenue and Avenue 47,nb,Left,26
+6/30/2025,Washington Avenue and Avenue 47,nb,Right,1113
+6/30/2025,Washington Avenue and Avenue 47,nb,Through,4733
+6/30/2025,Washington Avenue and Avenue 47,nb,Left,15
