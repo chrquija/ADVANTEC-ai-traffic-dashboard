@@ -523,7 +523,7 @@ def improved_volume_charts_for_tab2(
 # Tabs
 # =========================
 st.markdown("## Select Page")
-tab1, tab2, tab3, tab4, tab5 = st.tabs(["Pg.1 ITERIS CLEARGUIDE", "Pg.2 KINETIC MOBILITY", "Pg.3 ACYCLICA", "Pg.4 ITERIS VANTAGE LIVE" "Pg.5 BOSCH CLOUD ANALYTICS"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["Pg.1 ITERIS CLEARGUIDE", "Pg.2 KINETIC MOBILITY", "Pg.3 ACYCLICA", "Pg.4 ITERIS VANTAGE LIVE", "Pg.5 BOSCH CLOUD ANALYTICS"])
 
 # -------------------------
 # TAB 1: Performance / Travel Time (Search-gated, NO forms)
