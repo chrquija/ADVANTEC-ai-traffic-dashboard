@@ -56,6 +56,12 @@ try:
 except ModuleNotFoundError:
     from core.VantageLivetab import render_vantage_tab  # package import
 
+# --- Bosch (Tab 5) ---
+try:
+    from Boschtab import render_bosch_tab  # sibling import
+except ModuleNotFoundError:
+    from core.Boschtab import render_bosch_tab  # package import
+
 
 
 
@@ -1568,6 +1574,13 @@ with tab3:
 # -------------------------
 with tab4:
     render_vantage_tab()
+
+# -------------------------
+# TAB 5: Bosch Multimodal Traffic Analysis
+# -------------------------
+with tab5:
+    render_bosch_tab()
+
 
 # =========================
 # FOOTER
