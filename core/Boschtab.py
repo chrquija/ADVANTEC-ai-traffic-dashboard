@@ -26,11 +26,9 @@ HIGH_VOLUME_THRESHOLD_VPH = 1200
 # ---- Raw CSV URLs (update these if file names move) ----
 BOSCH_RAW_URLS = {
     # Washington Street (multi-site file)
-    "Washington Street": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/Bosch/WashingtonStreet_Bosch.csv",
-    # Jefferson St (Fred Waring) — if you consolidate later, point this to a corridor-wide file
-    "Fred Waring": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/Bosch/FredWaring_Bosch.csv",
-    # If you later add a corridor-level Jefferson Street file, uncomment & use:
-    # "Jefferson Street": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/Bosch/JeffersonStreet_Bosch.csv",
+    "Washington Street": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/Bosch/WashingtonSt_1hr_Speed_Volume_Long.csv",
+    # Jefferson St (Fred Waring)
+    "Fred Waring": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/Bosch/JeffersonSt_1hr_Speed_Volume_Long.csv",
 }
 
 # ---- Canonical segment name mapping (Bosch device IDs → human-friendly)
