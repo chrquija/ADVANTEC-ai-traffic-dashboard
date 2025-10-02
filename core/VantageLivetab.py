@@ -177,7 +177,8 @@ def load_vantage_bikes() -> pd.DataFrame:
         if "direction" in df.columns:
             df["direction"] = df["direction"].astype(str).str.strip().str.upper()
         if "turn_type" not in df.columns:
-            df["turn_type"] = "Through"
+            df["turn_type"] = "Through"   # allow TMC to work for bikes
+        df["turn_type"] = df["turn_type"].astype(str).str.strip().str.title()
         df["volume"] = pd.to_numeric(df["volume"], errors="coerce").fillna(0)
         return df.sort_values("local_datetime").reset_index(drop=True)
     except Exception as e:
@@ -246,6 +247,215 @@ def _cap_series_for_x(x_df: pd.DataFrame, cap_vph: float, high_vph: float) -> pd
     xs["capacity"] = xs["bucket_hours"] * float(cap_vph)
     xs["high"] = xs["bucket_hours"] * float(high_vph)
     return xs
+
+
+# =========================
+# TMC Helpers (new)
+# =========================
+def _filter_for_tmc(df: pd.DataFrame, intersection: str, date_range):
+    """Filter only by date range + intersection (ignore direction/turn filters)."""
+    if df is None or df.empty:
+        return pd.DataFrame()
+    out = df[
+        (df["local_datetime"].dt.date >= date_range[0]) &
+        (df["local_datetime"].dt.date <= date_range[1])
+    ].copy()
+    if intersection != "All Intersections":
+        out = out[out["intersection_name"] == intersection]
+    return out
+
+
+def _summarize_tmc(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Build a dense table of approach x turn_type with volumes and shares.
+    Expected columns: direction (NB/SB/EB/WB), turn_type (Left/Through/Right), volume.
+    """
+    if df.empty:
+        return pd.DataFrame(columns=["approach", "turn", "volume", "pct"])
+    d = df.copy()
+    d["direction"] = d["direction"].astype(str).str.upper()
+    if "turn_type" not in d.columns:
+        d["turn_type"] = "Through"
+    d["turn_type"] = d["turn_type"].astype(str).str.title()
+
+    # keep only cardinal directions and L/T/R turns
+    dir_ok = ["NB", "SB", "EB", "WB"]
+    turn_ok = ["Left", "Through", "Right"]
+    d = d[d["direction"].isin(dir_ok)]
+    d = d[d["turn_type"].isin(turn_ok)]
+
+    g = d.groupby(["direction", "turn_type"], as_index=False)["volume"].sum()
+    # Complete the grid (fill missing with zero)
+    all_pairs = pd.MultiIndex.from_product([dir_ok, turn_ok], names=["direction", "turn_type"])
+    g = g.set_index(["direction", "turn_type"]).reindex(all_pairs, fill_value=0).reset_index()
+
+    # Shares per approach
+    tot = g.groupby("direction", as_index=False)["volume"].sum().rename(columns={"volume": "total"})
+    x = g.merge(tot, on="direction", how="left")
+    x["pct"] = np.where(x["total"] > 0, x["volume"] / x["total"], 0.0)
+
+    x = x.rename(columns={"direction": "approach", "turn_type": "turn"})[
+        ["approach", "turn", "volume", "pct", "total"]
+    ]
+    return x
+
+
+def _pct_to_color(p):
+    """
+    Color logic for the percent badges (roughly like your screenshot):
+    0-10% -> green, 10-40% -> yellow, >40% -> orange. Zero-total -> gray.
+    """
+    if pd.isna(p):
+        return "#cccccc"
+    if p == -1:  # sentinel for zero-total approach
+        return "#e0e0e0"
+    if p <= 0.10:
+        return "#2ecc71"   # green
+    if p <= 0.40:
+        return "#f1c40f"   # yellow
+    return "#e67e22"       # orange
+
+
+def _add_badge(fig: go.Figure, x0, y0, x1, y1, text, fill, border="#ffffff"):
+    """Add a rounded-rect-like badge using a rectangle + centered annotation."""
+    fig.add_shape(
+        type="rect", x0=x0, y0=y0, x1=x1, y1=y1,
+        line=dict(color=border, width=1),
+        fillcolor=fill, layer="above"
+    )
+    fig.add_annotation(
+        x=(x0 + x1) / 2.0, y=(y0 + y1) / 2.0,
+        text=text, showarrow=False, font=dict(color="#000000", size=12)
+    )
+
+
+def _tmc_figure(tmc_df: pd.DataFrame, intersection: str, date_range, mode_label: str) -> go.Figure:
+    """
+    Draw a schematic TMC diagram with four approaches and L/T/R shares.
+    Coordinates: 0..10 in both axes, center at (5,5).
+    """
+    # Build quick access dicts
+    turns = ["Left", "Through", "Right"]
+    approaches = ["NB", "SB", "EB", "WB"]
+
+    # approach totals (to know if it's zero)
+    approach_tot = tmc_df.groupby("approach", as_index=False)["total"].max()
+    tot_map = dict(zip(approach_tot["approach"], approach_tot["total"]))
+
+    # helper: get pct and vol
+    def get_pair(app, turn):
+        row = tmc_df[(tmc_df["approach"] == app) & (tmc_df["turn"] == turn)]
+        if row.empty:
+            return 0.0, 0
+        return float(row["pct"].values[0]), int(row["volume"].values[0])
+
+    fig = go.Figure()
+
+    # Crosshair + center circle
+    fig.add_shape(type="line", x0=5, y0=0.7, x1=5, y1=9.3, line=dict(color="#bbbbbb", width=2))
+    fig.add_shape(type="line", x0=0.7, y0=5, x1=9.3, y1=5, line=dict(color="#bbbbbb", width=2))
+    fig.add_shape(type="circle", x0=4.4, y0=4.4, x1=5.6, y1=5.6, line=dict(color="#888888", width=1))
+    fig.add_annotation(x=5, y=5, text="N", showarrow=False, font=dict(size=12, color="#666"))
+
+    # Layout config
+    fig.update_xaxes(visible=False, range=[0, 10])
+    fig.update_yaxes(visible=False, range=[0, 10])
+    fig.update_layout(
+        height=620,
+        margin=dict(l=20, r=20, t=70, b=20),
+        template="plotly_white",
+        title=f"TMC — {mode_label} — {intersection}<br><sup>{date_range[0].strftime('%b %d, %Y')} to {date_range[1].strftime('%b %d, %Y')}</sup>"
+    )
+
+    # Position maps for badges (Left/Through/Right)
+    # Top (SB)
+    top_boxes = {"Left": (3.6, 9.0, 4.8, 9.6), "Through": (4.95, 9.0, 5.95, 9.6), "Right": (6.2, 9.0, 7.3, 9.6)}
+    # Bottom (NB)
+    bot_boxes = {"Left": (3.6, 0.4, 4.8, 1.0), "Through": (4.95, 0.4, 5.95, 1.0), "Right": (6.2, 0.4, 7.3, 1.0)}
+    # Left (EB) – stacked vertically
+    left_boxes = {"Left": (0.4, 6.4, 1.0, 7.0), "Through": (0.4, 5.3, 1.0, 5.9), "Right": (0.4, 4.2, 1.0, 4.8)}
+    # Right (WB) – stacked vertically
+    right_boxes = {"Left": (9.0, 6.4, 9.6, 7.0), "Through": (9.0, 5.3, 9.6, 5.9), "Right": (9.0, 4.2, 9.6, 4.8)}
+
+    # Approach labels + volume totals
+    # Top shows SOUTHBOUND (SB), bottom NORTHBOUND (NB), left EASTBOUND (EB), right WESTBOUND (WB)
+    labels = {
+        "SB": ("SOUTHBOUND", 5.0, 9.85, "center"),
+        "NB": ("NORTHBOUND", 5.0, 0.15, "center"),
+        "EB": ("EASTBOUND", 0.15, 5.9, "left"),
+        "WB": ("WESTBOUND", 9.85, 5.9, "right"),
+    }
+    for app, (text, x, y, align) in labels.items():
+        # Show approach title
+        fig.add_annotation(x=x, y=y, text=text, showarrow=False,
+                           font=dict(size=13, color="#3d3d3d"),
+                           xanchor="center" if align == "center" else align)
+        # Show total in parentheses under/next to title
+        total = int(tot_map.get(app, 0))
+        if app in ["SB", "NB"]:
+            fig.add_annotation(x=x, y=y - (0.18 if app == "SB" else -0.18),
+                               text=f"({total:,})", showarrow=False,
+                               font=dict(size=11, color="#666"),
+                               xanchor="center")
+        else:
+            # left/right place totals beside label
+            xoff = 0.0
+            xanch = "left" if app == "EB" else "right"
+            fig.add_annotation(x=x, y=y - 0.25, text=f"({total:,})", showarrow=False,
+                               font=dict(size=11, color="#666"), xanchor=xanch)
+
+    # Helper to render an approach group
+    def draw_group(app_code, boxes):
+        app_total = tot_map.get(app_code, 0)
+        for turn in turns:
+            p, v = get_pair(app_code, turn)
+            # handle zero totals (neutral badge)
+            if app_total <= 0:
+                fill = _pct_to_color(-1)
+                pct_txt = "0%"
+            else:
+                fill = _pct_to_color(p)
+                pct_txt = f"{p*100:.0f}%"
+            x0, y0, x1, y1 = boxes[turn]
+            _add_badge(fig, x0, y0, x1, y1, pct_txt, fill)
+            # counts near badges in smaller gray text
+            # choose a small anchor position based on orientation
+            if boxes is top_boxes or boxes is bot_boxes:
+                ax = (x0 + x1) / 2.0
+                ay = y0 - 0.18 if boxes is top_boxes else y1 + 0.18
+                fig.add_annotation(x=ax, y=ay, text=f"({v:,})",
+                                   showarrow=False, font=dict(size=10, color="#777"))
+            else:
+                ax = x1 + (0.18 if boxes is left_boxes else -0.18)
+                ay = (y0 + y1) / 2.0
+                fig.add_annotation(x=ax, y=ay, text=f"({v:,})",
+                                   showarrow=False, font=dict(size=10, color="#777"),
+                                   xanchor="left" if boxes is left_boxes else "right")
+
+    draw_group("SB", top_boxes)
+    draw_group("NB", bot_boxes)
+    draw_group("EB", left_boxes)
+    draw_group("WB", right_boxes)
+
+    # Add small arrow glyph hints (unicode) near each badge group (optional, light)
+    # Top group arrows
+    fig.add_annotation(x=4.2, y=8.72, text="↙", showarrow=False, font=dict(size=12, color="#444"))
+    fig.add_annotation(x=5.45, y=8.72, text="↓", showarrow=False, font=dict(size=12, color="#444"))
+    fig.add_annotation(x=6.75, y=8.72, text="↘", showarrow=False, font=dict(size=12, color="#444"))
+    # Bottom group arrows
+    fig.add_annotation(x=4.2, y=1.28, text="↖", showarrow=False, font=dict(size=12, color="#444"))
+    fig.add_annotation(x=5.45, y=1.28, text="↑", showarrow=False, font=dict(size=12, color="#444"))
+    fig.add_annotation(x=6.75, y=1.28, text="↗", showarrow=False, font=dict(size=12, color="#444"))
+    # Left group arrows
+    fig.add_annotation(x=1.28, y=6.7, text="↗", showarrow=False, font=dict(size=12, color="#444"))
+    fig.add_annotation(x=1.28, y=5.6, text="→", showarrow=False, font=dict(size=12, color="#444"))
+    fig.add_annotation(x=1.28, y=4.5, text="↘", showarrow=False, font=dict(size=12, color="#444"))
+    # Right group arrows
+    fig.add_annotation(x=8.72, y=6.7, text="↖", showarrow=False, font=dict(size=12, color="#444"))
+    fig.add_annotation(x=8.72, y=5.6, text="←", showarrow=False, font=dict(size=12, color="#444"))
+    fig.add_annotation(x=8.72, y=4.5, text="↙", showarrow=False, font=dict(size=12, color="#444"))
+
+    return fig
 
 
 # =========================
@@ -431,7 +641,7 @@ def render_vantage_tab():
             st.markdown("## 📊 Chart Type")
             chart_type = st.radio(
                 "Visualization",
-                ["Trend (Line)", "Share (Pie)"],
+                ["Trend (Line)", "Share (Pie)", "TMC (Turning Movement Counts)"],
                 index=0 if mode != "Bikes" else 1,  # Bikes default to Pie
                 horizontal=True,
                 key="vantage_chart_type",
@@ -471,7 +681,7 @@ def render_vantage_tab():
         return
 
     try:
-        # Filters
+        # Filters for non-TMC charts (direction/turn filters apply here)
         def apply_filters(df: pd.DataFrame) -> pd.DataFrame:
             if df.empty:
                 return df
@@ -490,7 +700,7 @@ def render_vantage_tab():
         if turn_filter and turn_filter != "All Turns" and not working_vehicles.empty and "turn_type" in working_vehicles.columns:
             working_vehicles = working_vehicles[working_vehicles["turn_type"] == turn_filter]
 
-        # Mode pick
+        # Mode pick for non-TMC
         if mode == "Bikes":
             analysis_df = working_bikes
             mode_label = "Bikes"
@@ -514,16 +724,8 @@ def render_vantage_tab():
                 analysis_df = working_vehicles
                 mode_label = "Vehicles"
 
-        if analysis_df.empty:
-            st.warning("⚠️ No data available for the selected filters.")
-            return
-
-        CAP_VPH, HIGH_VPH = _mode_caps(mode_label if mode_label != "Bikes + Vehicles" else "Vehicles")
-
-        # Layout columns
-        content_col, right_col = st.columns([7, 3.5], gap="large")
-
         # ---------- Right rail map ----------
+        content_col, right_col = st.columns([7, 3.5], gap="large")
         with right_col:
             st.markdown('<div id="vantage-map-anchor"></div>', unsafe_allow_html=True)
             st.markdown("##### Corridor Map", help="Stays visible while you scroll the analysis on the left.")
@@ -583,6 +785,54 @@ def render_vantage_tab():
                 unsafe_allow_html=True,
             )
 
+            # ============= TMC VIEW (NEW) =============
+            if chart_type == "TMC (Turning Movement Counts)":
+                if intersection == "All Intersections":
+                    st.info("ℹ️ TMC requires a single intersection. Please pick one in the sidebar.")
+                    return
+                if mode == "Both (Combined)":
+                    st.info("ℹ️ TMC is designed for a single mode. Please select **Vehicles** or **Bikes**.")
+                    return
+
+                # Build a fresh frame filtered only by date + intersection (we want ALL turns/directions for shares)
+                base_df = _filter_for_tmc(vehicles_df if mode == "Vehicles" else bikes_df, intersection, date_range)
+                if base_df.empty:
+                    st.warning("No data available for the selected dates and intersection.")
+                    return
+
+                # Summarize
+                tmc_table = _summarize_tmc(base_df)
+
+                # Draw
+                fig_tmc = _tmc_figure(tmc_table, intersection, date_range, mode)
+                st.plotly_chart(
+                    fig_tmc,
+                    use_container_width=True,
+                    config=PLOTLY_CONFIG,
+                    key=f"t4_tmc_{mode}_{(intersection or 'all').replace(' ', '_')}_{date_range[0]}_{date_range[1]}"
+                )
+
+                # Download + Table
+                with st.expander("📄 TMC Summary Table (volumes and shares)", expanded=False):
+                    show = tmc_table.copy()
+                    show = show.rename(columns={
+                        "approach": "Approach",
+                        "turn": "Turn",
+                        "volume": "Volume",
+                        "pct": "Share",
+                        "total": "Approach Total",
+                    })
+                    show["Share"] = (show["Share"] * 100).round(1)
+                    show = show.sort_values(["Approach", "Turn"])
+                    st.dataframe(show, use_container_width=True)
+                    st.download_button(
+                        "⬇️ Download TMC Summary (CSV)",
+                        data=show.to_csv(index=False).encode("utf-8"),
+                        file_name=f"tmc_{mode.lower()}_{intersection.replace(' ','_')}_{date_range[0]}_{date_range[1]}.csv",
+                        mime="text/csv",
+                    )
+                return  # TMC view ends here
+
             # ---------- KPIs ----------
             raw = analysis_df.copy()
             raw["volume"] = pd.to_numeric(raw["volume"], errors="coerce")
@@ -596,6 +846,7 @@ def render_vantage_tab():
                 else:
                     bucket_all["bucket_hours"] = AGG_META[granularity]["fixed_hours"]
 
+                CAP_VPH, HIGH_VPH = _mode_caps(mode_label if mode_label != "Bikes + Vehicles" else "Vehicles")
                 bucket_all["cap"] = bucket_all["bucket_hours"] * CAP_VPH
                 util_series = np.where(bucket_all["cap"] > 0, bucket_all["volume"] / bucket_all["cap"] * 100, np.nan)
 
@@ -609,7 +860,6 @@ def render_vantage_tab():
                 avg_bucket_val = float(bucket_all["volume"].mean())
                 avg_util_pct = float(np.nanmean(util_series)) if np.isfinite(util_series).any() else 0.0
 
-                hourly_avg = float(np.nanmean(raw["volume"])) if raw["volume"].notna().any() else 0.0
                 cv_bucket = (float(np.nanstd(bucket_all["volume"])) / avg_bucket_val * 100) if avg_bucket_val > 0 else 0.0
 
                 unit = AGG_META[granularity]["unit"]
@@ -678,7 +928,8 @@ def render_vantage_tab():
                 # ----- col3: Total -----
                 with col3:
                     total_volume = float(np.nansum(raw["volume"]))
-                    cap_total = CAP_VPH * float(bucket_all["bucket_hours"].sum())
+                    CAP_VPH2, _ = _mode_caps(mode_label if mode_label != "Bikes + Vehicles" else "Vehicles")
+                    cap_total = CAP_VPH2 * float(bucket_all["bucket_hours"].sum())
                     kpi_title(
                         f"🚗 Total {mode_label} (period)",
                         "Sum of all volumes across the selected time window and filters. "
@@ -838,8 +1089,10 @@ def render_vantage_tab():
                 else:
                     st.info("No data available to render the share (pie) view.")
             else:
+                # Trend view (default)
                 if len(analysis_df) > 1:
                     try:
+                        CAP_VPH, HIGH_VPH = _mode_caps(mode_label if mode_label != "Bikes + Vehicles" else "Vehicles")
                         fig_trend, fig_box, fig_matrix = create_volume_charts(
                             raw_df=raw,
                             granularity=granularity,
@@ -877,6 +1130,7 @@ def render_vantage_tab():
             # ---------- Risk table ----------
             st.subheader(f"🚨 Intersection Volume & Capacity Risk Analysis ({mode_label})")
             try:
+                CAP_VPH, _ = _mode_caps(mode_label if mode_label != "Bikes + Vehicles" else "Vehicles")
                 bucketed = _prep_bucket(raw, granularity)
                 bucketed["per_hour_equiv"] = np.where(
                     bucketed["bucket_hours"] > 0,
