@@ -115,7 +115,7 @@ PLOTLY_CONFIG = {
 }
 MAP_HEIGHT = 900
 
-# ---------- Small helper for KPI titles with hover help ----------
+# ---------- Small helpers ----------
 def kpi_title(label: str, help_text: str):
     safe_help = (help_text or "").replace('"', "&quot;")
     st.markdown(
@@ -131,9 +131,6 @@ def kpi_title(label: str, help_text: str):
         unsafe_allow_html=True,
     )
 
-# =========================
-# Helpers
-# =========================
 def _canonicalize_intersection(name: str) -> str:
     if not isinstance(name, str):
         return ""
@@ -155,10 +152,8 @@ def _canonicalize_intersection(name: str) -> str:
         return INTERSECTION_ALIASES[s2]
     return ""
 
-
 def _map_label_for(name: str) -> str:
     return MAP_LABEL_ALIASES.get(name, name)
-
 
 def _mode_caps(mode_label: str):
     """Return (capacity_vph, high_threshold_vph) by mode."""
@@ -168,9 +163,11 @@ def _mode_caps(mode_label: str):
         return PED_CAPACITY_VPH, PED_HIGH_THRESHOLD_VPH
     return VEH_CAPACITY_VPH, VEH_HIGH_THRESHOLD_VPH
 
-
 def _mode_noun(mode_label: str) -> str:
     return "vehicles" if mode_label == "Vehicles" else ("bikes" if mode_label == "Bikes" else "pedestrians")
+
+def _mode_emoji(mode_label: str) -> str:
+    return "🚗" if mode_label == "Vehicles" else ("🚲" if mode_label == "Bikes" else ("🚶" if mode_label == "Pedestrians" else "📊"))
 
 # =========================
 # Data Loading
@@ -195,7 +192,6 @@ def load_vantage_bikes() -> pd.DataFrame:
         st.error(f"Error loading bike data: {e}")
         return pd.DataFrame()
 
-
 @st.cache_data(show_spinner=False)
 def load_vantage_vehicles() -> pd.DataFrame:
     url = "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/Iteris_VantageLive/WashingtonStreet_ALL_vehicles.csv"
@@ -215,13 +211,11 @@ def load_vantage_vehicles() -> pd.DataFrame:
         st.error(f"Error loading vehicle data: {e}")
         return pd.DataFrame()
 
-
 @st.cache_data(show_spinner=False)
 def load_vantage_pedestrians() -> pd.DataFrame:
     url = "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/Iteris_VantageLive/WashingtonStreet_ALL_pedestrians.csv"
     try:
         df = pd.read_csv(url)
-        # dates are daily; ensure no time component
         df["local_datetime"] = pd.to_datetime(df["local_datetime"], errors="coerce")
         df = df.dropna(subset=["local_datetime"])
         df["intersection_name"] = df["segment_id"].astype(str).apply(_canonicalize_intersection)
@@ -272,7 +266,6 @@ def _prep_bucket(df: pd.DataFrame, granularity: str) -> pd.DataFrame:
         agg["bucket_hours"] = meta["fixed_hours"]
     return agg
 
-
 def _cap_series_for_x(x_df: pd.DataFrame, cap_vph: float, high_vph: float) -> pd.DataFrame:
     xs = x_df[["local_datetime", "bucket_hours"]].drop_duplicates().sort_values("local_datetime")
     xs["capacity"] = xs["bucket_hours"] * float(cap_vph)
@@ -292,7 +285,6 @@ def _filter_for_tmc(df: pd.DataFrame, intersection: str, date_range):
     if intersection != "All Intersections":
         out = out[out["intersection_name"] == intersection]
     return out
-
 
 def _summarize_tmc(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -324,7 +316,6 @@ def _summarize_tmc(df: pd.DataFrame) -> pd.DataFrame:
     ]
     return x
 
-
 def _pct_to_color(p):
     """0–10% green, 10–40% yellow, >40% orange; zero-total => gray."""
     if pd.isna(p):
@@ -337,7 +328,6 @@ def _pct_to_color(p):
         return "#f1c40f"   # yellow
     return "#e67e22"       # orange
 
-
 def _add_badge(fig: go.Figure, x0, y0, x1, y1, text, fill, border="#ffffff"):
     fig.add_shape(
         type="rect", x0=x0, y0=y0, x1=x1, y1=y1,
@@ -349,15 +339,13 @@ def _add_badge(fig: go.Figure, x0, y0, x1, y1, text, fill, border="#ffffff"):
         text=text, showarrow=False, font=dict(color="#000000", size=13)
     )
 
-
 def _tmc_figure(tmc_df: pd.DataFrame, intersection: str, date_range, mode_label: str) -> go.Figure:
     """
     Draw a schematic TMC diagram with four approaches and L/T/R shares.
     Coordinates: 0..10 in both axes, center at (5,5).
-    Labels are placed with white backgrounds to avoid overlap.
+    Direction labels are positioned outside; EB/WB vertical.
     """
     turns = ["Left", "Through", "Right"]
-    approaches = ["NB", "SB", "EB", "WB"]
     noun = _mode_noun(mode_label)
 
     approach_tot = tmc_df.groupby("approach", as_index=False)["total"].max()
@@ -392,30 +380,54 @@ def _tmc_figure(tmc_df: pd.DataFrame, intersection: str, date_range, mode_label:
     left_boxes = {"Left": (0.4, 6.6, 1.2, 7.2), "Through": (0.4, 5.5, 1.2, 6.1), "Right": (0.4, 4.4, 1.2, 5.0)}
     right_boxes = {"Left": (8.8, 6.6, 9.6, 7.2), "Through": (8.8, 5.5, 9.6, 6.1), "Right": (8.8, 4.4, 9.6, 5.0)}
 
-    # Approach label blocks (with white bg + border) placed slightly outside the crosshair
-    labels = {
-        "SB": ("SOUTHBOUND", 5.0, 9.82, "center"),
-        "NB": ("NORTHBOUND", 5.0, 0.18, "center"),
-        "EB": ("EASTBOUND", 0.95, 6.3, "left"),
-        "WB": ("WESTBOUND", 9.05, 6.3, "right"),
-    }
-    for app, (text, x, y, anch) in labels.items():
-        fig.add_annotation(
-            x=x, y=y, text=text, showarrow=False,
-            font=dict(size=14, color="#2f2f2f"),
-            xanchor="center" if anch=="center" else anch,
-            bgcolor="rgba(255,255,255,0.9)", bordercolor="#cfcfcf", borderwidth=1, borderpad=4
-        )
-        total = int(tot_map.get(app, 0))
-        # explicit total with noun
-        total_text = f"({total:,} total {noun})"
-        ty = y - 0.22 if app == "SB" else (y + 0.22 if app == "NB" else y - 0.28)
-        fig.add_annotation(
-            x=x, y=ty, text=total_text, showarrow=False,
-            font=dict(size=11, color="#666"),
-            xanchor="center" if anch=="center" else anch,
-            bgcolor="rgba(255,255,255,0.85)", bordercolor="#e5e5e5", borderwidth=0.5, borderpad=2
-        )
+    # Approach labels (outside) with totals; EB/WB rotated
+    # Southbound (top): move higher
+    fig.add_annotation(
+        x=5.0, y=9.92, text="SOUTHBOUND", showarrow=False, xanchor="center",
+        font=dict(size=14, color="#2f2f2f"),
+        bgcolor="rgba(255,255,255,0.95)", bordercolor="#cfcfcf", borderwidth=1, borderpad=4
+    )
+    fig.add_annotation(
+        x=5.0, y=9.60, text=f"({int(tot_map.get('SB',0)):,} total {noun})", showarrow=False, xanchor="center",
+        font=dict(size=11, color="#666"),
+        bgcolor="rgba(255,255,255,0.90)", bordercolor="#e5e5e5", borderwidth=0.5, borderpad=2
+    )
+
+    # Northbound (bottom): move lower
+    fig.add_annotation(
+        x=5.0, y=0.08, text="NORTHBOUND", showarrow=False, xanchor="center",
+        font=dict(size=14, color="#2f2f2f"),
+        bgcolor="rgba(255,255,255,0.95)", bordercolor="#cfcfcf", borderwidth=1, borderpad=4
+    )
+    fig.add_annotation(
+        x=5.0, y=0.40, text=f"({int(tot_map.get('NB',0)):,} total {noun})", showarrow=False, xanchor="center",
+        font=dict(size=11, color="#666"),
+        bgcolor="rgba(255,255,255,0.90)", bordercolor="#e5e5e5", borderwidth=0.5, borderpad=2
+    )
+
+    # Eastbound (left side): vertical
+    fig.add_annotation(
+        x=0.30, y=5.0, text="EASTBOUND", textangle=-90, showarrow=False, xanchor="center",
+        font=dict(size=14, color="#2f2f2f"),
+        bgcolor="rgba(255,255,255,0.95)", bordercolor="#cfcfcf", borderwidth=1, borderpad=4
+    )
+    fig.add_annotation(
+        x=0.60, y=5.0, text=f"({int(tot_map.get('EB',0)):,} total {noun})", textangle=-90,
+        showarrow=False, xanchor="center", font=dict(size=11, color="#666"),
+        bgcolor="rgba(255,255,255,0.90)", bordercolor="#e5e5e5", borderwidth=0.5, borderpad=2
+    )
+
+    # Westbound (right side): vertical
+    fig.add_annotation(
+        x=9.70, y=5.0, text="WESTBOUND", textangle=90, showarrow=False, xanchor="center",
+        font=dict(size=14, color="#2f2f2f"),
+        bgcolor="rgba(255,255,255,0.95)", bordercolor="#cfcfcf", borderwidth=1, borderpad=4
+    )
+    fig.add_annotation(
+        x=9.40, y=5.0, text=f"({int(tot_map.get('WB',0)):,} total {noun})", textangle=90,
+        showarrow=False, xanchor="center", font=dict(size=11, color="#666"),
+        bgcolor="rgba(255,255,255,0.90)", bordercolor="#e5e5e5", borderwidth=0.5, borderpad=2
+    )
 
     def draw_group(app_code, boxes):
         app_total = tot_map.get(app_code, 0)
@@ -432,17 +444,21 @@ def _tmc_figure(tmc_df: pd.DataFrame, intersection: str, date_range, mode_label:
             # counts near badges
             if boxes is top_boxes:
                 ax, ay = (x0 + x1) / 2.0, y0 - 0.18
+                anchor = "center"
             elif boxes is bot_boxes:
                 ax, ay = (x0 + x1) / 2.0, y1 + 0.18
+                anchor = "center"
             elif boxes is left_boxes:
                 ax, ay = x1 + 0.20, (y0 + y1) / 2.0
+                anchor = "left"
             else:
                 ax, ay = x0 - 0.20, (y0 + y1) / 2.0
+                anchor = "right"
             fig.add_annotation(
                 x=ax, y=ay, text=f"({v:,})",
                 showarrow=False, font=dict(size=11, color="#777"),
-                xanchor="left" if boxes is left_boxes else ("right" if boxes is right_boxes else "center"),
-                bgcolor="rgba(255,255,255,0.85)", bordercolor="#e5e5e5", borderwidth=0.5, borderpad=2
+                xanchor=anchor, bgcolor="rgba(255,255,255,0.85)",
+                bordercolor="#e5e5e5", borderwidth=0.5, borderpad=2
             )
 
     draw_group("SB", top_boxes)
@@ -615,7 +631,7 @@ def render_vantage_tab():
                 key="granularity_vantage",
             )
 
-            st.markdown("## 🔄 Direction Filter")
+            # (cleaner sidebar) — no extra headings for filters
             direction_filter = st.selectbox(
                 "Direction",
                 ["All Directions", "NB", "SB", "EB", "WB"],
@@ -624,7 +640,6 @@ def render_vantage_tab():
 
             turn_filter = None
             if mode in ["Vehicles", "Combined (All Modes)"]:
-                st.markdown("## 🔄 Turn Type Filter")
                 turn_filter = st.selectbox(
                     "Turn Type",
                     ["All Turns", "Through", "Left", "Right"],
@@ -708,10 +723,8 @@ def render_vantage_tab():
         else:  # Combined (All Modes)
             dfs = []
             if not working_bikes.empty:
-                working_bikes["mode"] = "Bikes"
-                dfs.append(working_bikes)
+                dfs.append(working_bikes.assign(mode="Bikes"))
             if not working_vehicles.empty:
-                # keep turn_type for vehicles
                 dfs.append(working_vehicles.assign(mode="Vehicles"))
             if not working_peds.empty:
                 dfs.append(working_peds.assign(mode="Pedestrians"))
@@ -753,6 +766,7 @@ def render_vantage_tab():
                 if intersection != "All Intersections"
                 else f"{mode_label} Volume Analysis: Washington Street Corridor"
             )
+            emoji = _mode_emoji("Vehicles" if mode_label == "All Modes" else mode_label)
             st.markdown(
                 f"""
                 <div style="
@@ -762,7 +776,7 @@ def render_vantage_tab():
                   <div style="display:flex; align-items:center; gap:10px;">
                     <div style="width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,.18);
                                 display:flex;align-items:center;justify-content:center;
-                                box-shadow:inset 0 0 0 1px rgba(255,255,255,.15);">📊</div>
+                                box-shadow:inset 0 0 0 1px rgba(255,255,255,.15);">{emoji}</div>
                     <div style="font-size:1.9rem;font-weight:800; letter-spacing:.2px;">
                       {header_title}
                     </div>
@@ -804,10 +818,17 @@ def render_vantage_tab():
                 with st.expander("📄 TMC Summary Table (volumes and shares)", expanded=False):
                     show = tmc_table.rename(columns={
                         "approach": "Approach", "turn": "Turn",
-                        "volume": "Volume", "pct": "Share", "total": "Approach Total",
+                        "volume": "Volume", "pct": "Approach volume (%)", "total": "Approach Total",
                     }).sort_values(["Approach", "Turn"])
-                    show["Share"] = (show["Share"] * 100).round(1)
-                    st.dataframe(show, use_container_width=True)
+                    # convert to percentage 0-100
+                    show["Approach volume (%)"] = (show["Approach volume (%)"] * 100).round(1)
+                    st.dataframe(
+                        show,
+                        use_container_width=True,
+                        column_config={
+                            "Approach volume (%)": st.column_config.NumberColumn("Approach volume (%)", format="%.1f%%")
+                        }
+                    )
                     st.download_button(
                         "⬇️ Download TMC Summary (CSV)",
                         data=show.to_csv(index=False).encode("utf-8"),
@@ -829,7 +850,7 @@ def render_vantage_tab():
                 else:
                     bucket_all["bucket_hours"] = AGG_META[granularity]["fixed_hours"]
 
-                # choose capacity by mode (Vehicles/Bikes/Pedestrians)
+                # choose capacity by mode
                 cap_key = "Vehicles" if mode_label == "All Modes" else mode_label
                 CAP_VPH, HIGH_VPH = _mode_caps(cap_key)
 
@@ -979,7 +1000,6 @@ def render_vantage_tab():
                         pie_title = f"{mode_label} Volume Share — {intersection}"
                         names = "intersection_name"
 
-                # turn pie only when valid (vehicles typically)
                 show_turn_pie = (
                     ("turn_type" in raw.columns) and
                     (raw["turn_type"].nunique() > 1) and
