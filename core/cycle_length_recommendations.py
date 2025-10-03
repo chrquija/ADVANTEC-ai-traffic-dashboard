@@ -422,8 +422,6 @@ def render_cycle_length_section(raw: pd.DataFrame, key_prefix: str = "cycle") ->
             key=f"{key_prefix}_theme",
         )
 
-
-
     # Resolve palettes & patterns from theme
     CYCLE_COLORS, STATUS_COLORS, PATTERN_MAP = _get_palettes(theme_choice)
 
@@ -467,6 +465,9 @@ def render_cycle_length_section(raw: pd.DataFrame, key_prefix: str = "cycle") ->
     hourly["Status"] = hourly["CVAG Recommendation"].apply(lambda rec: _get_status(rec, current_cycle))
     hourly["Hour"] = hourly["hour"].apply(lambda x: f"{x:02d}:00")
     hourly["Rec (sec)"] = hourly["CVAG Recommendation"].apply(_sec_value)
+
+    # ---------- NEW: add current cycle as its own column ----------
+    hourly["System Current Cycle"] = current_cycle
 
     # --- KPI calculations ---
     total_hours = len(hourly)
@@ -591,24 +592,50 @@ def render_cycle_length_section(raw: pd.DataFrame, key_prefix: str = "cycle") ->
         pie.update_layout(height=420, margin=dict(l=10, r=10, t=50, b=10))
         st.plotly_chart(pie, use_container_width=True)
 
-    # Stylized table
-    hourly_display = hourly[["Hour", "Volume", "CVAG Recommendation", "Status"]].rename(
-        columns={"Volume": "Avg Volume (vph)"}
-    )
+    # -------------------------
+    # TABLE (with requested tweaks)
+    # -------------------------
+    # 1) Show "X vehicles" (string) for the total volume
+    hourly["Volume (vehicles)"] = hourly["Volume"].apply(lambda v: f"{int(v):,} vehicles")
+
+    # 2) Build display table with the new "System Current Cycle" column
+    hourly_display = hourly[[
+        "Hour",
+        "Volume (vehicles)",                         # formatted text column
+        "CVAG Recommendation",
+        "System Current Cycle",                      # NEW column
+        "Status"
+    ]].rename(columns={
+        "Volume (vehicles)": "Total Vehicle Volume (Throughs, lefts, and rights)",
+        "CVAG Recommendation": "Cycle Length Recommendation For CVAG",
+        "System Current Cycle": "System Current Cycle",
+        "Status": "Cycle Length Status",
+    })
+
     st.dataframe(
         hourly_display,
         use_container_width=True,
         column_config={
             "Hour": st.column_config.TextColumn("Hour", width="small"),
-            "Avg Volume (vph)": st.column_config.NumberColumn(
-                "Total Vehicle Volume (Throughs, lefts, and rights)", format="%d"
+            # Text column because we include the word "vehicles"
+            "Total Vehicle Volume (Throughs, lefts, and rights)": st.column_config.TextColumn(
+                "Total Vehicle Volume (Throughs, lefts, and rights)"
             ),
-            "CVAG Recommendation": st.column_config.TextColumn("Cycle Length Recommendation For CVAG", width="medium"),
-            "Status": st.column_config.TextColumn("Cycle Length Status", width="medium"),
+            "Cycle Length Recommendation For CVAG": st.column_config.TextColumn(
+                "Cycle Length Recommendation For CVAG", width="medium"
+            ),
+            "System Current Cycle": st.column_config.TextColumn(
+                "System Current Cycle", width="medium"
+            ),
+            "Cycle Length Status": st.column_config.TextColumn(
+                "Cycle Length Status", width="medium"
+            ),
         },
     )
 
+    # -------------------------
     # Insights + download
+    # -------------------------
     if len(hourly):
         peak_volume = int(hourly["Volume"].max())
         peak_hour = hourly.loc[hourly["Volume"].idxmax(), "Hour"]
@@ -628,9 +655,13 @@ def render_cycle_length_section(raw: pd.DataFrame, key_prefix: str = "cycle") ->
         unsafe_allow_html=True,
     )
 
+    # CSV download: keep a clean numeric column for analysis along with display strings
+    download_df = hourly[["Hour", "Volume"]].rename(columns={"Volume": "Total_Volume_vph"}).merge(
+        hourly_display, on="Hour", how="right"
+    )
     st.download_button(
         "⬇️ Download Cycle Length Analysis (CSV)",
-        data=hourly_display.to_csv(index=False).encode("utf-8"),
+        data=download_df.to_csv(index=False).encode("utf-8"),
         file_name=f"cycle_length_recommendations_{selected_period.lower()}.csv",
         mime="text/csv",
         key=f"{key_prefix}_download",
