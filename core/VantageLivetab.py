@@ -381,57 +381,57 @@ def _tmc_figure(tmc_df: pd.DataFrame, intersection: str, date_range, mode_label:
     right_boxes = {"Left": (8.8, 6.6, 9.6, 7.2), "Through": (8.8, 5.5, 9.6, 6.1), "Right": (8.8, 4.4, 9.6, 5.0)}
 
     # Approach labels (outside) with totals; EB/WB rotated
-    # Southbound (top): move higher
+    # Southbound (top): push higher
     fig.add_annotation(
-        x=5.0, y=9.92, text="SOUTHBOUND", showarrow=False, xanchor="center",
+        x=5.0, y=9.98, text="SOUTHBOUND", showarrow=False, xanchor="center",
         font=dict(size=14, color="#2f2f2f"),
         bgcolor="rgba(255,255,255,0.95)", bordercolor="#cfcfcf", borderwidth=1, borderpad=4
     )
     fig.add_annotation(
-        x=5.0, y=9.60, text=f"({int(tot_map.get('SB',0)):,} total {noun})", showarrow=False, xanchor="center",
+        x=5.0, y=9.82, text=f"({int(tot_map.get('SB',0)):,} total {noun})", showarrow=False, xanchor="center",
         font=dict(size=11, color="#666"),
         bgcolor="rgba(255,255,255,0.90)", bordercolor="#e5e5e5", borderwidth=0.5, borderpad=2
     )
 
-    # Northbound (bottom): move lower
+    # Northbound (bottom): push lower
     fig.add_annotation(
-        x=5.0, y=0.08, text="NORTHBOUND", showarrow=False, xanchor="center",
+        x=5.0, y=0.02, text="NORTHBOUND", showarrow=False, xanchor="center",
         font=dict(size=14, color="#2f2f2f"),
         bgcolor="rgba(255,255,255,0.95)", bordercolor="#cfcfcf", borderwidth=1, borderpad=4
     )
     fig.add_annotation(
-        x=5.0, y=0.40, text=f"({int(tot_map.get('NB',0)):,} total {noun})", showarrow=False, xanchor="center",
+        x=5.0, y=0.22, text=f"({int(tot_map.get('NB',0)):,} total {noun})", showarrow=False, xanchor="center",
         font=dict(size=11, color="#666"),
         bgcolor="rgba(255,255,255,0.90)", bordercolor="#e5e5e5", borderwidth=0.5, borderpad=2
     )
 
-    # Eastbound (left side): vertical
+    # Eastbound (left side): move farther left & keep vertical text
     fig.add_annotation(
-        x=0.30, y=5.0, text="EASTBOUND", textangle=-90, showarrow=False, xanchor="center",
+        x=0.20, y=5.0, text="EASTBOUND", textangle=-90, showarrow=False, xanchor="center",
         font=dict(size=14, color="#2f2f2f"),
         bgcolor="rgba(255,255,255,0.95)", bordercolor="#cfcfcf", borderwidth=1, borderpad=4
     )
     fig.add_annotation(
-        x=0.60, y=5.0, text=f"({int(tot_map.get('EB',0)):,} total {noun})", textangle=-90,
+        x=0.38, y=5.0, text=f"({int(tot_map.get('EB',0)):,} total {noun})", textangle=-90,
         showarrow=False, xanchor="center", font=dict(size=11, color="#666"),
         bgcolor="rgba(255,255,255,0.90)", bordercolor="#e5e5e5", borderwidth=0.5, borderpad=2
     )
 
-    # Westbound (right side): vertical
+    # Westbound (right side): move farther right & keep vertical text
     fig.add_annotation(
-        x=9.70, y=5.0, text="WESTBOUND", textangle=90, showarrow=False, xanchor="center",
+        x=9.80, y=5.0, text="WESTBOUND", textangle=90, showarrow=False, xanchor="center",
         font=dict(size=14, color="#2f2f2f"),
         bgcolor="rgba(255,255,255,0.95)", bordercolor="#cfcfcf", borderwidth=1, borderpad=4
     )
     fig.add_annotation(
-        x=9.40, y=5.0, text=f"({int(tot_map.get('WB',0)):,} total {noun})", textangle=90,
+        x=9.62, y=5.0, text=f"({int(tot_map.get('WB',0)):,} total {noun})", textangle=90,
         showarrow=False, xanchor="center", font=dict(size=11, color="#666"),
         bgcolor="rgba(255,255,255,0.90)", bordercolor="#e5e5e5", borderwidth=0.5, borderpad=2
     )
 
     def draw_group(app_code, boxes):
         app_total = tot_map.get(app_code, 0)
-        for turn in turns:
+        for turn in ["Left", "Through", "Right"]:
             p, v = get_pair(app_code, turn)
             if app_total <= 0:
                 fill = _pct_to_color(-1)
@@ -822,6 +822,16 @@ def render_vantage_tab():
                     }).sort_values(["Approach", "Turn"])
                     # convert to percentage 0-100
                     show["Approach volume (%)"] = (show["Approach volume (%)"] * 100).round(1)
+
+                    # append units for volume + totals
+                    noun = _mode_noun("Vehicles" if mode=="Vehicles" else ("Bikes" if mode=="Bikes" else "Pedestrians"))
+                    show["Volume"] = (
+                        show["Volume"].astype(float).round(0).astype(int).map(lambda v: f"{v:,.0f} {noun.lower()}")
+                    )
+                    show["Approach Total"] = (
+                        show["Approach Total"].astype(float).round(0).astype(int).map(lambda v: f"{v:,.0f} {noun.lower()}")
+                    )
+
                     st.dataframe(
                         show,
                         use_container_width=True,
