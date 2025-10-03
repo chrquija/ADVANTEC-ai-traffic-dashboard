@@ -1,4 +1,3 @@
-
 # Plotly + OpenStreetMap helpers for the dashboard maps.
 
 from typing import Dict, List, Tuple, Optional
@@ -9,7 +8,9 @@ import plotly.graph_objects as go
 import streamlit as st
 
 
-# Ordered corridor nodes (south/bottom → north/top). Make sure these match your labels.
+# =========================
+# Ordered corridor nodes (south/bottom → north/top)
+# =========================
 NODES_ORDER: List[str] = [
     "Avenue 52",
     "Calle Tampico",
@@ -36,8 +37,12 @@ SEGMENT_URLS: Dict[Tuple[str, str], str] = {
     ("Point Happy Simon", "Hwy 111"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/pointhappysimon_hwy111.geojson",
 }
 
-# Map your Tab 2 intersection display labels to node keys (adjust as needed).
+# =========================
+# Label → Node mapping (display labels used in the app → canonical corridor node)
+# Add/adjust freely; the highlight logic will compare by NODE (not label).
+# =========================
 INTERSECTION_TO_NODE: Dict[str, str] = {
+    # Canonical labels
     "Washington St & Avenue52": "Avenue 52",
     "Washington St & Calle Tampico": "Calle Tampico",
     "Washington St & Village Shop Ctr": "Village Shopping Ctr",
@@ -48,7 +53,63 @@ INTERSECTION_TO_NODE: Dict[str, str] = {
     "Washington St & Ave47": "Avenue 47",
     "Washington St & Point Happy Simon": "Point Happy Simon",
     "Washington St & Hwy 111": "Hwy 111",
+
+    # Common variants / aliases
+    "Washington St & Avenue 52": "Avenue 52",
+    "Washington St & Avenue 50": "Avenue 50",
+    "Washington St & Ave 48": "Avenue 48",
+    "Washington St & Ave 47": "Avenue 47",
+    "Washington St & Eisenhower Dr": "Eisenhower Dr",
+    "Washington St & Village Shopping Ctr": "Village Shopping Ctr",
+    "Washington St & Village Shopping Center": "Village Shopping Ctr",
+    "Washington St & Point Happy Way": "Point Happy Simon",
 }
+
+# Extra loose aliases (label normalization pass before INTERSECTION_TO_NODE)
+LABEL_ALIASES: Dict[str, str] = {
+    "Washington Street & Avenue 52": "Washington St & Avenue 52",
+    "Washington Street & Avenue52": "Washington St & Avenue52",
+    "Washington Street & Avenue 50": "Washington St & Avenue 50",
+    "Washington Street & Calle Tampico": "Washington St & Calle Tampico",
+    "Washington Street & Eisenhower Dr": "Washington St & Eisenhower Dr",
+    "Washington Street & Village Shop Ctr": "Washington St & Village Shop Ctr",
+    "Washington Street & Village Shopping Ctr": "Washington St & Village Shopping Ctr",
+    "Washington Street & Village Shopping Center": "Washington St & Village Shopping Center",
+    "Washington Street & Ave 48": "Washington St & Ave 48",
+    "Washington Street & Ave 47": "Washington St & Ave 47",
+    "Washington Street & Hwy 111": "Washington St & Hwy 111",
+    "Washington St & Village Shp Ctr": "Washington St & Village Shop Ctr",
+}
+
+
+# =========================
+# Utilities
+# =========================
+def _normalize_label(label: Optional[str]) -> Optional[str]:
+    """Light normalization: collapse known aliases to a canonical display label."""
+    if not label:
+        return label
+    s = " ".join(str(label).strip().split())
+    # First pass: dictionary aliases
+    if s in LABEL_ALIASES:
+        s = LABEL_ALIASES[s]
+    # Minor cleanup (common punctuation/spacing variants)
+    s = (
+        s.replace("Street", "St")
+         .replace("  ", " ")
+         .replace("Village Shop Ctr", "Village Shop Ctr")
+    ).strip()
+    return s
+
+def _label_to_node(label: Optional[str]) -> Optional[str]:
+    """
+    Resolve a display label (with variants) to a canonical corridor node.
+    Returns None if unknown.
+    """
+    if not label:
+        return None
+    s = _normalize_label(label)
+    return INTERSECTION_TO_NODE.get(s)
 
 
 @st.cache_data(show_spinner=False)
@@ -123,6 +184,9 @@ def _derive_node_coords_from_segments() -> Dict[str, Tuple[float, float]]:
     return node_coords
 
 
+# =========================
+# Builders
+# =========================
 def build_corridor_map(origin: str, destination: str) -> Optional[go.Figure]:
     """
     Tab 1: Show the selected O→D corridor segment(s).
@@ -226,9 +290,9 @@ def build_intersection_map(intersection_label: str) -> Optional[go.Figure]:
     if not intersection_label:
         return None
 
-    node_key = INTERSECTION_TO_NODE.get(intersection_label, intersection_label)
+    node_key = _label_to_node(intersection_label)
     node_coords = _derive_node_coords_from_segments()
-    latlon = node_coords.get(node_key)
+    latlon = node_coords.get(node_key) if node_key else None
 
     if not latlon:
         st.info(f"Location for '{intersection_label}' is not known yet. Update INTERSECTION_TO_NODE or segment data.")
@@ -264,60 +328,71 @@ def build_intersection_map(intersection_label: str) -> Optional[go.Figure]:
 
 def build_intersections_overview(selected_label: Optional[str] = None) -> Optional[go.Figure]:
     """
-    Tab 2: Show ALL intersections as dots. If 'selected_label' is provided, that dot is highlighted.
-    Title reflects the selected intersection if any.
+    Tab 2/4: Show ALL intersections as dots. If 'selected_label' is provided,
+    highlight the corresponding NODE (so label variants still match).
+    Title reflects the selected intersection when provided.
     """
     node_coords = _derive_node_coords_from_segments()
     if not node_coords:
         return None
 
-    all_labels = list(INTERSECTION_TO_NODE.keys())
-    if not all_labels:
+    # Collapse to a single display label per node to avoid duplicates on the map
+    node_to_label: Dict[str, str] = {}
+    for lbl, node in INTERSECTION_TO_NODE.items():
+        if node in node_coords and node not in node_to_label:
+            node_to_label[node] = lbl
+
+    if not node_to_label:
         return None
 
-    points = []
-    for label in all_labels:
-        node_key = INTERSECTION_TO_NODE.get(label, label)
-        latlon = node_coords.get(node_key)
-        if latlon:
-            points.append((label, latlon[0], latlon[1]))
-    if not points:
-        return None
+    selected_node = _label_to_node(selected_label) if selected_label else None
 
+    # Build point sets
     sel_lat, sel_lon, sel_text = [], [], []
     oth_lat, oth_lon, oth_text = [], [], []
-    for label, lat, lon in points:
-        if selected_label and label == selected_label:
+    for node, label in node_to_label.items():
+        lat, lon = node_coords[node]
+        if selected_node and node == selected_node:
             sel_lat.append(lat); sel_lon.append(lon); sel_text.append(label)
         else:
             oth_lat.append(lat); oth_lon.append(lon); oth_text.append(label)
 
+    if not (sel_lat or oth_lat):
+        return None
+
     fig = go.Figure()
 
     if oth_lat:
-        fig.add_trace(go.Scattermapbox(
-            lat=oth_lat, lon=oth_lon,
-            mode="markers+text",
-            marker=dict(size=11, color="#5DADE2"),
-            text=oth_text, textposition="top right",
-            hoverinfo="text",
-            name="Intersections",
-        ))
+        fig.add_trace(
+            go.Scattermapbox(
+                lat=oth_lat,
+                lon=oth_lon,
+                mode="markers+text",
+                marker=dict(size=11, color="#5DADE2"),
+                text=oth_text,
+                textposition="top right",
+                hoverinfo="text",
+                name="Intersections",
+            )
+        )
 
     if sel_lat:
-        fig.add_trace(go.Scattermapbox(
-            lat=sel_lat, lon=sel_lon,
-            mode="markers+text",
-            marker=dict(size=15, color="#E74C3C"),
-            text=sel_text, textposition="top right",
-            hoverinfo="text",
-            name="Selected",
-        ))
+        fig.add_trace(
+            go.Scattermapbox(
+                lat=sel_lat,
+                lon=sel_lon,
+                mode="markers+text",
+                marker=dict(size=15, color="#E74C3C"),
+                text=sel_text,
+                textposition="top right",
+                hoverinfo="text",
+                name="Selected",
+            )
+        )
 
-    all_lats = [p[1] for p in points]
-    all_lons = [p[2] for p in points]
+    all_lats = [coords[0] for coords in node_coords.values()]
+    all_lons = [coords[1] for coords in node_coords.values()]
 
-    # Dynamic title: show selected label when provided
     title_text = "All Intersections" if not selected_label else f"Intersection: {selected_label}"
 
     fig.update_layout(
