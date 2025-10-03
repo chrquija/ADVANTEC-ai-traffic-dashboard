@@ -383,7 +383,7 @@ def _tmc_figure(tmc_df: pd.DataFrame, intersection: str, date_range, mode_label:
     # Approach labels (outside) with totals; EB/WB rotated
     # Southbound (top): push higher
     fig.add_annotation(
-        x=5.0, y=11, text="SOUTHBOUND", showarrow=False, xanchor="center",
+        x=5.0, y=9.98, text="SOUTHBOUND", showarrow=False, xanchor="center",
         font=dict(size=14, color="#2f2f2f"),
         bgcolor="rgba(255,255,255,0.95)", bordercolor="#cfcfcf", borderwidth=1, borderpad=4
     )
@@ -395,7 +395,7 @@ def _tmc_figure(tmc_df: pd.DataFrame, intersection: str, date_range, mode_label:
 
     # Northbound (bottom): push lower
     fig.add_annotation(
-        x=5.0, y=0.0, text="NORTHBOUND", showarrow=False, xanchor="center",
+        x=5.0, y=0.02, text="NORTHBOUND", showarrow=False, xanchor="center",
         font=dict(size=14, color="#2f2f2f"),
         bgcolor="rgba(255,255,255,0.95)", bordercolor="#cfcfcf", borderwidth=1, borderpad=4
     )
@@ -407,7 +407,7 @@ def _tmc_figure(tmc_df: pd.DataFrame, intersection: str, date_range, mode_label:
 
     # Eastbound (left side): move farther left & keep vertical text
     fig.add_annotation(
-        x=0.10, y=5.0, text="EASTBOUND", textangle=-90, showarrow=False, xanchor="center",
+        x=0.20, y=5.0, text="EASTBOUND", textangle=-90, showarrow=False, xanchor="center",
         font=dict(size=14, color="#2f2f2f"),
         bgcolor="rgba(255,255,255,0.95)", bordercolor="#cfcfcf", borderwidth=1, borderpad=4
     )
@@ -419,7 +419,7 @@ def _tmc_figure(tmc_df: pd.DataFrame, intersection: str, date_range, mode_label:
 
     # Westbound (right side): move farther right & keep vertical text
     fig.add_annotation(
-        x=9.80, y=5.5, text="WESTBOUND", textangle=90, showarrow=False, xanchor="center",
+        x=9.80, y=5.0, text="WESTBOUND", textangle=90, showarrow=False, xanchor="center",
         font=dict(size=14, color="#2f2f2f"),
         bgcolor="rgba(255,255,255,0.95)", bordercolor="#cfcfcf", borderwidth=1, borderpad=4
     )
