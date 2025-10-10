@@ -1435,9 +1435,9 @@ with tab2:
                                                    Peak/Avg ratio <b>{peak_to_avg:.1f}×</b>
                                                 <p><strong> Total Vehicles:</strong> <b>{float(np.nansum(raw['total_volume'])):,.0f}</b>.</p>
                                                 <p><strong> Overcapacity Hours:</strong> Hourly > {HIGH_VOLUME_THRESHOLD_VPH:,} vph for <b>{hourly_over_thr}</b> hours
-                                                   (<b>{hourly_risk_pct:.1f}%</b> of hours) •
+                                                   (<b>{hourly_risk_pct:.1f}%</b> of hours) 
                                                    {label.capitalize()}s above 80% of scaled capacity: <b>{bucket_over_80_cap}</b>
-                                                <p><strong>📍 Peak Contributors:</strong> {top3_list}</p>
+                                                <p><strong> Peak Contributors:</strong> {top3_list}</p>
                                                 <p><strong>🎯 Recommendation for CVAG:</strong> {rec}</p>
                                                 <div style="margin-top:.4rem;">
                                                     <span class="performance-badge {rec_badge}">Action Priority</span>
