@@ -1370,6 +1370,22 @@ with tab2:
                                         if agg_all.empty:
                                             raise ValueError("No data in selected window")
 
+                                        # ***** DEFINE MISSING VARIABLES FOR CAPACITY SECTION *****
+                                        # Corridor/Intersection scope
+                                        if intersection == "All Intersections":
+                                            scope_label = "Washington Street"
+                                            scope_noun = "corridor"
+                                            # Count unique intersections to scale capacity
+                                            num_intersections = raw["intersection_name"].nunique()
+                                            cap_mult = max(1, num_intersections)
+                                            cap_per_hour = THEORETICAL_LINK_CAPACITY_VPH * cap_mult
+                                        else:
+                                            scope_label = intersection
+                                            scope_noun = "intersection"
+                                            cap_mult = 1.0
+                                            cap_per_hour = THEORETICAL_LINK_CAPACITY_VPH
+                                        # ***** END MISSING VARIABLES *****
+
                                         # Peak calculations
                                         peak_idx = int(agg_all["total_volume"].idxmax())
                                         peak_val = float(agg_all.loc[peak_idx, "total_volume"])
@@ -1396,7 +1412,7 @@ with tab2:
                                         total_hours_scope = int(raw["total_volume"].count())
                                         hourly_over_thr = int((raw["total_volume"] > HIGH_VOLUME_THRESHOLD_VPH).sum())
                                         hourly_risk_pct = (
-                                                    hourly_over_thr / total_hours_scope * 100) if total_hours_scope > 0 else 0.0
+                                                hourly_over_thr / total_hours_scope * 100) if total_hours_scope > 0 else 0.0
 
                                         # Bucket-level risk
                                         bucket_over_80_cap = int(
