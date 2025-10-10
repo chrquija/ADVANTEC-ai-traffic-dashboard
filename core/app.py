@@ -1561,6 +1561,62 @@ with tab2:
                                 # ---------------- Risk table ----------------
                                 step("Calculating intersection risk table", 97)
                                 st.subheader("🚨 Intersection Volume & Capacity Risk Analysis")
+
+                                # Add legend for Risk Analysis methodology
+                                with st.expander("📊 **Risk Analysis Methodology & Legend**", expanded=False):
+                                    st.markdown("""
+                                                                    ### Risk Score Calculation
+                                                                    The **Risk Score** (0-120+) is a weighted composite metric that identifies capacity bottlenecks:
+                                                                    - **50%** weight: Peak Capacity Utilization (maximum hourly volume ÷ theoretical capacity)
+                                                                    - **30%** weight: Average Capacity Utilization (average hourly volume ÷ theoretical capacity)  
+                                                                    - **20%** weight: Peak-to-Average Ratio (volatility indicator × 10 for scaling)
+
+                                                                    Higher scores indicate higher risk of capacity issues and congestion.
+
+                                                                    ### Capacity Calculations
+                                                                    - **Theoretical Capacity**: 1,800 vehicles per hour (vph) per approach
+                                                                    - **Peak Capacity %**: (Peak hourly volume ÷ 1,800 vph) × 100
+                                                                    - **Avg Capacity %**: (Average hourly volume ÷ 1,800 vph) × 100
+
+                                                                    ### Risk Level Categories
+                                                                    """)
+
+                                    # Create a visual legend with colored badges for risk levels
+                                    risk_col1, risk_col2, risk_col3, risk_col4, risk_col5 = st.columns(5)
+                                    with risk_col1:
+                                        st.markdown('<span class="performance-badge badge-excellent">🟢 Low Risk</span>',
+                                                    unsafe_allow_html=True)
+                                        st.caption("Score: 0-40")
+                                        st.caption("Monitor regularly")
+                                    with risk_col2:
+                                        st.markdown('<span class="performance-badge badge-good">🟡 Moderate Risk</span>',
+                                                    unsafe_allow_html=True)
+                                        st.caption("Score: 40-60")
+                                        st.caption("Signal optimization")
+                                    with risk_col3:
+                                        st.markdown('<span class="performance-badge badge-fair">🟠 High Risk</span>',
+                                                    unsafe_allow_html=True)
+                                        st.caption("Score: 60-80")
+                                        st.caption("Capacity improvements")
+                                    with risk_col4:
+                                        st.markdown('<span class="performance-badge badge-poor">🔴 Critical Risk</span>',
+                                                    unsafe_allow_html=True)
+                                        st.caption("Score: 80-90")
+                                        st.caption("Urgent intervention")
+                                    with risk_col5:
+                                        st.markdown(
+                                            '<span class="performance-badge badge-critical">🚨 Severe Risk</span>',
+                                            unsafe_allow_html=True)
+                                        st.caption("Score: 90+")
+                                        st.caption("Immediate action")
+
+                                    st.markdown("""
+                                                                    ### Action Priority Guidelines
+                                                                    - **🟢 Monitor**: Peak capacity < 60% - Routine monitoring sufficient
+                                                                    - **🟡 Optimize**: Peak capacity 60-75% - Signal timing adjustments recommended  
+                                                                    - **🟠 Upgrade**: Peak capacity 75-90% - Infrastructure improvements needed
+                                                                    - **🔴 Urgent**: Peak capacity > 90% - Immediate capacity relief required
+                                                                    """)
                                 try:
                                     g = raw.groupby(["intersection_name", "direction"]).agg(
                                         total_volume_mean=("total_volume", "mean"),
