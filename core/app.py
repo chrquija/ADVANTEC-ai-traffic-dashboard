@@ -1466,30 +1466,48 @@ with tab2:
                                         # Format the peak timestamp nicely
                                         peak_time_str = peak_ts.strftime("%b %d, %Y at %I:%M %p")
 
+                                        # Escape HTML entities in ALL variables that will be used in the HTML
+                                        location_name_safe = str(location_name).replace("&", "&amp;").replace("<",
+                                                                                                              "&lt;").replace(
+                                            ">", "&gt;")
+                                        top3_list_safe = str(top3_list).replace("&", "&amp;").replace("<",
+                                                                                                      "&lt;").replace(
+                                            ">", "&gt;")
+                                        rec_safe = str(rec).replace("&", "&amp;").replace("<", "&lt;").replace(">",
+                                                                                                               "&gt;")
+
+                                        # These are safer but let's escape them too just in case
+                                        capacity_type_safe = str(capacity_type).replace("&", "&amp;")
+                                        scope_noun_safe = str(scope_noun).replace("&", "&amp;")
+                                        variability_safe = str(variability).replace("&", "&amp;")
+                                        planning_risk_safe = str(planning_risk).replace("&", "&amp;")
+                                        label_safe = str(label).replace("&", "&amp;")
+                                        unit_safe = str(unit).replace("&", "&amp;")
+
                                         st.markdown(
                                             f"""
                                             <div class="insight-box">
                                                 <h4>💡 Volume Analysis Insights</h4>
 
-                                                <p><strong>📊 {capacity_type}:</strong> On <b>{peak_time_str}</b>, {location_name}
+                                                <p><strong>📊 {capacity_type_safe}:</strong> On <b>{peak_time_str}</b>, {location_name_safe}
                                                    reached a peak volume of <b>{peak_val:,.0f} vehicles</b>.
                                                    This is significant because this represents <b>{peak_util_pct:.0f}%</b> of the total capacity
                                                    (<b>{cap_per_hour:,.0f} vph</b> per hour, scaled by {cap_mult:.0f} approach equivalent(s)).</p>
 
-                                                <p><strong>🚗 Typical {label.capitalize()} Volume:</strong> Average <b>{avg_val:,.0f} {unit}</b> •
-                                                   Consistency <b>{consistency_pct:.0f}%</b> — this {scope_noun}'s demand is <b>{variability}</b> over the selected period,
-                                                   suggesting a <b>{planning_risk}</b> risk for trip planning under these conditions.</p>
+                                                <p><strong>🚗 Typical {label_safe.capitalize()} Volume:</strong> Average <b>{avg_val:,.0f} {unit_safe}</b> •
+                                                   Consistency <b>{consistency_pct:.0f}%</b> — this {scope_noun_safe}'s demand is <b>{variability_safe}</b> over the selected period,
+                                                   suggesting a <b>{planning_risk_safe}</b> risk for trip planning under these conditions.</p>
 
                                                 <p><strong>🧮 Total Vehicles (window):</strong> <b>{float(np.nansum(raw['total_volume'])):,.0f}</b>.</p>
 
                                                 <p><strong>⚠️ Exposure:</strong> Hourly &gt; {HIGH_VOLUME_THRESHOLD_VPH:,} vph for <b>{hourly_over_thr}</b> hours
                                                    (<b>{hourly_risk_pct:.1f}%</b> of hours) •
-                                                   {label.capitalize()}s above 80% of scaled capacity: <b>{bucket_over_80_cap}</b>
-                                                   (<b>{bucket_risk_pct:.1f}%</b> of {label}s).</p>
+                                                   {label_safe.capitalize()}s above 80% of scaled capacity: <b>{bucket_over_80_cap}</b>
+                                                   (<b>{bucket_risk_pct:.1f}%</b> of {label_safe}s).</p>
 
-                                                <p><strong>📍 Peak Contributors:</strong> {top3_list}</p>
+                                                <p><strong>📍 Peak Contributors:</strong> {top3_list_safe}</p>
 
-                                                <p><strong>🎯 Recommendation for CVAG:</strong> {rec}</p>
+                                                <p><strong>🎯 Recommendation for CVAG:</strong> {rec_safe}</p>
 
                                                 <div style="margin-top:.4rem;">
                                                     <span class="performance-badge {rec_badge}">Action Priority</span>
