@@ -1438,10 +1438,7 @@ with tab2:
                                         if agg_all.empty:
                                             raise ValueError("No data in selected window")
 
-                                        # Prepare safe strings
-                                        exceed_list_safe = _html_escape(exceed_list)
-                                        top3_list_safe = _html_escape(top3_list)
-                                        rec_safe = _html_escape(rec)
+
 
                                         # Peak
                                         peak_idx = int(agg_all["total_volume"].idxmax())
@@ -1548,6 +1545,21 @@ with tab2:
                                             "Weekly":  "Weekly",
                                             "Monthly": "Monthly",
                                         }[granularity_vol]
+
+
+                                        # Sanitize text for HTML (escape special characters)
+                                        def _html_escape(text):
+                                            if text is None:
+                                                return "—"
+                                            return str(text).replace("&", "&amp;").replace("<", "&lt;").replace(">",
+                                                                                                                "&gt;").replace(
+                                                '"', "&quot;")
+
+
+                                        # NOW prepare safe strings (after all variables exist)
+                                        exceed_list_safe = _html_escape(exceed_list)
+                                        top3_list_safe = _html_escape(top3_list)
+                                        rec_safe = _html_escape(rec)
 
                                         st.markdown(
                                             f"""
