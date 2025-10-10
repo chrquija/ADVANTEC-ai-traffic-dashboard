@@ -1520,6 +1520,20 @@ with tab2:
                                         label = AGG_META[granularity_vol]["label"]
                                         peak_when = _fmt_period(peak_ts, granularity_vol)
 
+                                        if peak_util_pct >= 95 or hourly_risk_pct >= 20:
+                                            rec = ("Immediate capacity relief (short-term: retime signals, dynamic splits & queue management; "
+                                                   "mid-term: turn-lane/approach improvements; evaluate access control at peak contributors).")
+                                            rec_badge = "badge-critical"
+                                        elif peak_util_pct >= 85 or hourly_risk_pct >= 10 or bucket_risk_pct >= 25:
+                                            rec = ("Prioritize signal optimization (AM/PM plans + progression), adjust cycle lengths, and "
+                                                   "pilot demand management (driveway control, TSP). Plan spot upgrades at top 2–3 intersections.")
+                                            rec_badge = "badge-poor"
+                                        elif peak_util_pct >= 70 or hourly_risk_pct >= 5:
+                                            rec = ("Retiming & coordination refresh, monitor weekly trends, and stage TSP/ITS enhancements.")
+                                            rec_badge = "badge-fair"
+                                        else:
+                                            rec = ("Monitor; current capacity is adequate with routine timing review.")
+                                            rec_badge = "badge-good"
 
                                         st.markdown(
                                             f"""
@@ -1533,7 +1547,9 @@ with tab2:
                                                    (<b>{hourly_risk_pct:.1f}%</b> of hours) 
                                                    {label.capitalize()}s above 80% of scaled capacity: <b>{bucket_over_80_cap}</b>
                                                 <p><strong> Peak Contributors:</strong> {top3_list}</p>
-                                                >
+                                                <p><strong>🎯 Recommendation for CVAG:</strong> {rec}</p>
+                                                <div style="margin-top:.4rem;">
+                                                    <span class="performance-badge {rec_badge}">Action Priority</span>
                                                 </div>
                                             </div>
                                             """,
