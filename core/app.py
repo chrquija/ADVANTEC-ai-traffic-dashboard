@@ -903,15 +903,46 @@ with tab1:
 
                                         if 'od_series' in locals() and not od_series.empty:
                                             st.subheader("🔍Which Dates/Times have the highest Travel Time and Delay?")
+
+                                            # Format the display dataframe with units
+                                            display_od_series = od_series.copy()
+
+
+                                            # Apply formatting functions
+                                            def format_minutes_display(val):
+                                                return f"{val:.2f} minutes" if pd.notna(val) else "N/A"
+
+
+                                            # Format the time columns
+                                            display_od_series["O-D Travel Time (min)"] = display_od_series[
+                                                "average_traveltime"].apply(format_minutes_display)
+                                            display_od_series["O-D Delay (min)"] = display_od_series[
+                                                "average_delay"].apply(format_minutes_display)
+
+                                            # Select and rename columns for display
+                                            final_display = display_od_series[
+                                                ["local_datetime", "O-D Travel Time (min)", "O-D Delay (min)"]].rename(
+                                                columns={"local_datetime": "Timestamp"}
+                                            )
+
                                             st.dataframe(
-                                                od_series.rename(
-                                                    columns={
-                                                        "local_datetime": "Timestamp",
-                                                        "average_traveltime": "O-D Travel Time (min)",
-                                                        "average_delay": "O-D Delay (min)",
-                                                    }
-                                                ),
+                                                final_display,
                                                 use_container_width=True,
+                                                column_config={
+                                                    "Timestamp": st.column_config.DatetimeColumn(
+                                                        "Timestamp",
+                                                        format="MMM DD, YYYY HH:mm",
+                                                        help="Date and time of the measurement"
+                                                    ),
+                                                    "O-D Travel Time (min)": st.column_config.TextColumn(
+                                                        "O-D Travel Time",
+                                                        help="Total travel time from origin to destination"
+                                                    ),
+                                                    "O-D Delay (min)": st.column_config.TextColumn(
+                                                        "O-D Delay",
+                                                        help="Total delay experienced from origin to destination"
+                                                    ),
+                                                },
                                             )
 
                                     # =========================
@@ -1044,7 +1075,7 @@ with tab1:
 
                                             # Add unit suffixes to the appropriate columns
                                             def format_minutes(val):
-                                                return f"{val:.3f} minutes" if pd.notna(val) else "N/A"
+                                                return f"{val:.3f} min" if pd.notna(val) else "N/A"
 
 
                                             def format_mph(val):
