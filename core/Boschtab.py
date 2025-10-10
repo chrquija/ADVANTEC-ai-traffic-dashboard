@@ -321,7 +321,7 @@ def render_bosch_tab():
 
     # -------- Sidebar controls --------
     with st.sidebar:
-        with st.expander("⚙️ Pg.5 BOSCH SETTINGS", expanded=True):
+        with st.expander("⚙️ Pg.5 BOSCH SETTINGS", expanded=False):
             st.caption("Select Corridor and Date Range")
             st.caption("Data: Multimodal Traffic from Bosch Sensors")
 
