@@ -1019,26 +1019,47 @@ with tab1:
                                                     "dir_norm",
                                                     "🎯 Performance Rating",
                                                     "Bottleneck_Score",
-                                                    "average_delay_mean",
-                                                    "average_delay_max",
-                                                    "average_traveltime_mean",
+                                                    "average_delay_max",  # Peak Delay - 45% weight (1st component)
+                                                    "average_delay_mean",  # Avg Delay - 35% weight (2nd component)
                                                     "average_traveltime_max",
-                                                    "average_speed_mean",
-                                                    "average_speed_min",
+                                                    # Peak Travel Time - 20% weight (3rd component)
+                                                    "average_traveltime_mean",  # Additional context
+                                                    "average_speed_mean",  # Additional context
+                                                    "average_speed_min",  # Additional context
                                                     "n",
                                                 ]
                                             ].rename(
                                                 columns={
                                                     "dir_norm": "Dir",
-                                                    "average_delay_mean": "Avg Delay (min)",
-                                                    "average_delay_max": "Peak Delay (min)",
-                                                    "average_traveltime_mean": "Avg Time (min)",
-                                                    "average_traveltime_max": "Peak Time (min)",
-                                                    "average_speed_mean": "Avg Speed (mph)",
-                                                    "average_speed_min": "Min Speed (mph)",
+                                                    "average_delay_max": "Peak Delay",
+                                                    "average_delay_mean": "Avg Delay",
+                                                    "average_traveltime_max": "Peak Time",
+                                                    "average_traveltime_mean": "Avg Time",
+                                                    "average_speed_mean": "Avg Speed",
+                                                    "average_speed_min": "Min Speed",
                                                     "n": "Obs",
                                                 }
                                             ).sort_values("Bottleneck_Score", ascending=False)
+
+
+                                            # Add unit suffixes to the appropriate columns
+                                            def format_minutes(val):
+                                                return f"{val:.3f} minutes" if pd.notna(val) else "N/A"
+
+
+                                            def format_mph(val):
+                                                return f"{val:.1f} mph" if pd.notna(val) else "N/A"
+
+
+                                            # Apply formatting to time columns
+                                            for col in ["Peak Delay", "Avg Delay", "Peak Time", "Avg Time"]:
+                                                if col in final.columns:
+                                                    final[col] = final[col].apply(format_minutes)
+
+                                            # Apply formatting to speed columns
+                                            for col in ["Avg Speed", "Min Speed"]:
+                                                if col in final.columns:
+                                                    final[col] = final[col].apply(format_mph)
 
                                             st.dataframe(
                                                 final.head(15),
@@ -1046,10 +1067,22 @@ with tab1:
                                                 column_config={
                                                     "Bottleneck_Score": st.column_config.NumberColumn(
                                                         "🚨 Impact Score",
-                                                        help="Composite (0–100); higher ⇒ worse",
+                                                        help="Composite (0–100); higher ⇒ worse. Based on Peak Delay (45%) + Avg Delay (35%) + Peak Time (20%)",
                                                         format="%.1f",
                                                     ),
                                                     "Dir": st.column_config.TextColumn("Dir"),
+                                                    "Peak Delay": st.column_config.TextColumn("Peak Delay",
+                                                                                              help="Maximum delay observed (45% weight in Impact Score)"),
+                                                    "Avg Delay": st.column_config.TextColumn("Avg Delay",
+                                                                                             help="Average delay across observations (35% weight in Impact Score)"),
+                                                    "Peak Time": st.column_config.TextColumn("Peak Time",
+                                                                                             help="Maximum travel time recorded (20% weight in Impact Score)"),
+                                                    "Avg Time": st.column_config.TextColumn("Avg Time",
+                                                                                            help="Average travel time across observations"),
+                                                    "Avg Speed": st.column_config.TextColumn("Avg Speed",
+                                                                                             help="Average speed across observations"),
+                                                    "Min Speed": st.column_config.TextColumn("Min Speed",
+                                                                                             help="Minimum speed recorded"),
                                                 },
                                             )
 
