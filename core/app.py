@@ -1360,87 +1360,121 @@ with tab2:
                                     except Exception as e:
                                         st.error(f"❌ Error creating volume charts: {e}")
 
-                                # ---------------- Insights ----------------
+                                # ---------------- Insights (FIXED VERSION) ----------------
                                 if 'raw' in locals() and not raw.empty:
                                     try:
                                         step("Generating insights & recommendations", 92)
-                                        agg_all = _prep_bucket(raw, granularity_vol).groupby("local_datetime", as_index=False)["total_volume"].sum()
+
+                                        # Reuse the already-scaled bucket_all from KPI section
+                                        agg_all = bucket_all.copy()
                                         if agg_all.empty:
-                                            raise ValueError("No Prediction in selected window")
+                                            raise ValueError("No data in selected window")
 
-                                        if granularity_vol == "Monthly":
-                                            agg_all["bucket_hours"] = pd.to_datetime(agg_all["local_datetime"]).dt.days_in_month * 24
-                                        else:
-                                            agg_all["bucket_hours"] = AGG_META[granularity_vol]["fixed_hours"]
-
-                                        agg_all["cap"] = agg_all["bucket_hours"] * THEORETICAL_LINK_CAPACITY_VPH
-                                        agg_all["thr"] = agg_all["bucket_hours"] * HIGH_VOLUME_THRESHOLD_VPH
-
+                                        # Peak calculations
                                         peak_idx = int(agg_all["total_volume"].idxmax())
                                         peak_val = float(agg_all.loc[peak_idx, "total_volume"])
                                         peak_ts = pd.to_datetime(agg_all.loc[peak_idx, "local_datetime"])
-                                        avg_val = float(agg_all["total_volume"].mean())
-                                        p95_val = float(np.nanpercentile(agg_all["total_volume"], 95)) if agg_all["total_volume"].notna().any() else 0.0
-
                                         peak_cap = float(agg_all.loc[peak_idx, "cap"])
                                         peak_util_pct = (peak_val / peak_cap * 100) if peak_cap > 0 else 0.0
 
-                                        util_series = np.where(agg_all["cap"] > 0, agg_all["total_volume"] / agg_all["cap"], np.nan)
-                                        p95_util_pct = float(np.nanpercentile(util_series * 100, 95)) if np.isfinite(util_series).any() else 0.0
+                                        # Average + consistency
+                                        avg_val = float(agg_all["total_volume"].mean())
+                                        cv_bucket = (float(
+                                            np.nanstd(agg_all["total_volume"])) / avg_val * 100) if avg_val > 0 else 0.0
+                                        consistency_pct = max(0, 100 - cv_bucket)
+                                        if cv_bucket >= 50:
+                                            variability = "highly variable"
+                                            planning_risk = "high"
+                                        elif cv_bucket >= 30:
+                                            variability = "moderately variable"
+                                            planning_risk = "moderate"
+                                        else:
+                                            variability = "slightly variable"
+                                            planning_risk = "low"
 
-                                        cv_bucket = (float(np.nanstd(agg_all["total_volume"])) / avg_val * 100) if avg_val > 0 else 0.0
-                                        peak_to_avg = (peak_val / avg_val) if avg_val > 0 else 0.0
-
+                                        # Exposure calculations
+                                        total_hours_scope = int(raw["total_volume"].count())
                                         hourly_over_thr = int((raw["total_volume"] > HIGH_VOLUME_THRESHOLD_VPH).sum())
-                                        total_hours = int(raw["total_volume"].count())
-                                        hourly_risk_pct = (hourly_over_thr / total_hours * 100) if total_hours > 0 else 0.0
+                                        hourly_risk_pct = (
+                                                    hourly_over_thr / total_hours_scope * 100) if total_hours_scope > 0 else 0.0
 
-                                        bucket_over_80_cap = int((agg_all["total_volume"] > 0.80 * agg_all["cap"]).sum())
-                                        bucket_risk_pct = (bucket_over_80_cap / len(agg_all) * 100) if len(agg_all) else 0.0
+                                        # Bucket-level risk
+                                        bucket_over_80_cap = int(
+                                            (agg_all["total_volume"] > 0.80 * agg_all["cap"]).sum())
+                                        bucket_risk_pct = (bucket_over_80_cap / len(agg_all) * 100) if len(
+                                            agg_all) else 0.0
 
+                                        # Top contributors at peak
                                         peak_bucket_all = _prep_bucket(raw, granularity_vol)
                                         top_in_peak = (
                                             peak_bucket_all.loc[peak_bucket_all["local_datetime"] == peak_ts]
-                                                           .groupby("intersection_name", as_index=False)["total_volume"].sum()
-                                                           .sort_values("total_volume", ascending=False)
+                                            .groupby("intersection_name", as_index=False)["total_volume"].sum()
+                                            .sort_values("total_volume", ascending=False)
                                         )
                                         top3 = top_in_peak.head(3)
-                                        top3_list = " • ".join([f"{r['intersection_name']}: {int(r['total_volume']):,}" for _, r in top3.iterrows()]) if not top3.empty else "N/A"
+                                        top3_list = " • ".join([
+                                            f"{r['intersection_name']}: {int(r['total_volume']):,}"
+                                            for _, r in top3.iterrows()
+                                        ]) if not top3.empty else "N/A"
 
                                         unit = AGG_META[granularity_vol]["unit"]
                                         label = AGG_META[granularity_vol]["label"]
-                                        peak_when = _fmt_period(peak_ts, granularity_vol)
 
-                                        if peak_util_pct >= 95 or hourly_risk_pct >= 20:
-                                            rec = ("Immediate capacity relief (short-term: retime signals, dynamic splits & queue management; "
-                                                   "mid-term: turn-lane/approach improvements; evaluate access control at peak contributors).")
+                                        # Recommendation logic
+                                        if peak_util_pct >= 95 or hourly_risk_pct >= 20 or bucket_risk_pct >= 30:
+                                            rec = (
+                                                "Immediate capacity relief: signal retiming, dynamic splits & queue management, "
+                                                "targeted turn-lane/approach improvements; evaluate driveway/access control at peak contributors.")
                                             rec_badge = "badge-critical"
-                                        elif peak_util_pct >= 85 or hourly_risk_pct >= 10 or bucket_risk_pct >= 25:
-                                            rec = ("Prioritize signal optimization (AM/PM plans + progression), adjust cycle lengths, and "
-                                                   "pilot demand management (driveway control, TSP). Plan spot upgrades at top 2–3 intersections.")
+                                        elif peak_util_pct >= 85 or hourly_risk_pct >= 10 or bucket_risk_pct >= 20:
+                                            rec = (
+                                                "Prioritize signal optimization (AM/PM plans + progression), adjust cycle lengths, "
+                                                "and plan spot upgrades at the top 2–3 intersections.")
                                             rec_badge = "badge-poor"
-                                        elif peak_util_pct >= 70 or hourly_risk_pct >= 5:
-                                            rec = ("Retiming & coordination refresh, monitor weekly trends, and stage TSP/ITS enhancements.")
+                                        elif peak_util_pct >= 70 or hourly_risk_pct >= 5 or bucket_risk_pct >= 10:
+                                            rec = (
+                                                "Retiming & coordination refresh; monitor weekly trends; stage TSP/ITS enhancements.")
                                             rec_badge = "badge-fair"
                                         else:
                                             rec = ("Monitor; current capacity is adequate with routine timing review.")
                                             rec_badge = "badge-good"
 
+                                        # *** CAPACITY SECTION - DETERMINE LABELS ***
+                                        if intersection == "All Intersections":
+                                            capacity_type = "Corridor Capacity"
+                                            location_name = scope_label  # "Washington Street"
+                                        else:
+                                            capacity_type = "Intersection Capacity"
+                                            location_name = intersection
+
+                                        # Format the peak timestamp nicely
+                                        peak_time_str = peak_ts.strftime("%b %d, %Y at %I:%M %p")
+
                                         st.markdown(
                                             f"""
                                             <div class="insight-box">
                                                 <h4>💡 Volume Analysis Insights</h4>
-                                                <p><strong>📊 Capacity:</strong> Peak <b>{peak_val:,.0f} {unit}</b> on <b>{peak_when}</b>
-                                                   ({peak_util_pct:.0f}% of scaled capacity) • 95th percentile <b>{p95_val:,.0f} {unit}</b> ({p95_util_pct:.0f}% of capacity).</p>
+
+                                                <p><strong>📊 {capacity_type}:</strong> On <b>{peak_time_str}</b>, {location_name}
+                                                   reached a peak volume of <b>{peak_val:,.0f} vehicles</b>.
+                                                   This is significant because this represents <b>{peak_util_pct:.0f}%</b> of the total capacity
+                                                   (<b>{cap_per_hour:,.0f} vph</b> per hour, scaled by {cap_mult:.0f} approach equivalent(s)).</p>
+
                                                 <p><strong>🚗 Typical {label.capitalize()} Volume:</strong> Average <b>{avg_val:,.0f} {unit}</b> •
-                                                   Peak/Avg ratio <b>{peak_to_avg:.1f}×</b> • Consistency <b>{max(0, 100 - cv_bucket):.0f}%</b>.</p>
+                                                   Consistency <b>{consistency_pct:.0f}%</b> — this {scope_noun}'s demand is <b>{variability}</b> over the selected period,
+                                                   suggesting a <b>{planning_risk}</b> risk for trip planning under these conditions.</p>
+
                                                 <p><strong>🧮 Total Vehicles (window):</strong> <b>{float(np.nansum(raw['total_volume'])):,.0f}</b>.</p>
+
                                                 <p><strong>⚠️ Exposure:</strong> Hourly > {HIGH_VOLUME_THRESHOLD_VPH:,} vph for <b>{hourly_over_thr}</b> hours
                                                    (<b>{hourly_risk_pct:.1f}%</b> of hours) •
                                                    {label.capitalize()}s above 80% of scaled capacity: <b>{bucket_over_80_cap}</b>
                                                    (<b>{bucket_risk_pct:.1f}%</b> of {label}s).</p>
+
                                                 <p><strong>📍 Peak Contributors:</strong> {top3_list}</p>
+
                                                 <p><strong>🎯 Recommendation for CVAG:</strong> {rec}</p>
+
                                                 <div style="margin-top:.4rem;">
                                                     <span class="performance-badge {rec_badge}">Action Priority</span>
                                                 </div>
