@@ -919,6 +919,51 @@ with tab1:
                                     # =========================
                                     step("Running bottleneck analysis", 95)
                                     st.subheader("🚨 Comprehensive Bottleneck Analysis")
+                                    # Add legend for Performance Rating and Impact Score
+                                    with st.expander("📊 **Rating Methodology & Legend**", expanded=False):
+                                        st.markdown("""
+                                                                            ### Impact Score Calculation
+                                                                            The **Impact Score** (0-100) is a weighted composite metric that identifies bottlenecks:
+                                                                            - **45%** weight: Peak Delay (maximum delay observed)
+                                                                            - **35%** weight: Average Delay (mean delay across observations)  
+                                                                            - **20%** weight: Peak Travel Time (maximum travel time recorded)
+
+                                                                            Higher scores indicate worse performance and more severe bottlenecks.
+
+                                                                            ### Performance Rating Categories
+                                                                            """)
+
+                                        # Create a visual legend with colored badges
+                                        legend_col1, legend_col2, legend_col3, legend_col4, legend_col5 = st.columns(5)
+                                        with legend_col1:
+                                            st.markdown(
+                                                '<span class="performance-badge badge-excellent">🟢 Excellent</span>',
+                                                unsafe_allow_html=True)
+                                            st.caption("Score: 0-20")
+                                            st.caption("Optimal flow")
+                                        with legend_col2:
+                                            st.markdown('<span class="performance-badge badge-good">🔵 Good</span>',
+                                                        unsafe_allow_html=True)
+                                            st.caption("Score: 20-40")
+                                            st.caption("Minor delays")
+                                        with legend_col3:
+                                            st.markdown('<span class="performance-badge badge-fair">🟡 Fair</span>',
+                                                        unsafe_allow_html=True)
+                                            st.caption("Score: 40-60")
+                                            st.caption("Moderate congestion")
+                                        with legend_col4:
+                                            st.markdown('<span class="performance-badge badge-poor">🟠 Poor</span>',
+                                                        unsafe_allow_html=True)
+                                            st.caption("Score: 60-80")
+                                            st.caption("Significant delays")
+                                        with legend_col5:
+                                            st.markdown(
+                                                '<span class="performance-badge badge-critical">🔴 Critical</span>',
+                                                unsafe_allow_html=True)
+                                            st.caption("Score: 80-100")
+                                            st.caption("Severe bottleneck")
+
+
                                     if 'raw_data' in locals() and not raw_data.empty and "segment_name" in working_df.columns:
                                         try:
                                             analysis_df = working_df[
