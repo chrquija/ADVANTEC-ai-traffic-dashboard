@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -1428,10 +1427,21 @@ with tab2:
                                     try:
                                         step("Generating insights & recommendations", 92)
 
+                                        # Sanitize text for HTML (escape special characters)
+                                        def _html_escape(text):
+                                            if text is None:
+                                                return "—"
+                                            return str(text).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")
+
                                         # Reuse scaled KPI series
                                         agg_all = bucket_all.copy()
                                         if agg_all.empty:
                                             raise ValueError("No data in selected window")
+
+                                        # Prepare safe strings
+                                        exceed_list_safe = _html_escape(exceed_list)
+                                        top3_list_safe = _html_escape(top3_list)
+                                        rec_safe = _html_escape(rec)
 
                                         # Peak
                                         peak_idx = int(agg_all["total_volume"].idxmax())
@@ -1558,7 +1568,7 @@ with tab2:
                                                 <p><strong>🚗 Total Vehicles (window):</strong> <b>{float(np.nansum(raw['total_volume'])):,.0f}</b>.</p>
 
                                                 <p><strong>⚠️ Exposure:</strong> Out of <b>{total_hours_scope}</b> hour(s) in the selected range
-                                                   across the {scope_noun}, <b>{exceed_hours}</b> hour(s) exceeded
+                                                   across the {scope_noun}, <b>{exceed_hours:,}</b> hour(s) exceeded
                                                    <b>{HIGH_VOLUME_THRESHOLD_VPH:,} vph</b>.<br/>
                                                    <em>Hours:</em> {exceed_list}
                                                 </p>
