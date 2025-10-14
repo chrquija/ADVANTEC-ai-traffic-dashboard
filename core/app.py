@@ -632,7 +632,7 @@ with tab1:
         st.info("Choose your Route and Date Range in the settings to the left.")
     else:
         if t1_pending:
-            st.warning("⚙️ Press **Search** to refresh.")
+            st.warning(" Press **Search** to refresh.")
 
         try:
             base_df = corridor_df.copy() if not corridor_df.empty else pd.DataFrame()
