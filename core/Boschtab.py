@@ -527,7 +527,7 @@ def render_bosch_tab():
                     st.markdown(f'<span class="performance-badge {badge2}">{non_vehic_share:.1f}% of total</span>', unsafe_allow_html=True)
 
                 with col3:
-                    st.metric("📊 Total Traffic", f"{total_volume:,.0f}", help="All detected objects (all modes)")
+                    st.metric("📊 Total Traffic", f"{total_volume:,.0f}", help="Total Vehicle Volume + Active Transportation")
                     st.caption(f"Period: {span} days")
 
                 with col4:
