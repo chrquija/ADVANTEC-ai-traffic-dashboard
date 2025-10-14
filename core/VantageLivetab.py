@@ -16,6 +16,42 @@ from sidebar_functions import (
 from cycle_length_recommendations import render_cycle_length_section
 from Map import build_intersections_overview
 
+# Local CAD-style loader to show progress (avoids circular import with app.py)
+import time
+import contextlib
+
+@contextlib.contextmanager
+def cad_loader(title: str = "Processing…"):
+    """Progress loader that logs steps like CAD/Civil tools."""
+    title_placeholder = st.empty()
+    log_placeholder = st.empty()
+    bar_placeholder = st.empty()
+
+    with title_placeholder:
+        st.markdown(f"### {title}")
+
+    log_container = log_placeholder.container()
+    progress_bar = bar_placeholder.progress(0)
+
+    def step(msg: str, pct: int | float):
+        with log_container:
+            st.write(f"• {msg}")
+        progress_bar.progress(int(max(0, min(100, pct))))
+
+    try:
+        yield step
+        progress_bar.progress(100)
+        with log_container:
+            st.success("✔️ Done")
+        time.sleep(0.5)
+        title_placeholder.empty()
+        log_placeholder.empty()
+        bar_placeholder.empty()
+    except Exception as e:
+        with log_container:
+            st.error(f"❌ {e}")
+        raise
+
 # =========================
 # Constants
 # =========================
@@ -684,6 +720,13 @@ def render_vantage_tab():
     turn_filter = params.get("turn_filter", "All Turns")
     chart_type = params.get("chart_type", "Trend (Line)")
 
+    # Pending-change warning if sidebar controls differ from committed params
+    t4_pending = st.session_state.get("vantage_ready", False) and (
+        params != st.session_state.get("vantage_current", {})
+    )
+    if t4_pending:
+        st.warning("⚙️ Press **Search** to refresh.")
+
     if not date_range or len(date_range) != 2:
         st.warning("⚠️ Please select both start and end dates to proceed.")
         return
@@ -703,33 +746,37 @@ def render_vantage_tab():
                 out = out[out["direction"].str.upper() == direction_filter]
             return out
 
-        working_bikes = apply_filters(bikes_df.copy()) if not bikes_df.empty else pd.DataFrame()
-        working_vehicles = apply_filters(vehicles_df.copy()) if not vehicles_df.empty else pd.DataFrame()
-        working_peds = apply_filters(peds_df.copy()) if not peds_df.empty else pd.DataFrame()
+        with cad_loader("Fetching Data...") as step:
+            step("Applying filters", 20)
+            working_bikes = apply_filters(bikes_df.copy()) if not bikes_df.empty else pd.DataFrame()
+            working_vehicles = apply_filters(vehicles_df.copy()) if not vehicles_df.empty else pd.DataFrame()
+            working_peds = apply_filters(peds_df.copy()) if not peds_df.empty else pd.DataFrame()
 
-        if turn_filter and turn_filter != "All Turns" and not working_vehicles.empty and "turn_type" in working_vehicles.columns:
-            working_vehicles = working_vehicles[working_vehicles["turn_type"] == turn_filter]
+            if turn_filter and turn_filter != "All Turns" and not working_vehicles.empty and "turn_type" in working_vehicles.columns:
+                working_vehicles = working_vehicles[working_vehicles["turn_type"] == turn_filter]
 
-        # Mode pick for non-TMC
-        if mode == "Bikes":
-            analysis_df = working_bikes
-            mode_label = "Bikes"
-        elif mode == "Vehicles":
-            analysis_df = working_vehicles
-            mode_label = "Vehicles"
-        elif mode == "Pedestrians":
-            analysis_df = working_peds
-            mode_label = "Pedestrians"
-        else:  # Combined (All Modes)
-            dfs = []
-            if not working_bikes.empty:
-                dfs.append(working_bikes.assign(mode="Bikes"))
-            if not working_vehicles.empty:
-                dfs.append(working_vehicles.assign(mode="Vehicles"))
-            if not working_peds.empty:
-                dfs.append(working_peds.assign(mode="Pedestrians"))
-            analysis_df = pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame()
-            mode_label = "All Modes"
+            # Mode pick for non-TMC
+            if mode == "Bikes":
+                analysis_df = working_bikes
+                mode_label = "Bikes"
+            elif mode == "Vehicles":
+                analysis_df = working_vehicles
+                mode_label = "Vehicles"
+            elif mode == "Pedestrians":
+                analysis_df = working_peds
+                mode_label = "Pedestrians"
+            else:  # Combined (All Modes)
+                dfs = []
+                if not working_bikes.empty:
+                    dfs.append(working_bikes.assign(mode="Bikes"))
+                if not working_vehicles.empty:
+                    dfs.append(working_vehicles.assign(mode="Vehicles"))
+                if not working_peds.empty:
+                    dfs.append(working_peds.assign(mode="Pedestrians"))
+                analysis_df = pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame()
+                mode_label = "All Modes"
+
+            step("Preparing layout", 55)
 
         # ---------- Right rail map ----------
         content_col, right_col = st.columns([7, 3.5], gap="large")
