@@ -17,6 +17,12 @@ from sidebar_functions import (
 from cycle_length_recommendations import render_cycle_length_section
 from Map import build_all_segments_overview
 
+# Shared UI utils (scoped loader and tab highlight)
+try:
+    from ui_utils import cad_loader as scoped_cad_loader, set_active_search_tab, is_active_tab
+except ModuleNotFoundError:
+    from core.ui_utils import cad_loader as scoped_cad_loader, set_active_search_tab, is_active_tab
+
 # =========================
 # Constants
 # =========================
@@ -322,6 +328,19 @@ def render_bosch_tab():
     # -------- Sidebar controls --------
     with st.sidebar:
         with st.expander("⚙️ Pg.5 BOSCH SETTINGS", expanded=False):
+            active_t5 = is_active_tab("t5")
+            if active_t5:
+                st.markdown(
+                    """
+                    <div style="
+                        background: linear-gradient(90deg, #ffe58f, #ffd666);
+                        border: 1px solid #fadb14; color: #613400;
+                        padding: 6px 10px; border-radius: 8px; font-weight: 700; margin-bottom: 6px;">
+                        • You’re viewing: Pg.5 BOSCH CLOUD ANALYTICS
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
             st.caption("Select Corridor and Date Range")
             st.caption("Data: Multimodal Traffic from Bosch Sensors")
 
@@ -376,6 +395,8 @@ def render_bosch_tab():
             if st.button("🔍 **Search**", key="search_bosch", type="primary", use_container_width=True):
                 st.session_state["bosch_params"] = bosch_current
                 st.session_state["bosch_ready"] = True
+                set_active_search_tab("t5")
+                st.session_state["last_active_tab"] = "t5"
 
     # -------- Main content area --------
     if not st.session_state.get("bosch_ready", False):
@@ -388,44 +409,59 @@ def render_bosch_tab():
     granularity = params.get("granularity", "Hourly")
     mode_filter = params.get("mode_filter", ())
 
+    # Pending-change warning if sidebar controls differ from committed params
+    t5_pending = st.session_state.get("bosch_ready", False) and (
+        params != st.session_state.get("bosch_current", {})
+    )
+    if t5_pending:
+        st.warning("⚙️ Press **Search** to refresh.")
+
     if not date_range or len(date_range) != 2:
         st.warning("⚠️ Please select both start and end dates to proceed.")
         return
 
     try:
-        bosch_df = load_bosch_data(corridor)
-        if bosch_df.empty:
-            st.warning(f"⚠️ No data available for {corridor}.")
-            return
+        with scoped_cad_loader("Fetching Data...", tab_id="t5") as step:
+            step("Loading Bosch data", 15)
+            bosch_df = load_bosch_data(corridor)
+            if bosch_df.empty:
+                step("No data for corridor", 100)
+                st.warning(f"⚠️ No data available for {corridor}.")
+                return
 
-        working_df = bosch_df[
-            (bosch_df["local_datetime"].dt.date >= date_range[0]) &
-            (bosch_df["local_datetime"].dt.date <= date_range[1])
-        ].copy()
+            step("Filtering by date range", 35)
+            working_df = bosch_df[
+                (bosch_df["local_datetime"].dt.date >= date_range[0]) &
+                (bosch_df["local_datetime"].dt.date <= date_range[1])
+            ].copy()
 
-        if working_df.empty:
-            st.warning("⚠️ No data available for the selected date range.")
-            return
+            if working_df.empty:
+                step("No data for selected date range", 100)
+                st.warning("⚠️ No data available for the selected date range.")
+                return
 
-        # Apply mode filter
-        if mode_filter:
-            mode_measures = []
-            for mode in mode_filter:
-                mode_measures.extend([
-                    f"{mode.lower()}_counts",
-                    f"{mode.lower()}_speed_in_mph",
-                    f"{mode.lower()}_stopped",
-                ])
-            mode_measures += ["total_counts", "average_speed_mph", "total_stopped_objects"]
-            working_df = working_df[working_df["measure"].isin(mode_measures)]
+            # Apply mode filter
+            if mode_filter:
+                step("Applying mode filter", 55)
+                mode_measures = []
+                for mode in mode_filter:
+                    mode_measures.extend([
+                        f"{mode.lower()}_counts",
+                        f"{mode.lower()}_speed_in_mph",
+                        f"{mode.lower()}_stopped",
+                    ])
+                mode_measures += ["total_counts", "average_speed_mph", "total_stopped_objects"]
+                working_df = working_df[working_df["measure"].isin(mode_measures)]
 
-        if working_df.empty:
-            st.warning("⚠️ No data available for the selected modes.")
-            return
+            if working_df.empty:
+                step("No data after mode filter", 100)
+                st.warning("⚠️ No data available for the selected modes.")
+                return
 
-        # Convert to wide format & totals
-        wide_df = pivot_to_wide(working_df)
-        wide_df = compute_vehicle_totals(wide_df)
+            # Convert to wide format & totals
+            step("Aggregating & computing totals", 75)
+            wide_df = pivot_to_wide(working_df)
+            wide_df = compute_vehicle_totals(wide_df)
 
         # Layout: main content + sticky right rail
         content_col, right_col = st.columns([7, 3.5], gap="large")

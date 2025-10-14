@@ -62,6 +62,12 @@ try:
 except ModuleNotFoundError:
     from core.Boschtab import render_bosch_tab  # package import
 
+# --- Shared UI utils for scoped loader and highlights ---
+try:
+    from ui_utils import cad_loader as scoped_cad_loader, set_active_search_tab, is_active_tab
+except ModuleNotFoundError:
+    from core.ui_utils import cad_loader as scoped_cad_loader, set_active_search_tab, is_active_tab
+
 
 
 
@@ -539,6 +545,19 @@ with tab1:
         st.image("Logos/CV Sync__.jpg", width=205)
 
         with st.expander("⚙️ Pg.1 ITERIS CLEARGUIDE SETTINGS", expanded=False):
+            active_t1 = is_active_tab("t1")
+            if active_t1:
+                st.markdown(
+                    """
+                    <div style="
+                        background: linear-gradient(90deg, #ffe58f, #ffd666);
+                        border: 1px solid #fadb14; color: #613400;
+                        padding: 6px 10px; border-radius: 8px; font-weight: 700; margin-bottom: 6px;">
+                        • You’re viewing: Pg.1 ITERIS CLEARGUIDE
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
             st.caption("Select Route and Date Range")
             st.caption("Data: Vehicle Speed, Delay, and Travel Time")
             st.markdown("## 🗺️ Select Route")
@@ -622,6 +641,8 @@ with tab1:
             if st.button("🔍 **Search**", key="search_tab1", type="primary", use_container_width=True):
                 st.session_state["t1_params"] = t1_current
                 st.session_state["t1_ready"] = True
+                set_active_search_tab("t1")
+                st.session_state["last_active_tab"] = "t1"
 
     # -------- Main content area (render only when "Search" committed) --------
     t1_ready = st.session_state.get("t1_ready", False)
@@ -724,7 +745,7 @@ with tab1:
                         st.warning("⚠️ Please select both start and end dates to proceed.")
                     else:
                         # ---- CAD-style loader starts here ----
-                        with cad_loader("Fetching Data...") as step:
+                        with scoped_cad_loader("Fetching Data...", tab_id="t1") as step:
                             step("Filtering by date range & aggregating", 20)
                             filtered_data = process_traffic_data(
                                 working_df,
@@ -1146,6 +1167,20 @@ with tab2:
     with st.sidebar:
         with st.expander("⚙️ Pg.2 KINETIC MOBILITY SETTINGS", expanded=False):
 
+            active_t2 = is_active_tab("t2")
+            if active_t2:
+                st.markdown(
+                    """
+                    <div style="
+                        background: linear-gradient(90deg, #ffe58f, #ffd666);
+                        border: 1px solid #fadb14; color: #613400;
+                        padding: 6px 10px; border-radius: 8px; font-weight: 700; margin-bottom: 6px;">
+                        • You’re viewing: Pg.2 KINETIC MOBILITY
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
+
             st.caption("Select Intersection(s) and Date Range")
             st.caption("Data: Vehicle Volume")
             intersections = ["All Intersections"] + sorted(
@@ -1197,6 +1232,8 @@ with tab2:
             if st.button("🔍 **Search**", key="search_tab2", type="primary", use_container_width=True):
                 st.session_state["t2_params"] = t2_current
                 st.session_state["t2_ready"] = True
+                set_active_search_tab("t2")
+                st.session_state["last_active_tab"] = "t2"
 
 
     # -------- Main content area (render only when "Search" committed) --------
@@ -1262,7 +1299,7 @@ with tab2:
                         st.warning("⚠️ Please select both start and end dates to proceed with the volume analysis.")
                     else:
                         # ---- CAD-style loader starts here ----
-                        with cad_loader("Fetching Data...") as step:
+                        with scoped_cad_loader("Fetching Data...", tab_id="t2") as step:
                             step("Applying filters & aggregations", 20)
                             filtered_volume_data = process_traffic_data(base_df, date_range_vol, granularity_vol)
 

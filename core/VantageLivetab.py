@@ -16,41 +16,11 @@ from sidebar_functions import (
 from cycle_length_recommendations import render_cycle_length_section
 from Map import build_intersections_overview
 
-# Local CAD-style loader to show progress (avoids circular import with app.py)
-import time
-import contextlib
-
-@contextlib.contextmanager
-def cad_loader(title: str = "Processing…"):
-    """Progress loader that logs steps like CAD/Civil tools."""
-    title_placeholder = st.empty()
-    log_placeholder = st.empty()
-    bar_placeholder = st.empty()
-
-    with title_placeholder:
-        st.markdown(f"### {title}")
-
-    log_container = log_placeholder.container()
-    progress_bar = bar_placeholder.progress(0)
-
-    def step(msg: str, pct: int | float):
-        with log_container:
-            st.write(f"• {msg}")
-        progress_bar.progress(int(max(0, min(100, pct))))
-
-    try:
-        yield step
-        progress_bar.progress(100)
-        with log_container:
-            st.success("✔️ Done")
-        time.sleep(0.5)
-        title_placeholder.empty()
-        log_placeholder.empty()
-        bar_placeholder.empty()
-    except Exception as e:
-        with log_container:
-            st.error(f"❌ {e}")
-        raise
+# Shared UI utils (scoped loader and tab highlight)
+try:
+    from ui_utils import cad_loader as scoped_cad_loader, set_active_search_tab, is_active_tab
+except ModuleNotFoundError:
+    from core.ui_utils import cad_loader as scoped_cad_loader, set_active_search_tab, is_active_tab
 
 # =========================
 # Constants
@@ -627,6 +597,19 @@ def render_vantage_tab():
     # -------- Sidebar controls --------
     with st.sidebar:
         with st.expander("⚙️ Pg.4 ITERIS VANTAGE LIVE SETTINGS", expanded=False):
+            active_t4 = is_active_tab("t4")
+            if active_t4:
+                st.markdown(
+                    """
+                    <div style="
+                        background: linear-gradient(90deg, #ffe58f, #ffd666);
+                        border: 1px solid #fadb14; color: #613400;
+                        padding: 6px 10px; border-radius: 8px; font-weight: 700; margin-bottom: 6px;">
+                        • You’re viewing: Pg.4 ITERIS VANTAGE LIVE
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
             st.caption("Select Mode, Intersection(s) and Date Range")
             st.caption("Data: Bike, Vehicle, and Pedestrian Volume from Iteris VantageLive")
 
@@ -705,6 +688,8 @@ def render_vantage_tab():
             if st.button("🔍 **Search**", key="search_vantage", type="primary", use_container_width=True):
                 st.session_state["vantage_params"] = vantage_current
                 st.session_state["vantage_ready"] = True
+                set_active_search_tab("t4")
+                st.session_state["last_active_tab"] = "t4"
 
     # -------- Main content area --------
     if not st.session_state.get("vantage_ready", False):
@@ -746,7 +731,7 @@ def render_vantage_tab():
                 out = out[out["direction"].str.upper() == direction_filter]
             return out
 
-        with cad_loader("Fetching Data...") as step:
+        with scoped_cad_loader("Fetching Data...", tab_id="t4") as step:
             step("Applying filters", 20)
             working_bikes = apply_filters(bikes_df.copy()) if not bikes_df.empty else pd.DataFrame()
             working_vehicles = apply_filters(vehicles_df.copy()) if not vehicles_df.empty else pd.DataFrame()

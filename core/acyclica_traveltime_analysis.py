@@ -12,41 +12,11 @@ from plotly.subplots import make_subplots
 # Add the Map import
 from Map import build_all_segments_overview, build_intersections_overview
 
-# Local CAD-style loader to show progress (avoids circular import with app.py)
-import time
-import contextlib
-
-@contextlib.contextmanager
-def cad_loader(title: str = "Processing…"):
-    """Progress loader that logs steps like CAD/Civil tools."""
-    title_placeholder = st.empty()
-    log_placeholder = st.empty()
-    bar_placeholder = st.empty()
-
-    with title_placeholder:
-        st.markdown(f"### {title}")
-
-    log_container = log_placeholder.container()
-    progress_bar = bar_placeholder.progress(0)
-
-    def step(msg: str, pct: int | float):
-        with log_container:
-            st.write(f"• {msg}")
-        progress_bar.progress(int(max(0, min(100, pct))))
-
-    try:
-        yield step
-        progress_bar.progress(100)
-        with log_container:
-            st.success("✔️ Done")
-        time.sleep(0.5)
-        title_placeholder.empty()
-        log_placeholder.empty()
-        bar_placeholder.empty()
-    except Exception as e:
-        with log_container:
-            st.error(f"❌ {e}")
-        raise
+# Shared UI utils (scoped loader and tab highlight)
+try:
+    from ui_utils import cad_loader as scoped_cad_loader, set_active_search_tab, is_active_tab
+except ModuleNotFoundError:
+    from core.ui_utils import cad_loader as scoped_cad_loader, set_active_search_tab, is_active_tab
 
 
 # ------------------------------------------------------------------
@@ -762,6 +732,19 @@ def render_tab3_analysis():
     # -------- Sidebar controls (matching Tab 1 & 2 style) --------
     with st.sidebar:
         with st.expander("⚙️ Pg.3 ACYCLICA SETTINGS", expanded=False):
+            active_t3 = is_active_tab("t3")
+            if active_t3:
+                st.markdown(
+                    """
+                    <div style="
+                        background: linear-gradient(90deg, #ffe58f, #ffd666);
+                        border: 1px solid #fadb14; color: #613400;
+                        padding: 6px 10px; border-radius: 8px; font-weight: 700; margin-bottom: 6px;">
+                        • You’re viewing: Pg.3 ACYCLICA
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
             st.caption("Select Corridor and Date Range")
             st.caption("Data: Travel Time & Speed from Acyclica sensors")
 
@@ -839,6 +822,8 @@ def render_tab3_analysis():
             if st.button("🔍 **Search**", key="search_tab3", type="primary", use_container_width=True):
                 st.session_state["t3_ready"] = True
                 st.session_state["t3_params"] = t3_current
+                set_active_search_tab("t3")
+                st.session_state["last_active_tab"] = "t3"
 
     # -------- Main content area (only render after Search) --------
     t3_ready = st.session_state.get("t3_ready", False)
@@ -934,7 +919,7 @@ def render_tab3_analysis():
 
         # Left/main content
         with main_col_t3:
-            with cad_loader("Fetching Data...") as step:
+            with scoped_cad_loader("Fetching Data...", tab_id="t3") as step:
                 step("Applying filters & aggregations", 20)
                 filtered_data = process_traffic_data(
                 working_df,
