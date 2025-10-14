@@ -12,6 +12,42 @@ from plotly.subplots import make_subplots
 # Add the Map import
 from Map import build_all_segments_overview, build_intersections_overview
 
+# Local CAD-style loader to show progress (avoids circular import with app.py)
+import time
+import contextlib
+
+@contextlib.contextmanager
+def cad_loader(title: str = "Processing…"):
+    """Progress loader that logs steps like CAD/Civil tools."""
+    title_placeholder = st.empty()
+    log_placeholder = st.empty()
+    bar_placeholder = st.empty()
+
+    with title_placeholder:
+        st.markdown(f"### {title}")
+
+    log_container = log_placeholder.container()
+    progress_bar = bar_placeholder.progress(0)
+
+    def step(msg: str, pct: int | float):
+        with log_container:
+            st.write(f"• {msg}")
+        progress_bar.progress(int(max(0, min(100, pct))))
+
+    try:
+        yield step
+        progress_bar.progress(100)
+        with log_container:
+            st.success("✔️ Done")
+        time.sleep(0.5)
+        title_placeholder.empty()
+        log_placeholder.empty()
+        bar_placeholder.empty()
+    except Exception as e:
+        with log_container:
+            st.error(f"❌ {e}")
+        raise
+
 
 # ------------------------------------------------------------------
 # Helpers
@@ -787,18 +823,22 @@ def render_tab3_analysis():
                     with c2:
                         end_hour = st.number_input("End Hour (1–24)", 1, 24, 18, step=1, key="end_hour_acyclica")
 
+            # Track uncommitted controls (current live sidebar values)
+            t3_current = {
+                "corridor": corridor,
+                "date_range": tuple(date_range) if date_range else None,
+                "granularity": granularity,
+                "direction_filter": direction_filter,
+                "time_filter": time_filter,
+                "start_hour": start_hour,
+                "end_hour": end_hour,
+            }
+            st.session_state["t3_current"] = t3_current
+
             # Search button (matching other tabs)
             if st.button("🔍 **Search**", key="search_tab3", type="primary", use_container_width=True):
                 st.session_state["t3_ready"] = True
-                st.session_state["t3_params"] = {
-                    "corridor": corridor,
-                    "date_range": date_range,
-                    "granularity": granularity,
-                    "direction_filter": direction_filter,
-                    "time_filter": time_filter,
-                    "start_hour": start_hour,
-                    "end_hour": end_hour,
-                }
+                st.session_state["t3_params"] = t3_current
 
     # -------- Main content area (only render after Search) --------
     t3_ready = st.session_state.get("t3_ready", False)
@@ -815,6 +855,11 @@ def render_tab3_analysis():
     time_filter = t3_params.get("time_filter")
     start_hour = t3_params.get("start_hour")
     end_hour = t3_params.get("end_hour")
+
+    # Compare committed vs current sidebar values to detect pending changes
+    t3_pending = t3_ready and (t3_params != st.session_state.get("t3_current", {}))
+    if t3_pending:
+        st.warning("⚙️ Press **Search** to refresh.")
 
     if not date_range or len(date_range) != 2:
         st.warning("⚠️ Please select both start and end dates to proceed.")
@@ -889,8 +934,9 @@ def render_tab3_analysis():
 
         # Left/main content
         with main_col_t3:
-            # Process the data
-            filtered_data = process_traffic_data(
+            with cad_loader("Fetching Data...") as step:
+                step("Applying filters & aggregations", 20)
+                filtered_data = process_traffic_data(
                 working_df,
                 date_range,
                 granularity,
@@ -900,6 +946,7 @@ def render_tab3_analysis():
             )
 
             if filtered_data.empty:
+                step("No data for selected filters", 100)
                 st.warning("⚠️ No data available for the selected filters.")
                 return
 
