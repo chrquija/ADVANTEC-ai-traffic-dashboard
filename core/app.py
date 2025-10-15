@@ -545,19 +545,6 @@ with tab1:
         st.image("Logos/CV Sync__.jpg", width=205)
 
         with st.expander("⚙️ Pg.1 ITERIS CLEARGUIDE SETTINGS", expanded=False):
-            active_t1 = is_active_tab("t1")
-            if active_t1:
-                st.markdown(
-                    """
-                    <div style="
-                        background: linear-gradient(90deg, #ffe58f, #ffd666);
-                        border: 1px solid #fadb14; color: #613400;
-                        padding: 6px 10px; border-radius: 8px; font-weight: 700; margin-bottom: 6px;">
-                        • You’re viewing: Pg.1 ITERIS CLEARGUIDE
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
             st.caption("Select Route and Date Range")
             st.caption("Data: Vehicle Speed, Delay, and Travel Time")
             st.markdown("## 🗺️ Select Route")
@@ -637,6 +624,29 @@ with tab1:
                 "end_hour": end_hour if (granularity == "Hourly" and time_filter == "Custom Range") else None,
             }
             st.session_state["t1_current"] = t1_current
+
+            # Warn if adjusting settings for a different page (wrong-page editing)
+            try:
+                last_tab = st.session_state.get("last_active_tab")
+                t1_params_sidebar = st.session_state.get("t1_params", {})
+                t1_pending_sidebar = st.session_state.get("t1_ready", False) and (
+                    _freeze_params(t1_params_sidebar) != _freeze_params(t1_current)
+                )
+                if last_tab and last_tab != "t1" and t1_pending_sidebar:
+                    st.markdown(
+                        """
+                        <div style="
+                            background: linear-gradient(90deg, #ffe58f, #ffd666);
+                            border: 1px solid #fadb14; color: #613400;
+                            padding: 6px 10px; border-radius: 8px; font-weight: 700; margin-bottom: 6px;">
+                            ⚠️ You’re adjusting <strong>Pg.1 ITERIS CLEARGUIDE</strong> settings while another page is active.
+                            <br/>Press <strong>Search</strong> here to apply these changes to Pg.1.
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+            except Exception:
+                pass
 
             if st.button("🔍 **Search**", key="search_tab1", type="primary", use_container_width=True):
                 st.session_state["t1_params"] = t1_current
@@ -1167,20 +1177,6 @@ with tab2:
     with st.sidebar:
         with st.expander("⚙️ Pg.2 KINETIC MOBILITY SETTINGS", expanded=False):
 
-            active_t2 = is_active_tab("t2")
-            if active_t2:
-                st.markdown(
-                    """
-                    <div style="
-                        background: linear-gradient(90deg, #ffe58f, #ffd666);
-                        border: 1px solid #fadb14; color: #613400;
-                        padding: 6px 10px; border-radius: 8px; font-weight: 700; margin-bottom: 6px;">
-                        • You’re viewing: Pg.2 KINETIC MOBILITY
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
-
             st.caption("Select Intersection(s) and Date Range")
             st.caption("Data: Vehicle Volume")
             intersections = ["All Intersections"] + sorted(
@@ -1227,6 +1223,29 @@ with tab2:
                 "direction_filter": direction_filter,
             }
             st.session_state["t2_current"] = t2_current
+
+            # Warn if adjusting settings for a different page (wrong-page editing)
+            try:
+                last_tab = st.session_state.get("last_active_tab")
+                t2_params_sidebar = st.session_state.get("t2_params", {})
+                t2_pending_sidebar = st.session_state.get("t2_ready", False) and (
+                    _freeze_params(t2_params_sidebar) != _freeze_params(t2_current)
+                )
+                if last_tab and last_tab != "t2" and t2_pending_sidebar:
+                    st.markdown(
+                        """
+                        <div style="
+                            background: linear-gradient(90deg, #ffe58f, #ffd666);
+                            border: 1px solid #fadb14; color: #613400;
+                            padding: 6px 10px; border-radius: 8px; font-weight: 700; margin-bottom: 6px;">
+                            ⚠️ You’re adjusting <strong>Pg.2 KINETIC MOBILITY</strong> settings while another page is active.
+                            <br/>Press <strong>Search</strong> here to apply these changes to Pg.2.
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+            except Exception:
+                pass
 
 
             if st.button("🔍 **Search**", key="search_tab2", type="primary", use_container_width=True):

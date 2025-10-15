@@ -597,19 +597,6 @@ def render_vantage_tab():
     # -------- Sidebar controls --------
     with st.sidebar:
         with st.expander("⚙️ Pg.4 ITERIS VANTAGE LIVE SETTINGS", expanded=False):
-            active_t4 = is_active_tab("t4")
-            if active_t4:
-                st.markdown(
-                    """
-                    <div style="
-                        background: linear-gradient(90deg, #ffe58f, #ffd666);
-                        border: 1px solid #fadb14; color: #613400;
-                        padding: 6px 10px; border-radius: 8px; font-weight: 700; margin-bottom: 6px;">
-                        • You’re viewing: Pg.4 ITERIS VANTAGE LIVE
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
             st.caption("Select Mode, Intersection(s) and Date Range")
             st.caption("Data: Bike, Vehicle, and Pedestrian Volume from Iteris VantageLive")
 
@@ -684,6 +671,29 @@ def render_vantage_tab():
                 "chart_type": chart_type,
             }
             st.session_state["vantage_current"] = vantage_current
+
+            # Warn if adjusting settings for a different page (wrong-page editing)
+            try:
+                last_tab = st.session_state.get("last_active_tab")
+                v_params = st.session_state.get("vantage_params", {})
+                v_pending_sidebar = st.session_state.get("vantage_ready", False) and (
+                    v_params != vantage_current
+                )
+                if last_tab and last_tab != "t4" and v_pending_sidebar:
+                    st.markdown(
+                        """
+                        <div style="
+                            background: linear-gradient(90deg, #ffe58f, #ffd666);
+                            border: 1px solid #fadb14; color: #613400;
+                            padding: 6px 10px; border-radius: 8px; font-weight: 700; margin-bottom: 6px;">
+                            ⚠️ You’re adjusting <strong>Pg.4 ITERIS VANTAGE LIVE</strong> settings while another page is active.
+                            <br/>Press <strong>Search</strong> here to apply these changes to Pg.4.
+                        </div>
+                        """,
+                        unsafe_allow_html=True,
+                    )
+            except Exception:
+                pass
 
             if st.button("🔍 **Search**", key="search_vantage", type="primary", use_container_width=True):
                 st.session_state["vantage_params"] = vantage_current
