@@ -328,6 +328,19 @@ def render_bosch_tab():
     # -------- Sidebar controls --------
     with st.sidebar:
         with st.expander("⚙️ Pg.5 BOSCH SETTINGS", expanded=False):
+            active_t5 = is_active_tab("t5")
+            if active_t5:
+                st.markdown(
+                    """
+                    <div style="
+                        background: linear-gradient(90deg, #ffe58f, #ffd666);
+                        border: 1px solid #fadb14; color: #613400;
+                        padding: 6px 10px; border-radius: 8px; font-weight: 700; margin-bottom: 6px;">
+                        • You’re viewing: Pg.5 BOSCH CLOUD ANALYTICS
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
             st.caption("Select Corridor and Date Range")
             st.caption("Data: Multimodal Traffic from Bosch Sensors")
 
@@ -378,29 +391,6 @@ def render_bosch_tab():
                 "mode_filter": tuple(sorted(mode_filter)) if mode_filter else None,
             }
             st.session_state["bosch_current"] = bosch_current
-
-            # Warn if adjusting settings for a different page (wrong-page editing)
-            try:
-                last_tab = st.session_state.get("last_active_tab")
-                b_params = st.session_state.get("bosch_params", {})
-                b_pending_sidebar = st.session_state.get("bosch_ready", False) and (
-                    b_params != bosch_current
-                )
-                if last_tab and last_tab != "t5" and b_pending_sidebar:
-                    st.markdown(
-                        """
-                        <div style="
-                            background: linear-gradient(90deg, #ffe58f, #ffd666);
-                            border: 1px solid #fadb14; color: #613400;
-                            padding: 6px 10px; border-radius: 8px; font-weight: 700; margin-bottom: 6px;">
-                            ⚠️ You’re adjusting <strong>Pg.5 BOSCH</strong> settings while another page is active.
-                            <br/>Press <strong>Search</strong> here to apply these changes to Pg.5.
-                        </div>
-                        """,
-                        unsafe_allow_html=True,
-                    )
-            except Exception:
-                pass
 
             if st.button("🔍 **Search**", key="search_bosch", type="primary", use_container_width=True):
                 st.session_state["bosch_params"] = bosch_current

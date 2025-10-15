@@ -732,6 +732,19 @@ def render_tab3_analysis():
     # -------- Sidebar controls (matching Tab 1 & 2 style) --------
     with st.sidebar:
         with st.expander("⚙️ Pg.3 ACYCLICA SETTINGS", expanded=False):
+            active_t3 = is_active_tab("t3")
+            if active_t3:
+                st.markdown(
+                    """
+                    <div style="
+                        background: linear-gradient(90deg, #ffe58f, #ffd666);
+                        border: 1px solid #fadb14; color: #613400;
+                        padding: 6px 10px; border-radius: 8px; font-weight: 700; margin-bottom: 6px;">
+                        • You’re viewing: Pg.3 ACYCLICA
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
             st.caption("Select Corridor and Date Range")
             st.caption("Data: Travel Time & Speed from Acyclica sensors")
 
@@ -804,29 +817,6 @@ def render_tab3_analysis():
                 "end_hour": end_hour,
             }
             st.session_state["t3_current"] = t3_current
-
-            # Warn if adjusting settings for a different page (wrong-page editing)
-            try:
-                last_tab = st.session_state.get("last_active_tab")
-                t3_params_sidebar = st.session_state.get("t3_params", {})
-                t3_pending_sidebar = st.session_state.get("t3_ready", False) and (
-                    t3_params_sidebar != t3_current
-                )
-                if last_tab and last_tab != "t3" and t3_pending_sidebar:
-                    st.markdown(
-                        """
-                        <div style="
-                            background: linear-gradient(90deg, #ffe58f, #ffd666);
-                            border: 1px solid #fadb14; color: #613400;
-                            padding: 6px 10px; border-radius: 8px; font-weight: 700; margin-bottom: 6px;">
-                            ⚠️ You’re adjusting <strong>Pg.3 ACYCLICA</strong> settings while another page is active.
-                            <br/>Press <strong>Search</strong> here to apply these changes to Pg.3.
-                        </div>
-                        """,
-                        unsafe_allow_html=True,
-                    )
-            except Exception:
-                pass
 
             # Search button (matching other tabs)
             if st.button("🔍 **Search**", key="search_tab3", type="primary", use_container_width=True):
