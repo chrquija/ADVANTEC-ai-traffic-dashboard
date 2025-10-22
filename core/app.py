@@ -146,6 +146,18 @@ DESIRED_NODE_ORDER_BOTTOM_UP = [
     "Avenue 47",
     "Point Happy Simon",
     "Hwy 111",
+    # New northern intersections (extend corridor order)
+    "Channel Drive",
+    "Miles Avenue",
+    "Via Sevilla",
+    "Fred Waring Drive",
+    "Palm Royale Drive",
+    "Avenue of the States",
+    "Avenue 42",
+    "Avenue 41",
+    # Note: Harris Lane is SB-only and represented within the
+    # "Avenue 41 → Country Club Drive" combined NB segment.
+    "Country Club Drive",
 ]
 
 # Build ordered node list from segment_name like "A → B"
