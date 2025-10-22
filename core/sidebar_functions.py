@@ -59,6 +59,7 @@ def _normalize_acyclica_headers(df: pd.DataFrame) -> pd.DataFrame:
 # =========================
 
 # Iteris ClearGuide Data
+
 @st.cache_data
 def load_traffic_data():
     """
@@ -66,6 +67,7 @@ def load_traffic_data():
     Auto-fixes bad RAW URL pattern.
     """
     data_sources = {
+        # Existing segments (Avenue 52 to Highway 111)
         "Avenue 52 → Calle Tampico": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/1_2_LONG_NSB_Ave52_CalleTampico_WashSt_1hr_septojuly.csv",
         "Calle Tampico → Village Shopping Ctr": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/2_3_LONG_NSB_CalleTampico_VillageShoppingCtr_WashSt_1hr_septojuly.csv",
         "Village Shopping Ctr → Avenue 50": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/3_4_LONG_NSB_VillageShoppingCtr_Avenue50_WashSt_1hr_septojuly.csv",
@@ -75,6 +77,21 @@ def load_traffic_data():
         "Avenue 48 → Avenue 47": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/7_8_LONG_NSB_Ave48_Ave47_WashSt_1hr_septojuly.csv",
         "Avenue 47 → Point Happy Simon": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/8_9_LONG_NSB_Ave47_PointHappySimon_WashSt_1hr_septojuly.csv",
         "Point Happy Simon → Hwy 111": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/9_10_LONG_NSB_PointHappySimon_WashSt_1hr_septojuly.csv",
+
+        # New segments extending north from Highway 111
+        "Hwy 111 → Channel Drive": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/10_11_LONG_NSB_Hwy111_to_ChannelDrive.csv",
+        "Channel Drive → Miles Avenue": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/11_12_LONG_NSB_ChannelDrive_to_MilesAvenue.csv",
+        "Miles Avenue → Via Sevilla": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/12_13_LONG_NSB_MilesAvenue_to_ViaSevilla.csv",
+        "Via Sevilla → Fred Waring Drive": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/13_14_LONG_NSB_ViaSevilla_FredWaringDrive.csv",
+        "Fred Waring Drive → Palm Royale Drive": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/14_15_LONG_NSB_FredWaringDrive_to_PalmRoyaleDrive.csv",
+        "Palm Royale Drive → Avenue of the States": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/15_16_LONG_NSB_PalmRoyaleDrive_to_AvenueoftheStates.cav.csv",
+        "Avenue of the States → Avenue 42": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/16_17_LONG_NSB_AvenueoftheStates_to_Avenue42.csv",
+        "Avenue 42 → Avenue 41": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/17_18_LONG_NSB_Avenue42_to_Avenue41.csv",
+        "Avenue 41 → Country Club Drive": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/18_20_LONG_NB_Avenue41_to_Countryclubdrive.csv",
+
+        # Southbound only segments
+        "Harris Lane → Avenue 41 (SB)": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/19_18_LONG_SB_Harrislane_avenue41.csv",
+        "Country Club Drive → Harris Lane (SB)": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/20_19_LONG_SB_CountryClubDrive_to_HarrisLane.csv",
     }
 
     all_data = []

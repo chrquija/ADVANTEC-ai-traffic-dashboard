@@ -7,7 +7,6 @@ import requests
 import plotly.graph_objects as go
 import streamlit as st
 
-
 # =========================
 # Ordered corridor nodes (south/bottom → north/top)
 # =========================
@@ -22,19 +21,63 @@ NODES_ORDER: List[str] = [
     "Avenue 47",
     "Point Happy Simon",
     "Hwy 111",
+    "Channel Drive",
+    "Miles Avenue",
+    "Via Sevilla",
+    "Fred Waring Drive",
+    "Palm Royale Drive",
+    "Avenue of the States",
+    "Avenue 42",
+    "Avenue 41",
+    "Harris Lane",
+    "Country Club Drive",
 ]
 
 # GeoJSON for each adjacent segment (A → B) along the corridor
 SEGMENT_URLS: Dict[Tuple[str, str], str] = {
-    ("Avenue 52", "Calle Tampico"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/Avenue52_CalleTampico.geojson",
-    ("Calle Tampico", "Village Shopping Ctr"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/CalleTampico_VillageShoppingctr.geojson",
-    ("Village Shopping Ctr", "Avenue 50"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/villageshoppingctr_ave50.geojson",
-    ("Avenue 50", "Sagebrush Ave"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/Avenue50_sagebrushave.geojson",
-    ("Sagebrush Ave", "Eisenhower Dr"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/sagebrushave_eisenhowerdr.geojson",
-    ("Eisenhower Dr", "Avenue 48"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/eisenhowerdr_avenue48.geojson",
-    ("Avenue 48", "Avenue 47"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/avenue48_avenue47.geojson",
-    ("Avenue 47", "Point Happy Simon"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/avenue47_pointhappysimon.geojson",
-    ("Point Happy Simon", "Hwy 111"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/pointhappysimon_hwy111.geojson",
+    # Existing segments (Avenue 52 to Hwy 111)
+    ("Avenue 52",
+     "Calle Tampico"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/Avenue52_CalleTampico.geojson",
+    ("Calle Tampico",
+     "Village Shopping Ctr"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/CalleTampico_VillageShoppingctr.geojson",
+    ("Village Shopping Ctr",
+     "Avenue 50"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/villageshoppingctr_ave50.geojson",
+    ("Avenue 50",
+     "Sagebrush Ave"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/Avenue50_sagebrushave.geojson",
+    ("Sagebrush Ave",
+     "Eisenhower Dr"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/sagebrushave_eisenhowerdr.geojson",
+    ("Eisenhower Dr",
+     "Avenue 48"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/eisenhowerdr_avenue48.geojson",
+    ("Avenue 48",
+     "Avenue 47"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/avenue48_avenue47.geojson",
+    ("Avenue 47",
+     "Point Happy Simon"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/avenue47_pointhappysimon.geojson",
+    ("Point Happy Simon",
+     "Hwy 111"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/pointhappysimon_hwy111.geojson",
+
+    # New northbound segments (Hwy 111 to Country Club Drive)
+    ("Hwy 111",
+     "Channel Drive"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/NB_Hwy111_ChannelDrive.geojson",
+    ("Channel Drive",
+     "Miles Avenue"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/NB_ChannelDrive%20_MilesAvenue.geojson",
+    ("Miles Avenue",
+     "Via Sevilla"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/NB_MilesAvenue%20_ViaSevilla.geojson",
+    ("Via Sevilla",
+     "Fred Waring Drive"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/NB_ViaSevilla%20_FredWaringDrive.geojson",
+    ("Fred Waring Drive",
+     "Palm Royale Drive"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/NB_FredWaringDrive%20_PalmRoyaleDrive.geojson",
+    ("Palm Royale Drive",
+     "Avenue of the States"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/NB_PalmRoyaleDrive_AvenueoftheStates.geojson",
+    ("Avenue of the States",
+     "Avenue 42"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/NB_AvenueoftheStates_Avenue42.geojson",
+    ("Avenue 42",
+     "Avenue 41"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/NB_Avenue%2042_Avenue41.geojson",
+
+    # Special case: Harris Lane segments (southbound only data available)
+    ("Avenue 41",
+     "Harris Lane"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/SB_HarrisLane_Avenue41.geojson",
+    ("Harris Lane",
+     "Country Club Drive"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/SB_CountryClubDrive_HarrisLane.geojson",
 }
 
 # =========================
@@ -42,7 +85,7 @@ SEGMENT_URLS: Dict[Tuple[str, str], str] = {
 # Add/adjust freely; the highlight logic will compare by NODE (not label).
 # =========================
 INTERSECTION_TO_NODE: Dict[str, str] = {
-    # Canonical labels
+    # Existing canonical labels (Avenue 52 to Hwy 111)
     "Washington St & Avenue52": "Avenue 52",
     "Washington St & Calle Tampico": "Calle Tampico",
     "Washington St & Village Shop Ctr": "Village Shopping Ctr",
@@ -54,7 +97,19 @@ INTERSECTION_TO_NODE: Dict[str, str] = {
     "Washington St & Point Happy Simon": "Point Happy Simon",
     "Washington St & Hwy 111": "Hwy 111",
 
-    # Common variants / aliases
+    # New northern intersections (Hwy 111 to Country Club Drive)
+    "Washington St & Channel Drive": "Channel Drive",
+    "Washington St & Miles Avenue": "Miles Avenue",
+    "Washington St & Via Sevilla": "Via Sevilla",
+    "Washington St & Fred Waring Drive": "Fred Waring Drive",
+    "Washington St & Palm Royale Drive": "Palm Royale Drive",
+    "Washington St & Avenue of the States": "Avenue of the States",
+    "Washington St & Avenue 42": "Avenue 42",
+    "Washington St & Avenue 41": "Avenue 41",
+    "Washington St & Harris Lane": "Harris Lane",
+    "Washington St & Country Club Drive": "Country Club Drive",
+
+    # Common variants / aliases (existing)
     "Washington St & Avenue 52": "Avenue 52",
     "Washington St & Avenue 50": "Avenue 50",
     "Washington St & Ave 48": "Avenue 48",
@@ -63,10 +118,21 @@ INTERSECTION_TO_NODE: Dict[str, str] = {
     "Washington St & Village Shopping Ctr": "Village Shopping Ctr",
     "Washington St & Village Shopping Center": "Village Shopping Ctr",
     "Washington St & Point Happy Way": "Point Happy Simon",
+
+    # Common variants for new intersections
+    "Washington St & Fred Waring Dr": "Fred Waring Drive",
+    "Washington St & Fred Waring": "Fred Waring Drive",
+    "Washington St & Palm Royale Dr": "Palm Royale Drive",
+    "Washington St & Avenue of States": "Avenue of the States",
+    "Washington St & Ave of the States": "Avenue of the States",
+    "Washington St & Ave 42": "Avenue 42",
+    "Washington St & Ave 41": "Avenue 41",
+    "Washington St & Country Club Dr": "Country Club Drive",
 }
 
 # Extra loose aliases (label normalization pass before INTERSECTION_TO_NODE)
 LABEL_ALIASES: Dict[str, str] = {
+    # Existing aliases
     "Washington Street & Avenue 52": "Washington St & Avenue 52",
     "Washington Street & Avenue52": "Washington St & Avenue52",
     "Washington Street & Avenue 50": "Washington St & Avenue 50",
@@ -79,6 +145,26 @@ LABEL_ALIASES: Dict[str, str] = {
     "Washington Street & Ave 47": "Washington St & Ave 47",
     "Washington Street & Hwy 111": "Washington St & Hwy 111",
     "Washington St & Village Shp Ctr": "Washington St & Village Shop Ctr",
+
+    # New aliases for northern intersections
+    "Washington Street & Channel Drive": "Washington St & Channel Drive",
+    "Washington Street & Miles Avenue": "Washington St & Miles Avenue",
+    "Washington Street & Via Sevilla": "Washington St & Via Sevilla",
+    "Washington Street & Fred Waring Drive": "Washington St & Fred Waring Drive",
+    "Washington Street & Fred Waring Dr": "Washington St & Fred Waring Dr",
+    "Washington Street & Fred Waring": "Washington St & Fred Waring",
+    "Washington Street & Palm Royale Drive": "Washington St & Palm Royale Drive",
+    "Washington Street & Palm Royale Dr": "Washington St & Palm Royale Dr",
+    "Washington Street & Avenue of the States": "Washington St & Avenue of the States",
+    "Washington Street & Avenue of States": "Washington St & Avenue of States",
+    "Washington Street & Ave of the States": "Washington St & Ave of the States",
+    "Washington Street & Avenue 42": "Washington St & Avenue 42",
+    "Washington Street & Ave 42": "Washington St & Ave 42",
+    "Washington Street & Avenue 41": "Washington St & Avenue 41",
+    "Washington Street & Ave 41": "Washington St & Ave 41",
+    "Washington Street & Harris Lane": "Washington St & Harris Lane",
+    "Washington Street & Country Club Drive": "Washington St & Country Club Drive",
+    "Washington Street & Country Club Dr": "Washington St & Country Club Dr",
 }
 
 
@@ -96,10 +182,11 @@ def _normalize_label(label: Optional[str]) -> Optional[str]:
     # Minor cleanup (common punctuation/spacing variants)
     s = (
         s.replace("Street", "St")
-         .replace("  ", " ")
-         .replace("Village Shop Ctr", "Village Shop Ctr")
+        .replace("  ", " ")
+        .replace("Village Shop Ctr", "Village Shop Ctr")
     ).strip()
     return s
+
 
 def _label_to_node(label: Optional[str]) -> Optional[str]:
     """
@@ -353,9 +440,13 @@ def build_intersections_overview(selected_label: Optional[str] = None) -> Option
     for node, label in node_to_label.items():
         lat, lon = node_coords[node]
         if selected_node and node == selected_node:
-            sel_lat.append(lat); sel_lon.append(lon); sel_text.append(label)
+            sel_lat.append(lat);
+            sel_lon.append(lon);
+            sel_text.append(label)
         else:
-            oth_lat.append(lat); oth_lon.append(lon); oth_text.append(label)
+            oth_lat.append(lat);
+            oth_lon.append(lon);
+            oth_text.append(label)
 
     if not (sel_lat or oth_lat):
         return None

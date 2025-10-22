@@ -1242,7 +1242,7 @@ with tab2:
     t2_pending = t2_ready and _freeze_params(t2_params) != _freeze_params(st.session_state.get("t2_current", {}))
 
     if not t2_ready:
-        st.info("Choose your route and date range in the settings to the left.")
+        st.info("Choose your Intersection and Date Range in the settings to the left.")
     else:
         if t2_pending:
             st.warning("⚙️ Press **Search** to refresh.")
