@@ -67,7 +67,7 @@ def _normalize_acyclica_headers(df: pd.DataFrame) -> pd.DataFrame:
 # =========================
 
 # Iteris ClearGuide Data
-@st.cache_data
+@st.cache_data(max_entries=3, ttl=3600)
 def load_traffic_data():
     """
     Load and combine all corridor traffic data from GitHub (Iteris-style).
@@ -105,7 +105,7 @@ def load_traffic_data():
 
 
 # Kinetic mobility data
-@st.cache_data
+@st.cache_data(max_entries=3, ttl=3600)
 def load_volume_data():
     """
     Load consolidated volume data for all Washington Street intersections.
@@ -156,7 +156,7 @@ ACYCLICA_URL = _fix_raw_url(
     "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/MASTER_Acyclica_Traveltime_speed.csv"
 )
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False, max_entries=3, ttl=3600)
 def load_acyclica_data() -> pd.DataFrame:
     """
     Load Acyclica travel time & speed in LONG format.
@@ -202,7 +202,7 @@ def load_acyclica_data() -> pd.DataFrame:
     return df
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False, max_entries=3, ttl=3600)
 def acyclica_long_to_hourly(df_long: pd.DataFrame) -> pd.DataFrame:
     """
     Convert long → wide for KPI/plots.
@@ -239,7 +239,7 @@ def acyclica_long_to_hourly(df_long: pd.DataFrame) -> pd.DataFrame:
 # =========================
 # Small data getters
 # =========================
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False, max_entries=3, ttl=3600)
 def get_corridor_df() -> pd.DataFrame:
     df = load_traffic_data()
     if df is None or len(df) == 0:
@@ -252,7 +252,7 @@ def get_corridor_df() -> pd.DataFrame:
     return df
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False, max_entries=3, ttl=3600)
 def get_volume_df() -> pd.DataFrame:
     df = load_volume_data()
     if df is None or len(df) == 0:
@@ -265,13 +265,13 @@ def get_volume_df() -> pd.DataFrame:
     return df
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False, max_entries=3, ttl=3600)
 def get_acyclica_long_df() -> pd.DataFrame:
     """Long-format Acyclica (for Incident/Peak/Event detection)."""
     return load_acyclica_data()
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False, max_entries=3, ttl=3600)
 def get_acyclica_df() -> pd.DataFrame:
     """
     Wide-format Acyclica for KPI/plots:

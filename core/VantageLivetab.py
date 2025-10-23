@@ -178,7 +178,7 @@ def _mode_emoji(mode_label: str) -> str:
 # =========================
 # Data Loading
 # =========================
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False, max_entries=3, ttl=3600)
 def load_vantage_bikes() -> pd.DataFrame:
     url = "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/Iteris_VantageLive/WashingtonStreet_ALL_Bikes.csv"
     try:
@@ -198,7 +198,7 @@ def load_vantage_bikes() -> pd.DataFrame:
         st.error(f"Error loading bike data: {e}")
         return pd.DataFrame()
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False, max_entries=3, ttl=3600)
 def load_vantage_vehicles() -> pd.DataFrame:
     url = "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/Iteris_VantageLive/WashingtonStreet_ALL_vehicles.csv"
     try:
@@ -217,7 +217,7 @@ def load_vantage_vehicles() -> pd.DataFrame:
         st.error(f"Error loading vehicle data: {e}")
         return pd.DataFrame()
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False, max_entries=3, ttl=3600)
 def load_vantage_pedestrians() -> pd.DataFrame:
     url = "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/Iteris_VantageLive/WashingtonStreet_ALL_pedestrians.csv"
     try:

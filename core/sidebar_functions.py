@@ -3,6 +3,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
+import gc
 
 # Plotly for chart helpers
 import plotly.express as px
@@ -60,7 +61,7 @@ def _normalize_acyclica_headers(df: pd.DataFrame) -> pd.DataFrame:
 
 # Iteris ClearGuide Data
 
-@st.cache_data
+@st.cache_data(max_entries=3, ttl=3600)
 def load_traffic_data():
     """
     Load and combine all corridor traffic data from GitHub (Iteris-style).
@@ -108,12 +109,17 @@ def load_traffic_data():
         return pd.DataFrame()
 
     combined_df = pd.concat(all_data, ignore_index=True)
-    combined_df["local_datetime"] = pd.to_datetime(combined_df["local_datetime"], errors="coerce")
+    combined_df = _maybe_to_datetime(combined_df, "local_datetime")
     combined_df = combined_df.dropna(subset=["local_datetime"]).sort_values("local_datetime").reset_index(drop=True)
+    # Limit to most recent rows to protect memory
+    combined_df = _limit_recent_rows(combined_df, dt_col="local_datetime", limit=ROW_LIMIT, label="traffic data")
+    # Reduce memory for group keys
+    combined_df = _to_categorical(combined_df, ["corridor_id", "direction", "segment_name"]) 
+    gc.collect()
     return combined_df
 
 #Kinetic mobility data
-@st.cache_data
+@st.cache_data(max_entries=3, ttl=3600)
 def load_volume_data():
     """
     Load consolidated volume data for all Washington Street intersections.
@@ -125,7 +131,7 @@ def load_volume_data():
 
     try:
         volume_df = pd.read_csv(volume_url)
-        volume_df["local_datetime"] = pd.to_datetime(volume_df["local_datetime"], errors="coerce")
+        volume_df = _maybe_to_datetime(volume_df, "local_datetime")
         volume_df = volume_df.dropna(subset=["local_datetime"]).sort_values("local_datetime").reset_index(drop=True)
 
         # Create proper intersection names from intersection_id
@@ -150,6 +156,11 @@ def load_volume_data():
 
         volume_df["sort_order"] = volume_df["intersection_name"].map(intersection_order).fillna(999)
         volume_df = volume_df.sort_values("sort_order").drop("sort_order", axis=1)
+
+        # Limit to most recent rows and optimize dtypes
+        volume_df = _limit_recent_rows(volume_df, dt_col="local_datetime", limit=ROW_LIMIT, label="volume data")
+        volume_df = _to_categorical(volume_df, ["intersection_id", "intersection_name", "direction"]) 
+        gc.collect()
         return volume_df
 
     except Exception as e:
@@ -164,7 +175,7 @@ ACYCLICA_URL = _fix_raw_url(
     "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/MASTER_Acyclica_Traveltime_speed.csv"
 )
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False, max_entries=3, ttl=3600)
 def load_acyclica_data() -> pd.DataFrame:
     """
     Load Acyclica travel time & speed in LONG format.
@@ -206,7 +217,7 @@ def load_acyclica_data() -> pd.DataFrame:
 
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False, max_entries=3, ttl=3600)
 def acyclica_long_to_hourly(df_long: pd.DataFrame) -> pd.DataFrame:
     """
     Convert long → wide for KPI/plots.
@@ -243,7 +254,7 @@ def acyclica_long_to_hourly(df_long: pd.DataFrame) -> pd.DataFrame:
 # =========================
 # Small data getters
 # =========================
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False, max_entries=3, ttl=3600)
 def get_corridor_df() -> pd.DataFrame:
     df = load_traffic_data()
     if df is None or len(df) == 0:
@@ -256,7 +267,7 @@ def get_corridor_df() -> pd.DataFrame:
     return df
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False, max_entries=3, ttl=3600)
 def get_volume_df() -> pd.DataFrame:
     df = load_volume_data()
     if df is None or len(df) == 0:
@@ -269,7 +280,7 @@ def get_volume_df() -> pd.DataFrame:
     return df
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False, max_entries=3, ttl=3600)
 def get_acyclica_long_df() -> pd.DataFrame:
     """
     Long-format Acyclica (for Incident/Peak/Event detection).
@@ -277,7 +288,7 @@ def get_acyclica_long_df() -> pd.DataFrame:
     return load_acyclica_data()
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False, max_entries=3, ttl=3600)
 def get_acyclica_df() -> pd.DataFrame:
     """
     Wide-format Acyclica for KPI/plots (Iteris-like):
@@ -438,6 +449,8 @@ def performance_chart(data: pd.DataFrame, metric_type: str = "delay"):
         dist_x_label = "Average Travel Time (minutes)"
 
     dd = data.dropna(subset=["local_datetime", y_col]).sort_values("local_datetime")
+    # Downsample for plotting if needed
+    dd = _sample_for_chart(dd, max_points=CHART_POINT_LIMIT, dt_col="local_datetime", by_cols=None, label=title)
 
     fig = make_subplots(
         rows=2, cols=1,
@@ -483,6 +496,7 @@ def performance_chart(data: pd.DataFrame, metric_type: str = "delay"):
     fig.update_xaxes(title_text=dist_x_label, row=2, col=1)
     fig.update_yaxes(title_text="Frequency (Number of Hours)", row=2, col=1)
 
+    gc.collect()
     return fig
 
 
@@ -495,6 +509,9 @@ def volume_charts(
         return None, None, None
     dd = data.dropna(subset=["local_datetime", "total_volume", "intersection_name"]).copy()
     dd.sort_values("local_datetime", inplace=True)
+
+    # Sample for plotting to preserve performance while keeping per-intersection time distribution
+    dd = _sample_for_chart(dd, max_points=CHART_POINT_LIMIT, dt_col="local_datetime", by_cols=["intersection_name"], label="volume charts")
 
     # 1) Trend by intersection
     fig1 = px.line(
@@ -578,6 +595,7 @@ def volume_charts(
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
     )
 
+    gc.collect()
     return fig1, fig2, fig3
 
 
@@ -625,103 +643,180 @@ def date_range_preset_controls(min_date: datetime.date, max_date: datetime.date,
 # =========================
 def process_traffic_data(df, date_range, granularity, time_filter=None, start_hour=None, end_hour=None):
     """
-    Process traffic data based on date range and granularity selections
+    Process traffic data based on date range and granularity selections with early filtering
+    and memory optimizations.
     """
-    # Convert datetime if not already done
-    df["local_datetime"] = pd.to_datetime(df["local_datetime"])
+    if df is None or len(df) == 0:
+        return pd.DataFrame()
 
-    # Filter by date range
-    if len(date_range) == 2:
-        start_date, end_date = date_range
-        df = df[
-            (df["local_datetime"].dt.date >= start_date)
-            & (df["local_datetime"].dt.date <= end_date)
-        ]
+    # Ensure datetime only if needed
+    df = _maybe_to_datetime(df, "local_datetime")
+    if "local_datetime" not in df.columns:
+        return pd.DataFrame()
 
-    # Apply time filters for hourly data
-    if granularity == "Hourly" and time_filter:
+    # Early date filtering
+    if date_range and len(date_range) == 2:
+        df = _early_date_filter(df, date_range, dt_col="local_datetime")
+        if df.empty:
+            return df
+
+    # Optional time-of-day filters (Hourly only)
+    if granularity == "Hourly" and time_filter and not df.empty:
+        hours = df["local_datetime"].dt.hour
         if time_filter == "Peak Hours (7-9 AM, 4-6 PM)":
-            df = df[
-                (df["local_datetime"].dt.hour.between(7, 9))
-                | (df["local_datetime"].dt.hour.between(16, 18))
-            ]
+            mask = hours.between(7, 9) | hours.between(16, 18)
+            df = df.loc[mask]
         elif time_filter == "AM Peak (7-9 AM)":
-            df = df[df["local_datetime"].dt.hour.between(7, 9)]
+            df = df.loc[hours.between(7, 9)]
         elif time_filter == "PM Peak (4-6 PM)":
-            df = df[df["local_datetime"].dt.hour.between(16, 18)]
+            df = df.loc[hours.between(16, 18)]
         elif time_filter == "Off-Peak":
-            df = df[
-                ~(df["local_datetime"].dt.hour.between(7, 9))
-                & ~(df["local_datetime"].dt.hour.between(16, 18))
-            ]
+            df = df.loc[~hours.between(7, 9) & ~hours.between(16, 18)]
         elif time_filter == "Custom Range" and start_hour is not None and end_hour is not None:
-            df = df[df["local_datetime"].dt.hour.between(start_hour, end_hour - 1)]
+            df = df.loc[hours.between(start_hour, max(start_hour, end_hour - 1))]
+        if df.empty:
+            return df
+
+    # Convert likely grouping keys to categorical to reduce groupby memory
+    df = _to_categorical(df, [
+        "corridor_id", "direction", "segment_name", "intersection_id", "intersection_name"
+    ])
 
     # Determine data type and aggregate accordingly
     if "segment_name" in df.columns:  # Corridor data (delay/speed/travel time)
         if granularity == "Daily":
             df["date_group"] = df["local_datetime"].dt.date
-            grouped = df.groupby(["date_group", "corridor_id", "direction", "segment_name"]).agg(
+            grouped = df.groupby(["date_group", "corridor_id", "direction", "segment_name"], as_index=False).agg(
                 {
                     "average_delay": "mean",
                     "average_traveltime": "mean",
                     "average_speed": "mean",
                 }
-            ).reset_index()
+            )
             grouped["local_datetime"] = pd.to_datetime(grouped["date_group"])
-
         elif granularity == "Weekly":
             df["week_group"] = df["local_datetime"].dt.to_period("W").dt.start_time
-            grouped = df.groupby(["week_group", "corridor_id", "direction", "segment_name"]).agg(
+            grouped = df.groupby(["week_group", "corridor_id", "direction", "segment_name"], as_index=False).agg(
                 {
                     "average_delay": "mean",
                     "average_traveltime": "mean",
                     "average_speed": "mean",
                 }
-            ).reset_index()
+            )
             grouped["local_datetime"] = grouped["week_group"]
-
         elif granularity == "Monthly":
             df["month_group"] = df["local_datetime"].dt.to_period("M").dt.start_time
-            grouped = df.groupby(["month_group", "corridor_id", "direction", "segment_name"]).agg(
+            grouped = df.groupby(["month_group", "corridor_id", "direction", "segment_name"], as_index=False).agg(
                 {
                     "average_delay": "mean",
                     "average_traveltime": "mean",
                     "average_speed": "mean",
                 }
-            ).reset_index()
+            )
             grouped["local_datetime"] = grouped["month_group"]
-
-        else:  # Hourly - no aggregation needed
+        else:  # Hourly - no aggregation
             grouped = df
 
     elif "intersection_id" in df.columns:  # Volume data
         if granularity == "Daily":
             df["date_group"] = df["local_datetime"].dt.date
-            grouped = df.groupby(["date_group", "intersection_id", "direction", "intersection_name"]).agg(
+            grouped = df.groupby(["date_group", "intersection_id", "direction", "intersection_name"], as_index=False).agg(
                 {"total_volume": "sum"}
-            ).reset_index()
+            )
             grouped["local_datetime"] = pd.to_datetime(grouped["date_group"])
-
         elif granularity == "Weekly":
             df["week_group"] = df["local_datetime"].dt.to_period("W").dt.start_time
-            grouped = df.groupby(["week_group", "intersection_id", "direction", "intersection_name"]).agg(
+            grouped = df.groupby(["week_group", "intersection_id", "direction", "intersection_name"], as_index=False).agg(
                 {"total_volume": "sum"}
-            ).reset_index()
+            )
             grouped["local_datetime"] = grouped["week_group"]
-
         elif granularity == "Monthly":
             df["month_group"] = df["local_datetime"].dt.to_period("M").dt.start_time
-            grouped = df.groupby(["month_group", "intersection_id", "direction", "intersection_name"]).agg(
+            grouped = df.groupby(["month_group", "intersection_id", "direction", "intersection_name"], as_index=False).agg(
                 {"total_volume": "sum"}
-            ).reset_index()
+            )
             grouped["local_datetime"] = grouped["month_group"]
-
-        else:  # Hourly - no aggregation needed
+        else:  # Hourly - no aggregation
             grouped = df
-
     else:
-        # Fallback - just return filtered data
         grouped = df
 
+    gc.collect()
     return grouped
+
+
+# =========================
+# Performance/memory helpers
+# =========================
+ROW_LIMIT = 25_000
+CHART_POINT_LIMIT = 5_000
+
+def _maybe_to_datetime(df: pd.DataFrame, col: str) -> pd.DataFrame:
+    if df is not None and col in df.columns and not np.issubdtype(df[col].dtype, np.datetime64):
+        df[col] = pd.to_datetime(df[col], errors="coerce")
+    return df
+
+
+def _early_date_filter(df: pd.DataFrame, date_range, dt_col: str = "local_datetime") -> pd.DataFrame:
+    if df is None or df.empty or not date_range or len(date_range) != 2 or dt_col not in df.columns:
+        return df
+    ser = df[dt_col]
+    if not np.issubdtype(ser.dtype, np.datetime64):
+        ser = pd.to_datetime(ser, errors="coerce")
+    start_date, end_date = date_range
+    mask = (ser.dt.date >= start_date) & (ser.dt.date <= end_date)
+    return df.loc[mask].copy()
+
+
+def _limit_recent_rows(df: pd.DataFrame, dt_col: str = "local_datetime", limit: int = ROW_LIMIT, label: str = "dataset") -> pd.DataFrame:
+    if df is None or df.empty or dt_col not in df.columns or limit <= 0:
+        return df
+    loc = df
+    if not np.issubdtype(loc[dt_col].dtype, np.datetime64):
+        loc = loc.copy()
+        loc[dt_col] = pd.to_datetime(loc[dt_col], errors="coerce")
+        loc.dropna(subset=[dt_col], inplace=True)
+    loc = loc.sort_values(dt_col)
+    if len(loc) > limit:
+        st.warning(
+            f"Loaded {label} has {len(loc):,} rows. Showing the most recent {limit:,} rows to preserve performance.",
+            icon="⚠️",
+        )
+        return loc.iloc[-limit:].copy()
+    return loc
+
+
+def _to_categorical(df: pd.DataFrame, cols) -> pd.DataFrame:
+    if df is None or df.empty:
+        return df
+    for c in cols:
+        if c in df.columns and (df[c].dtype == object or pd.api.types.is_string_dtype(df[c])):
+            df[c] = df[c].astype("category")
+    return df
+
+
+def _sample_for_chart(df: pd.DataFrame, max_points: int = CHART_POINT_LIMIT, dt_col: str = "local_datetime", by_cols=None, label: str = "chart") -> pd.DataFrame:
+    if df is None or df.empty or dt_col not in df.columns or len(df) <= max_points:
+        return df
+    loc = df.copy()
+    if not np.issubdtype(loc[dt_col].dtype, np.datetime64):
+        loc[dt_col] = pd.to_datetime(loc[dt_col], errors="coerce")
+        loc.dropna(subset=[dt_col], inplace=True)
+    if by_cols is None:
+        by_cols = []
+    n_groups = max(1, loc.groupby(by_cols or [lambda _: 0]).ngroups)
+    per_group = max(1, max_points // n_groups)
+
+    def _down(g: pd.DataFrame) -> pd.DataFrame:
+        if len(g) <= per_group:
+            return g
+        g = g.sort_values(dt_col)
+        idx = np.linspace(0, len(g) - 1, num=per_group, dtype=int)
+        return g.iloc[idx]
+
+    before = len(loc)
+    out = (
+        loc.groupby(by_cols, group_keys=False).apply(_down).sort_values(dt_col)
+    )
+    st.info(f"{label.capitalize()} data reduced from {before:,} to {len(out):,} points for performance.", icon="ℹ️")
+    return out

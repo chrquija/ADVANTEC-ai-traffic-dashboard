@@ -199,7 +199,7 @@ def _label_to_node(label: Optional[str]) -> Optional[str]:
     return INTERSECTION_TO_NODE.get(s)
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(show_spinner=False, max_entries=3, ttl=3600)
 def _fetch_geojson(url: str) -> Optional[dict]:
     """Fetch GeoJSON from a URL (cached)."""
     try:
