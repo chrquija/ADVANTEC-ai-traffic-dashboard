@@ -7,16 +7,12 @@ from datetime import datetime, timedelta
 import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
-import gc
 
 # Import shared utilities
 from sidebar_functions import (
     date_range_preset_controls,
     render_badge,
     get_performance_rating,
-    _limit_recent_rows,
-    _to_categorical,
-    ROW_LIMIT,
 )
 from cycle_length_recommendations import render_cycle_length_section
 from Map import build_all_segments_overview
@@ -91,7 +87,7 @@ BICYCLE_ALIASES = {
 # =========================
 # Data Loading
 # =========================
-@st.cache_data(show_spinner=False, max_entries=3, ttl=3600)
+@st.cache_data(show_spinner=False)
 def load_bosch_data(corridor: str) -> pd.DataFrame:
     """
     Load Bosch data for the specified corridor.
@@ -125,11 +121,6 @@ def load_bosch_data(corridor: str) -> pd.DataFrame:
         # Keep expected columns if present (defensive)
         keep = [c for c in ["local_datetime", "segment_id", "segment_name", "weekday", "measure", "value"] if c in df.columns]
         df = df[keep].sort_values("local_datetime").reset_index(drop=True)
-
-        # Limit rows and optimize dtypes to protect memory
-        df = _limit_recent_rows(df, dt_col="local_datetime", limit=ROW_LIMIT, label="Bosch data")
-        df = _to_categorical(df, ["segment_name", "measure", "weekday"]) 
-        gc.collect()
         return df
     except Exception as e:
         st.error(f"Error loading Bosch data for {corridor}: {e}")
