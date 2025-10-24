@@ -538,6 +538,25 @@ def improved_volume_charts_for_tab2(
     return fig_trend, fig_box, fig_matrix
 
 # =========================
+# Flip callback for Tab 1 O-D controls (Streamlit-safe)
+# =========================
+def _flip_od_state():
+    """Swap od_origin and od_destination via callback to satisfy Streamlit's widget state rules."""
+    try:
+        o = st.session_state.get("od_origin")
+        d = st.session_state.get("od_destination")
+        if o is None or d is None:
+            return
+        # Record flip snapshot
+        st.session_state["od_origin_flip"] = d
+        st.session_state["od_destination_flip"] = o
+        # Perform swap using temp var (avoid tuple assignment)
+        st.session_state["od_origin"] = d
+        st.session_state["od_destination"] = o
+    except Exception:
+        pass
+
+# =========================
 # Tabs
 # =========================
 st.markdown("## Select Page")
@@ -611,15 +630,13 @@ with tab1:
                     with flip_col:
                         # Center the flip button visually
                         st.markdown("<div style='height: 0.5rem'></div>", unsafe_allow_html=True)
-                        if st.button("🔄", key="od_flip_button", help="Flip origin and destination", use_container_width=True):
-                            # Store current selections in flip-specific keys (for potential downstream use)
-                            st.session_state["od_origin_flip"] = st.session_state.get("od_destination")
-                            st.session_state["od_destination_flip"] = st.session_state.get("od_origin")
-                            # Swap the actual selectbox session keys
-                            st.session_state["od_origin"], st.session_state["od_destination"] = (
-                                st.session_state.get("od_destination"), st.session_state.get("od_origin")
-                            )
-                            st.rerun()
+                        st.button(
+                            "🔄",
+                            key="od_flip_button",
+                            help="Flip origin and destination",
+                            use_container_width=True,
+                            on_click=_flip_od_state,
+                        )
                     with cB:
                         destination = st.selectbox("Destination", node_list, index=dest_index, key="od_destination")
 
