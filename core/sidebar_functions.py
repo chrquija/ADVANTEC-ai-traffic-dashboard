@@ -60,11 +60,15 @@ def _normalize_acyclica_headers(df: pd.DataFrame) -> pd.DataFrame:
 
 # Iteris ClearGuide Data
 
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def load_traffic_data():
     """
     Load and combine all corridor traffic data from GitHub (Iteris-style).
-    Auto-fixes bad RAW URL pattern.
+    Optimized for memory and speed:
+    - Fixes bad RAW URL pattern
+    - Reads only necessary columns
+    - Parses datetime on read
+    - Downcasts numeric columns and categorizes strings
     """
     data_sources = {
         # Existing segments (Avenue 52 to Highway 111)
@@ -94,12 +98,43 @@ def load_traffic_data():
         "Country Club Drive → Harris Lane (SB)": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/20_19_LONG_SB_CountryClubDrive_to_HarrisLane.csv",
     }
 
+    usecols = [
+        "local_datetime",
+        "corridor_id",
+        "direction",
+        "average_delay",
+        "average_traveltime",
+        "average_speed",
+    ]
+
     all_data = []
     for segment_name, url in data_sources.items():
         url = _fix_raw_url(url)
         try:
-            df = pd.read_csv(url)
+            df = pd.read_csv(
+                url,
+                usecols=lambda c: c in usecols,  # tolerate column mismatches
+                parse_dates=["local_datetime"],
+                infer_datetime_format=True,
+                dtype={
+                    "corridor_id": "string",
+                    "direction": "string",
+                },
+            )
+            if df.empty:
+                continue
+            # Ensure needed numeric columns exist even if missing in source
+            for c in ["average_delay", "average_traveltime", "average_speed"]:
+                if c not in df.columns:
+                    df[c] = np.nan
+            # Assign segment name, reduce memory
             df["segment_name"] = segment_name
+            for c in ("direction", "segment_name"):
+                if c in df.columns:
+                    df[c] = df[c].astype("category")
+            for c in ("average_delay", "average_traveltime", "average_speed"):
+                if c in df.columns:
+                    df[c] = pd.to_numeric(df[c], errors="coerce").astype("float32")
             all_data.append(df)
         except Exception as e:
             st.error(f"Error loading {segment_name}: {e}")
@@ -108,7 +143,6 @@ def load_traffic_data():
         return pd.DataFrame()
 
     combined_df = pd.concat(all_data, ignore_index=True)
-    combined_df["local_datetime"] = pd.to_datetime(combined_df["local_datetime"], errors="coerce")
     combined_df = combined_df.dropna(subset=["local_datetime"]).sort_values("local_datetime").reset_index(drop=True)
     return combined_df
 
@@ -625,103 +659,121 @@ def date_range_preset_controls(min_date: datetime.date, max_date: datetime.date,
 # =========================
 def process_traffic_data(df, date_range, granularity, time_filter=None, start_hour=None, end_hour=None):
     """
-    Process traffic data based on date range and granularity selections
+    Process traffic data based on date range and granularity selections.
+    Optimizations:
+    - Early date/time filtering to minimize rows
+    - Robust time_filter label handling (ASCII vs en dash)
+    - If base data are sub-hourly (e.g., 5-min), aggregate to Hourly before applying hourly filters
     """
-    # Convert datetime if not already done
-    df["local_datetime"] = pd.to_datetime(df["local_datetime"])
+    if df is None or len(df) == 0:
+        return pd.DataFrame()
 
-    # Filter by date range
-    if len(date_range) == 2:
+    df = df.copy()
+
+    # Ensure datetime
+    df["local_datetime"] = pd.to_datetime(df.get("local_datetime", pd.NaT), errors="coerce")
+    df = df.dropna(subset=["local_datetime"])  # safety
+
+    # Early date range filter
+    if isinstance(date_range, (list, tuple)) and len(date_range) == 2:
         start_date, end_date = date_range
-        df = df[
-            (df["local_datetime"].dt.date >= start_date)
-            & (df["local_datetime"].dt.date <= end_date)
-        ]
+        if start_date is not None and end_date is not None:
+            mask = (df["local_datetime"].dt.date >= start_date) & (df["local_datetime"].dt.date <= end_date)
+            df = df.loc[mask]
+    if df.empty:
+        return df
 
-    # Apply time filters for hourly data
-    if granularity == "Hourly" and time_filter:
-        if time_filter == "Peak Hours (7-9 AM, 4-6 PM)":
-            df = df[
-                (df["local_datetime"].dt.hour.between(7, 9))
-                | (df["local_datetime"].dt.hour.between(16, 18))
-            ]
-        elif time_filter == "AM Peak (7-9 AM)":
-            df = df[df["local_datetime"].dt.hour.between(7, 9)]
-        elif time_filter == "PM Peak (4-6 PM)":
-            df = df[df["local_datetime"].dt.hour.between(16, 18)]
-        elif time_filter == "Off-Peak":
-            df = df[
-                ~(df["local_datetime"].dt.hour.between(7, 9))
-                & ~(df["local_datetime"].dt.hour.between(16, 18))
-            ]
-        elif time_filter == "Custom Range" and start_hour is not None and end_hour is not None:
-            df = df[df["local_datetime"].dt.hour.between(start_hour, end_hour - 1)]
+    # Normalize time filter label (handle en dash, extra spaces)
+    tf = str(time_filter or "").replace("–", "-").strip()
 
-    # Determine data type and aggregate accordingly
-    if "segment_name" in df.columns:  # Corridor data (delay/speed/travel time)
-        if granularity == "Daily":
+    # If granular is Hourly but timestamps are sub-hourly, consolidate first
+    def _hourly_group(gdf: pd.DataFrame, by_cols: list[str], metrics: list[str], how: str = "mean") -> pd.DataFrame:
+        gdf = gdf.copy()
+        gdf["hour"] = gdf["local_datetime"].dt.floor("H")
+        agg = gdf.groupby(by_cols + ["hour"], observed=True)[metrics].agg(how).reset_index()
+        agg = agg.rename(columns={"hour": "local_datetime"})
+        return agg
+
+    is_corridor = "segment_name" in df.columns
+    is_volume = "intersection_id" in df.columns or "total_volume" in df.columns
+
+    if is_corridor:
+        # Ensure numeric dtypes
+        for c in ("average_delay", "average_traveltime", "average_speed"):
+            if c in df.columns:
+                df[c] = pd.to_numeric(df[c], errors="coerce")
+        # Aggregate to requested granularity
+        if granularity == "Hourly":
+            # Consolidate sub-hourly to hourly if needed
+            if (df["local_datetime"].dt.minute != 0).any():
+                df = _hourly_group(df, ["corridor_id", "direction", "segment_name"], ["average_delay", "average_traveltime", "average_speed"], how="mean")
+        elif granularity == "Daily":
             df["date_group"] = df["local_datetime"].dt.date
-            grouped = df.groupby(["date_group", "corridor_id", "direction", "segment_name"]).agg(
-                {
-                    "average_delay": "mean",
-                    "average_traveltime": "mean",
-                    "average_speed": "mean",
-                }
-            ).reset_index()
-            grouped["local_datetime"] = pd.to_datetime(grouped["date_group"])
-
+            df = df.groupby(["date_group", "corridor_id", "direction", "segment_name"], observed=True)[
+                ["average_delay", "average_traveltime", "average_speed"]
+            ].mean().reset_index().rename(columns={"date_group": "local_datetime"})
+            df["local_datetime"] = pd.to_datetime(df["local_datetime"])
         elif granularity == "Weekly":
             df["week_group"] = df["local_datetime"].dt.to_period("W").dt.start_time
-            grouped = df.groupby(["week_group", "corridor_id", "direction", "segment_name"]).agg(
-                {
-                    "average_delay": "mean",
-                    "average_traveltime": "mean",
-                    "average_speed": "mean",
-                }
-            ).reset_index()
-            grouped["local_datetime"] = grouped["week_group"]
-
+            df = df.groupby(["week_group", "corridor_id", "direction", "segment_name"], observed=True)[
+                ["average_delay", "average_traveltime", "average_speed"]
+            ].mean().reset_index().rename(columns={"week_group": "local_datetime"})
         elif granularity == "Monthly":
             df["month_group"] = df["local_datetime"].dt.to_period("M").dt.start_time
-            grouped = df.groupby(["month_group", "corridor_id", "direction", "segment_name"]).agg(
-                {
-                    "average_delay": "mean",
-                    "average_traveltime": "mean",
-                    "average_speed": "mean",
-                }
-            ).reset_index()
-            grouped["local_datetime"] = grouped["month_group"]
+            df = df.groupby(["month_group", "corridor_id", "direction", "segment_name"], observed=True)[
+                ["average_delay", "average_traveltime", "average_speed"]
+            ].mean().reset_index().rename(columns={"month_group": "local_datetime"})
 
-        else:  # Hourly - no aggregation needed
-            grouped = df
+        # Apply time-of-day filters only when Hourly
+        if granularity == "Hourly" and tf:
+            hrs = df["local_datetime"].dt.hour
+            if tf == "Peak Hours (7-9 AM, 4-6 PM)":
+                df = df[hrs.between(7, 9) | hrs.between(16, 18)]
+            elif tf == "AM Peak (7-9 AM)":
+                df = df[hrs.between(7, 9)]
+            elif tf == "PM Peak (4-6 PM)":
+                df = df[hrs.between(16, 18)]
+            elif tf == "Off-Peak":
+                df = df[~hrs.between(7, 9) & ~hrs.between(16, 18)]
+            elif tf == "Custom Range" and start_hour is not None and end_hour is not None:
+                df = df[hrs.between(int(start_hour), int(end_hour) - 1)]
 
-    elif "intersection_id" in df.columns:  # Volume data
-        if granularity == "Daily":
+        return df.sort_values("local_datetime").reset_index(drop=True)
+
+    if is_volume:
+        # Volume aggregation
+        if "total_volume" in df.columns:
+            df["total_volume"] = pd.to_numeric(df["total_volume"], errors="coerce").fillna(0)
+        if granularity == "Hourly":
+            if (df["local_datetime"].dt.minute != 0).any():
+                # sum volumes to the hour
+                df = _hourly_group(df, ["intersection_id", "direction", "intersection_name" if "intersection_name" in df.columns else "intersection_id"], ["total_volume"], how="sum")
+        elif granularity == "Daily":
             df["date_group"] = df["local_datetime"].dt.date
-            grouped = df.groupby(["date_group", "intersection_id", "direction", "intersection_name"]).agg(
-                {"total_volume": "sum"}
-            ).reset_index()
-            grouped["local_datetime"] = pd.to_datetime(grouped["date_group"])
-
+            df = df.groupby(["date_group", "intersection_id", "direction", "intersection_name"], observed=True)["total_volume"].sum().reset_index().rename(columns={"date_group": "local_datetime"})
+            df["local_datetime"] = pd.to_datetime(df["local_datetime"])
         elif granularity == "Weekly":
             df["week_group"] = df["local_datetime"].dt.to_period("W").dt.start_time
-            grouped = df.groupby(["week_group", "intersection_id", "direction", "intersection_name"]).agg(
-                {"total_volume": "sum"}
-            ).reset_index()
-            grouped["local_datetime"] = grouped["week_group"]
-
+            df = df.groupby(["week_group", "intersection_id", "direction", "intersection_name"], observed=True)["total_volume"].sum().reset_index().rename(columns={"week_group": "local_datetime"})
         elif granularity == "Monthly":
             df["month_group"] = df["local_datetime"].dt.to_period("M").dt.start_time
-            grouped = df.groupby(["month_group", "intersection_id", "direction", "intersection_name"]).agg(
-                {"total_volume": "sum"}
-            ).reset_index()
-            grouped["local_datetime"] = grouped["month_group"]
+            df = df.groupby(["month_group", "intersection_id", "direction", "intersection_name"], observed=True)["total_volume"].sum().reset_index().rename(columns={"month_group": "local_datetime"})
 
-        else:  # Hourly - no aggregation needed
-            grouped = df
+        # Hourly time filter for volume
+        if granularity == "Hourly" and tf:
+            hrs = df["local_datetime"].dt.hour
+            if tf == "Peak Hours (7-9 AM, 4-6 PM)":
+                df = df[hrs.between(7, 9) | hrs.between(16, 18)]
+            elif tf == "AM Peak (7-9 AM)":
+                df = df[hrs.between(7, 9)]
+            elif tf == "PM Peak (4-6 PM)":
+                df = df[hrs.between(16, 18)]
+            elif tf == "Off-Peak":
+                df = df[~hrs.between(7, 9) & ~hrs.between(16, 18)]
+            elif tf == "Custom Range" and start_hour is not None and end_hour is not None:
+                df = df[hrs.between(int(start_hour), int(end_hour) - 1)]
 
-    else:
-        # Fallback - just return filtered data
-        grouped = df
+        return df.sort_values("local_datetime").reset_index(drop=True)
 
-    return grouped
+    # Fallback - return filtered df
+    return df.sort_values("local_datetime").reset_index(drop=True)
