@@ -2,7 +2,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 # Plotly for chart helpers
 import plotly.express as px
@@ -684,12 +684,12 @@ def volume_charts(
 # =========================
 # Date range UI helper
 # =========================
-def date_range_preset_controls(min_date: datetime.date, max_date: datetime.date, key_prefix: str):
+def date_range_preset_controls(min_date: date, max_date: date, key_prefix: str):
     """
     Robust date-range presets with strong type coercion and bounds checking for Streamlit's date_input.
     Always returns a tuple[date, date] with start <= end and within [min_date, max_date].
     """
-    def _to_date(v) -> datetime.date | None:
+    def _to_date(v) -> date | None:
         if v is None:
             return None
         # Accept datetime, pandas Timestamp, numpy datetime64, or strings
@@ -712,7 +712,7 @@ def date_range_preset_controls(min_date: datetime.date, max_date: datetime.date,
         except Exception:
             return None
 
-    def _normalize_bounds(a: datetime.date | None, b: datetime.date | None) -> tuple[datetime.date, datetime.date]:
+    def _normalize_bounds(a: date | None, b: date | None) -> tuple[date, date]:
         # Coerce inputs
         a = _to_date(a)
         b = _to_date(b)
