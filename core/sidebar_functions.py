@@ -60,17 +60,12 @@ def _normalize_acyclica_headers(df: pd.DataFrame) -> pd.DataFrame:
 
 # Iteris ClearGuide Data
 
-@st.cache_data(show_spinner=False)
-def load_traffic_data():
+def get_iteris_segment_sources() -> dict:
     """
-    Load and combine all corridor traffic data from GitHub (Iteris-style).
-    Optimized for memory and speed:
-    - Fixes bad RAW URL pattern
-    - Reads only necessary columns
-    - Parses datetime on read
-    - Downcasts numeric columns and categorizes strings
+    Registry of segment_name -> raw CSV URL for Iteris ClearGuide corridor data.
+    Exposed so Tab 1 can lazy-load only the needed segments.
     """
-    data_sources = {
+    return {
         # Existing segments (Avenue 52 to Highway 111)
         "Avenue 52 → Calle Tampico": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/1_2_LONG_NSB_Ave52_CalleTampico_WashSt_1hr_septojuly.csv",
         "Calle Tampico → Village Shopping Ctr": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/2_3_LONG_NSB_CalleTampico_VillageShoppingCtr_WashSt_1hr_septojuly.csv",
@@ -97,6 +92,18 @@ def load_traffic_data():
         "Harris Lane → Avenue 41 (SB)": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/19_18_LONG_SB_Harrislane_avenue41.csv",
         "Country Club Drive → Harris Lane (SB)": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/20_19_LONG_SB_CountryClubDrive_to_HarrisLane.csv",
     }
+
+@st.cache_data(show_spinner=False)
+def load_traffic_data():
+    """
+    Load and combine all corridor traffic data from GitHub (Iteris-style).
+    Optimized for memory and speed:
+    - Fixes bad RAW URL pattern
+    - Reads only necessary columns
+    - Parses datetime on read
+    - Downcasts numeric columns and categorizes strings
+    """
+    data_sources = get_iteris_segment_sources()
 
     usecols = [
         "local_datetime",
@@ -145,6 +152,65 @@ def load_traffic_data():
     combined_df = pd.concat(all_data, ignore_index=True)
     combined_df = combined_df.dropna(subset=["local_datetime"]).sort_values("local_datetime").reset_index(drop=True)
     return combined_df
+
+@st.cache_data(show_spinner=False)
+def load_traffic_segments(segment_names: tuple, date_range: tuple | None = None) -> pd.DataFrame:
+    """
+    Lazy-load only the specified segment_names for the optional date_range.
+    Arguments must be hashable for Streamlit cache; segment_names should be a tuple of strings.
+    """
+    if segment_names is None or len(segment_names) == 0:
+        return pd.DataFrame()
+
+    sources = get_iteris_segment_sources()
+    usecols = [
+        "local_datetime",
+        "corridor_id",
+        "direction",
+        "average_delay",
+        "average_traveltime",
+        "average_speed",
+    ]
+    frames: list[pd.DataFrame] = []
+    for seg in segment_names:
+        url = sources.get(seg)
+        if not url:
+            continue
+        try:
+            df = pd.read_csv(
+                _fix_raw_url(url),
+                usecols=lambda c: c in usecols,
+                parse_dates=["local_datetime"],
+                infer_datetime_format=True,
+                dtype={"corridor_id": "string", "direction": "string"},
+            )
+            if df is None or df.empty:
+                continue
+            # Add segment name and types
+            df["segment_name"] = seg
+            for c in ("direction", "segment_name"):
+                if c in df.columns:
+                    df[c] = df[c].astype("category")
+            for c in ("average_delay", "average_traveltime", "average_speed"):
+                if c in df.columns:
+                    df[c] = pd.to_numeric(df[c], errors="coerce").astype("float32")
+
+            # Early date filter if provided
+            if isinstance(date_range, (tuple, list)) and len(date_range) == 2 and all(date_range):
+                s, e = date_range
+                mask = (df["local_datetime"].dt.date >= s) & (df["local_datetime"].dt.date <= e)
+                df = df.loc[mask]
+            if not df.empty:
+                frames.append(df)
+        except Exception as e:
+            st.error(f"Error loading segment {seg}: {e}")
+
+    if not frames:
+        return pd.DataFrame()
+
+    out = pd.concat(frames, ignore_index=True)
+    out = out.dropna(subset=["local_datetime"]).sort_values("local_datetime").reset_index(drop=True)
+    return out
 
 #Kinetic mobility data
 @st.cache_data
