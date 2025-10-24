@@ -587,11 +587,68 @@ with tab1:
                 node_list = nodes_in_data if len(nodes_in_data) >= 2 else _build_node_order(corridor_df)
 
                 if len(node_list) >= 2:
-                    cA, cB = st.columns(2)
+                    # Initialize session state defaults for Tab 1 O-D if missing
+                    if "od_origin" not in st.session_state or st.session_state.get("od_origin") not in node_list:
+                        st.session_state["od_origin"] = node_list[0]
+                    if "od_destination" not in st.session_state or st.session_state.get("od_destination") not in node_list:
+                        st.session_state["od_destination"] = node_list[-1]
+
+                    # 3-column layout: Origin | Flip | Destination
+                    cA, flip_col, cB = st.columns([5, 2, 5])
+
+                    # Select current indexes based on session state
+                    try:
+                        origin_index = node_list.index(st.session_state["od_origin"]) if st.session_state.get("od_origin") in node_list else 0
+                    except Exception:
+                        origin_index = 0
+                    try:
+                        dest_index = node_list.index(st.session_state["od_destination"]) if st.session_state.get("od_destination") in node_list else len(node_list) - 1
+                    except Exception:
+                        dest_index = len(node_list) - 1
+
                     with cA:
-                        origin = st.selectbox("Origin", node_list, index=0, key="od_origin")
+                        origin = st.selectbox("Origin", node_list, index=origin_index, key="od_origin")
+                    with flip_col:
+                        # Center the flip button visually
+                        st.markdown("<div style='height: 0.5rem'></div>", unsafe_allow_html=True)
+                        if st.button("🔄", key="od_flip_button", help="Flip origin and destination", use_container_width=True):
+                            # Store current selections in flip-specific keys (for potential downstream use)
+                            st.session_state["od_origin_flip"] = st.session_state.get("od_destination")
+                            st.session_state["od_destination_flip"] = st.session_state.get("od_origin")
+                            # Swap the actual selectbox session keys
+                            st.session_state["od_origin"], st.session_state["od_destination"] = (
+                                st.session_state.get("od_destination"), st.session_state.get("od_origin")
+                            )
+                            st.rerun()
                     with cB:
-                        destination = st.selectbox("Destination", node_list, index=len(node_list) - 1, key="od_destination")
+                        destination = st.selectbox("Destination", node_list, index=dest_index, key="od_destination")
+
+                    # Route direction indicator
+                    try:
+                        oi = node_list.index(st.session_state.get("od_origin"))
+                        di = node_list.index(st.session_state.get("od_destination"))
+                        if oi < di:
+                            arrow = "→"
+                            bound = "Northbound"
+                            route_text = f"{st.session_state['od_origin']} {arrow} {st.session_state['od_destination']} ({bound})"
+                        elif oi > di:
+                            arrow = "←"
+                            bound = "Southbound"
+                            route_text = f"{st.session_state['od_origin']} {arrow} {st.session_state['od_destination']} ({bound})"
+                        else:
+                            route_text = f"{st.session_state['od_origin']}"
+                    except Exception:
+                        route_text = None
+
+                    if route_text:
+                        st.markdown(
+                            f"""
+                            <div style="margin-top: 0.25rem; padding: 6px 10px; border-radius: 8px; background: rgba(79,172,254,0.08); border: 1px solid rgba(79,172,254,0.25); color: #123; font-weight: 600;">
+                                {route_text}
+                            </div>
+                            """,
+                            unsafe_allow_html=True,
+                        )
                 else:
                     st.info("Not enough nodes found to build O-D options.")
 
