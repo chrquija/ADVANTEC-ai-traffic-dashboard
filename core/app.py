@@ -213,8 +213,8 @@ def normalize_dir(s: pd.Series) -> pd.Series:
     """
     ser = s.astype(str).str.lower().str.strip()
     ser = ser.str.replace(r"[\s\-\(\)_/\\]+", " ", regex=True)
-    nb_mask = ser.str.contains(r"\b(nb|north|northbound)\b", regex=True)
-    sb_mask = ser.str.contains(r"\b(sb|south|southbound)\b", regex=True)
+    nb_mask = ser.str.contains(r"\b(?:nb|north|northbound)\b")
+    sb_mask = ser.str.contains(r"\b(?:sb|south|southbound)\b")
     return pd.Series(
         np.where(nb_mask, "nb", np.where(sb_mask, "sb", "unk")),
         index=ser.index,

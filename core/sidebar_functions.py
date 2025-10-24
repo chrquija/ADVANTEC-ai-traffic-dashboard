@@ -115,7 +115,6 @@ def load_traffic_data():
                 url,
                 usecols=lambda c: c in usecols,  # tolerate column mismatches
                 parse_dates=["local_datetime"],
-                infer_datetime_format=True,
                 dtype={
                     "corridor_id": "string",
                     "direction": "string",
