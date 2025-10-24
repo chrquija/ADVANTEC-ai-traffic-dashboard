@@ -686,36 +686,114 @@ def volume_charts(
 # =========================
 def date_range_preset_controls(min_date: datetime.date, max_date: datetime.date, key_prefix: str):
     """
-    Presets that default to Last 30 Days on first load, persist in session_state,
-    and won't clobber custom picks.
+    Robust date-range presets with strong type coercion and bounds checking for Streamlit's date_input.
+    Always returns a tuple[date, date] with start <= end and within [min_date, max_date].
     """
+    def _to_date(v) -> datetime.date | None:
+        if v is None:
+            return None
+        # Accept datetime, pandas Timestamp, numpy datetime64, or strings
+        try:
+            if isinstance(v, datetime):
+                return v.date()
+            if hasattr(v, 'to_pydatetime'):
+                return v.to_pydatetime().date()
+            if isinstance(v, (np.datetime64,)):
+                # Convert via pandas for safety
+                return pd.to_datetime(v, errors='coerce').date()
+            if hasattr(v, 'date') and not isinstance(v, datetime):
+                # datetime.date-like
+                return v
+            # Try generic parser
+            parsed = pd.to_datetime(v, errors='coerce')
+            if pd.isna(parsed):
+                return None
+            return parsed.date()
+        except Exception:
+            return None
+
+    def _normalize_bounds(a: datetime.date | None, b: datetime.date | None) -> tuple[datetime.date, datetime.date]:
+        # Coerce inputs
+        a = _to_date(a)
+        b = _to_date(b)
+        # Coerce min/max
+        mn = _to_date(min_date)
+        mx = _to_date(max_date)
+        if mn is None or mx is None:
+            today = datetime.today().date()
+            mn = today - timedelta(days=30)
+            mx = today
+        if mn > mx:
+            mn, mx = mx, mn
+        # Defaults if missing
+        if a is None or b is None:
+            a = max(mn, mx - timedelta(days=30))
+            b = mx
+        # Ensure order
+        if a > b:
+            a, b = b, a
+        # Clamp
+        a = max(mn, min(a, mx))
+        b = max(mn, min(b, mx))
+        # Ensure non-empty (at least 1 day)
+        if a > b:
+            a = b
+        return a, b
+
     k_range = f"{key_prefix}_range"
 
-    # Default to LAST 30 DAYS (bounded by min_date)
-    if k_range not in st.session_state:
-        default_start = max(min_date, max_date - timedelta(days=30))
-        st.session_state[k_range] = (default_start, max_date)
+    # Initialize session range safely (default last 30 days within bounds)
+    start_default, end_default = _normalize_bounds(min_date, max_date)
+    # Shift default start 30 days back where possible
+    start_default = max(start_default, end_default - timedelta(days=30))
+
+    if k_range not in st.session_state or not st.session_state.get(k_range):
+        st.session_state[k_range] = (start_default, end_default)
+    else:
+        # Sanitize any previously stored value (could be stale types)
+        cur = st.session_state[k_range]
+        if isinstance(cur, (list, tuple)) and len(cur) == 2:
+            st_dt, en_dt = _normalize_bounds(cur[0], cur[1])
+            st.session_state[k_range] = (st_dt, en_dt)
+        else:
+            st.session_state[k_range] = (start_default, end_default)
 
     c1, c2, c3 = st.columns(3)
     with c1:
         if st.button(" Last 7 Days", key=f"{key_prefix}_7d"):
-            st.session_state[k_range] = (max(min_date, max_date - timedelta(days=7)), max_date)
+            st.session_state[k_range] = _normalize_bounds(end_default - timedelta(days=7), end_default)
     with c2:
         if st.button(" Last 30 Days", key=f"{key_prefix}_30d"):
-            st.session_state[k_range] = (max(min_date, max_date - timedelta(days=30)), max_date)
+            st.session_state[k_range] = _normalize_bounds(end_default - timedelta(days=30), end_default)
     with c3:
         if st.button(" Full Range", key=f"{key_prefix}_full"):
-            st.session_state[k_range] = (min_date, max_date)
+            st.session_state[k_range] = _normalize_bounds(min_date, max_date)
+
+    # Prepare clean primitives for date_input
+    val_start, val_end = st.session_state[k_range]
+    min_clean, max_clean = _normalize_bounds(min_date, max_date)
 
     custom = st.date_input(
         "Custom Date Range",
-        value=st.session_state[k_range],
-        min_value=min_date,
-        max_value=max_date,
+        value=(val_start, val_end),
+        min_value=min_clean,
+        max_value=max_clean,
         key=f"{key_prefix}_custom",
     )
-    if custom != st.session_state[k_range]:
-        st.session_state[k_range] = custom
+
+    # Streamlit may return a single date (depending on version/settings) or a tuple/list of two
+    if isinstance(custom, (list, tuple)):
+        if len(custom) == 2:
+            new_start, new_end = _normalize_bounds(custom[0], custom[1])
+        elif len(custom) == 1:
+            new_start, new_end = _normalize_bounds(custom[0], custom[0])
+        else:
+            new_start, new_end = st.session_state[k_range]
+    else:
+        new_start, new_end = _normalize_bounds(custom, custom)
+
+    if (new_start, new_end) != st.session_state[k_range]:
+        st.session_state[k_range] = (new_start, new_end)
 
     return st.session_state[k_range]
 
