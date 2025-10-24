@@ -2,7 +2,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 
 # Plotly for chart helpers
 import plotly.express as px
@@ -60,12 +60,13 @@ def _normalize_acyclica_headers(df: pd.DataFrame) -> pd.DataFrame:
 
 # Iteris ClearGuide Data
 
-def get_iteris_segment_sources() -> dict:
+@st.cache_data
+def load_traffic_data():
     """
-    Registry of segment_name -> raw CSV URL for Iteris ClearGuide corridor data.
-    Exposed so Tab 1 can lazy-load only the needed segments.
+    Load and combine all corridor traffic data from GitHub (Iteris-style).
+    Auto-fixes bad RAW URL pattern.
     """
-    return {
+    data_sources = {
         # Existing segments (Avenue 52 to Highway 111)
         "Avenue 52 → Calle Tampico": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/1_2_LONG_NSB_Ave52_CalleTampico_WashSt_1hr_septojuly.csv",
         "Calle Tampico → Village Shopping Ctr": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/2_3_LONG_NSB_CalleTampico_VillageShoppingCtr_WashSt_1hr_septojuly.csv",
@@ -93,55 +94,12 @@ def get_iteris_segment_sources() -> dict:
         "Country Club Drive → Harris Lane (SB)": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/20_19_LONG_SB_CountryClubDrive_to_HarrisLane.csv",
     }
 
-@st.cache_data(show_spinner=False)
-def load_traffic_data():
-    """
-    Load and combine all corridor traffic data from GitHub (Iteris-style).
-    Optimized for memory and speed:
-    - Fixes bad RAW URL pattern
-    - Reads only necessary columns
-    - Parses datetime on read
-    - Downcasts numeric columns and categorizes strings
-    """
-    data_sources = get_iteris_segment_sources()
-
-    usecols = [
-        "local_datetime",
-        "corridor_id",
-        "direction",
-        "average_delay",
-        "average_traveltime",
-        "average_speed",
-    ]
-
     all_data = []
     for segment_name, url in data_sources.items():
         url = _fix_raw_url(url)
         try:
-            df = pd.read_csv(
-                url,
-                usecols=lambda c: c in usecols,  # tolerate column mismatches
-                parse_dates=["local_datetime"],
-                infer_datetime_format=True,
-                dtype={
-                    "corridor_id": "string",
-                    "direction": "string",
-                },
-            )
-            if df.empty:
-                continue
-            # Ensure needed numeric columns exist even if missing in source
-            for c in ["average_delay", "average_traveltime", "average_speed"]:
-                if c not in df.columns:
-                    df[c] = np.nan
-            # Assign segment name, reduce memory
+            df = pd.read_csv(url)
             df["segment_name"] = segment_name
-            for c in ("direction", "segment_name"):
-                if c in df.columns:
-                    df[c] = df[c].astype("category")
-            for c in ("average_delay", "average_traveltime", "average_speed"):
-                if c in df.columns:
-                    df[c] = pd.to_numeric(df[c], errors="coerce").astype("float32")
             all_data.append(df)
         except Exception as e:
             st.error(f"Error loading {segment_name}: {e}")
@@ -150,67 +108,9 @@ def load_traffic_data():
         return pd.DataFrame()
 
     combined_df = pd.concat(all_data, ignore_index=True)
+    combined_df["local_datetime"] = pd.to_datetime(combined_df["local_datetime"], errors="coerce")
     combined_df = combined_df.dropna(subset=["local_datetime"]).sort_values("local_datetime").reset_index(drop=True)
     return combined_df
-
-@st.cache_data(show_spinner=False)
-def load_traffic_segments(segment_names: tuple, date_range: tuple | None = None) -> pd.DataFrame:
-    """
-    Lazy-load only the specified segment_names for the optional date_range.
-    Arguments must be hashable for Streamlit cache; segment_names should be a tuple of strings.
-    """
-    if segment_names is None or len(segment_names) == 0:
-        return pd.DataFrame()
-
-    sources = get_iteris_segment_sources()
-    usecols = [
-        "local_datetime",
-        "corridor_id",
-        "direction",
-        "average_delay",
-        "average_traveltime",
-        "average_speed",
-    ]
-    frames: list[pd.DataFrame] = []
-    for seg in segment_names:
-        url = sources.get(seg)
-        if not url:
-            continue
-        try:
-            df = pd.read_csv(
-                _fix_raw_url(url),
-                usecols=lambda c: c in usecols,
-                parse_dates=["local_datetime"],
-                infer_datetime_format=True,
-                dtype={"corridor_id": "string", "direction": "string"},
-            )
-            if df is None or df.empty:
-                continue
-            # Add segment name and types
-            df["segment_name"] = seg
-            for c in ("direction", "segment_name"):
-                if c in df.columns:
-                    df[c] = df[c].astype("category")
-            for c in ("average_delay", "average_traveltime", "average_speed"):
-                if c in df.columns:
-                    df[c] = pd.to_numeric(df[c], errors="coerce").astype("float32")
-
-            # Early date filter if provided
-            if isinstance(date_range, (tuple, list)) and len(date_range) == 2 and all(date_range):
-                s, e = date_range
-                mask = (df["local_datetime"].dt.date >= s) & (df["local_datetime"].dt.date <= e)
-                df = df.loc[mask]
-            if not df.empty:
-                frames.append(df)
-        except Exception as e:
-            st.error(f"Error loading segment {seg}: {e}")
-
-    if not frames:
-        return pd.DataFrame()
-
-    out = pd.concat(frames, ignore_index=True)
-    out = out.dropna(subset=["local_datetime"]).sort_values("local_datetime").reset_index(drop=True)
-    return out
 
 #Kinetic mobility data
 @st.cache_data
@@ -684,116 +584,38 @@ def volume_charts(
 # =========================
 # Date range UI helper
 # =========================
-def date_range_preset_controls(min_date: date, max_date: date, key_prefix: str):
+def date_range_preset_controls(min_date: datetime.date, max_date: datetime.date, key_prefix: str):
     """
-    Robust date-range presets with strong type coercion and bounds checking for Streamlit's date_input.
-    Always returns a tuple[date, date] with start <= end and within [min_date, max_date].
+    Presets that default to Last 30 Days on first load, persist in session_state,
+    and won't clobber custom picks.
     """
-    def _to_date(v) -> date | None:
-        if v is None:
-            return None
-        # Accept datetime, pandas Timestamp, numpy datetime64, or strings
-        try:
-            if isinstance(v, datetime):
-                return v.date()
-            if hasattr(v, 'to_pydatetime'):
-                return v.to_pydatetime().date()
-            if isinstance(v, (np.datetime64,)):
-                # Convert via pandas for safety
-                return pd.to_datetime(v, errors='coerce').date()
-            if hasattr(v, 'date') and not isinstance(v, datetime):
-                # datetime.date-like
-                return v
-            # Try generic parser
-            parsed = pd.to_datetime(v, errors='coerce')
-            if pd.isna(parsed):
-                return None
-            return parsed.date()
-        except Exception:
-            return None
-
-    def _normalize_bounds(a: date | None, b: date | None) -> tuple[date, date]:
-        # Coerce inputs
-        a = _to_date(a)
-        b = _to_date(b)
-        # Coerce min/max
-        mn = _to_date(min_date)
-        mx = _to_date(max_date)
-        if mn is None or mx is None:
-            today = datetime.today().date()
-            mn = today - timedelta(days=30)
-            mx = today
-        if mn > mx:
-            mn, mx = mx, mn
-        # Defaults if missing
-        if a is None or b is None:
-            a = max(mn, mx - timedelta(days=30))
-            b = mx
-        # Ensure order
-        if a > b:
-            a, b = b, a
-        # Clamp
-        a = max(mn, min(a, mx))
-        b = max(mn, min(b, mx))
-        # Ensure non-empty (at least 1 day)
-        if a > b:
-            a = b
-        return a, b
-
     k_range = f"{key_prefix}_range"
 
-    # Initialize session range safely (default last 30 days within bounds)
-    start_default, end_default = _normalize_bounds(min_date, max_date)
-    # Shift default start 30 days back where possible
-    start_default = max(start_default, end_default - timedelta(days=30))
-
-    if k_range not in st.session_state or not st.session_state.get(k_range):
-        st.session_state[k_range] = (start_default, end_default)
-    else:
-        # Sanitize any previously stored value (could be stale types)
-        cur = st.session_state[k_range]
-        if isinstance(cur, (list, tuple)) and len(cur) == 2:
-            st_dt, en_dt = _normalize_bounds(cur[0], cur[1])
-            st.session_state[k_range] = (st_dt, en_dt)
-        else:
-            st.session_state[k_range] = (start_default, end_default)
+    # Default to LAST 30 DAYS (bounded by min_date)
+    if k_range not in st.session_state:
+        default_start = max(min_date, max_date - timedelta(days=30))
+        st.session_state[k_range] = (default_start, max_date)
 
     c1, c2, c3 = st.columns(3)
     with c1:
         if st.button(" Last 7 Days", key=f"{key_prefix}_7d"):
-            st.session_state[k_range] = _normalize_bounds(end_default - timedelta(days=7), end_default)
+            st.session_state[k_range] = (max(min_date, max_date - timedelta(days=7)), max_date)
     with c2:
         if st.button(" Last 30 Days", key=f"{key_prefix}_30d"):
-            st.session_state[k_range] = _normalize_bounds(end_default - timedelta(days=30), end_default)
+            st.session_state[k_range] = (max(min_date, max_date - timedelta(days=30)), max_date)
     with c3:
         if st.button(" Full Range", key=f"{key_prefix}_full"):
-            st.session_state[k_range] = _normalize_bounds(min_date, max_date)
-
-    # Prepare clean primitives for date_input
-    val_start, val_end = st.session_state[k_range]
-    min_clean, max_clean = _normalize_bounds(min_date, max_date)
+            st.session_state[k_range] = (min_date, max_date)
 
     custom = st.date_input(
         "Custom Date Range",
-        value=(val_start, val_end),
-        min_value=min_clean,
-        max_value=max_clean,
+        value=st.session_state[k_range],
+        min_value=min_date,
+        max_value=max_date,
         key=f"{key_prefix}_custom",
     )
-
-    # Streamlit may return a single date (depending on version/settings) or a tuple/list of two
-    if isinstance(custom, (list, tuple)):
-        if len(custom) == 2:
-            new_start, new_end = _normalize_bounds(custom[0], custom[1])
-        elif len(custom) == 1:
-            new_start, new_end = _normalize_bounds(custom[0], custom[0])
-        else:
-            new_start, new_end = st.session_state[k_range]
-    else:
-        new_start, new_end = _normalize_bounds(custom, custom)
-
-    if (new_start, new_end) != st.session_state[k_range]:
-        st.session_state[k_range] = (new_start, new_end)
+    if custom != st.session_state[k_range]:
+        st.session_state[k_range] = custom
 
     return st.session_state[k_range]
 
@@ -803,121 +625,103 @@ def date_range_preset_controls(min_date: date, max_date: date, key_prefix: str):
 # =========================
 def process_traffic_data(df, date_range, granularity, time_filter=None, start_hour=None, end_hour=None):
     """
-    Process traffic data based on date range and granularity selections.
-    Optimizations:
-    - Early date/time filtering to minimize rows
-    - Robust time_filter label handling (ASCII vs en dash)
-    - If base data are sub-hourly (e.g., 5-min), aggregate to Hourly before applying hourly filters
+    Process traffic data based on date range and granularity selections
     """
-    if df is None or len(df) == 0:
-        return pd.DataFrame()
+    # Convert datetime if not already done
+    df["local_datetime"] = pd.to_datetime(df["local_datetime"])
 
-    df = df.copy()
-
-    # Ensure datetime
-    df["local_datetime"] = pd.to_datetime(df.get("local_datetime", pd.NaT), errors="coerce")
-    df = df.dropna(subset=["local_datetime"])  # safety
-
-    # Early date range filter
-    if isinstance(date_range, (list, tuple)) and len(date_range) == 2:
+    # Filter by date range
+    if len(date_range) == 2:
         start_date, end_date = date_range
-        if start_date is not None and end_date is not None:
-            mask = (df["local_datetime"].dt.date >= start_date) & (df["local_datetime"].dt.date <= end_date)
-            df = df.loc[mask]
-    if df.empty:
-        return df
+        df = df[
+            (df["local_datetime"].dt.date >= start_date)
+            & (df["local_datetime"].dt.date <= end_date)
+        ]
 
-    # Normalize time filter label (handle en dash, extra spaces)
-    tf = str(time_filter or "").replace("–", "-").strip()
+    # Apply time filters for hourly data
+    if granularity == "Hourly" and time_filter:
+        if time_filter == "Peak Hours (7-9 AM, 4-6 PM)":
+            df = df[
+                (df["local_datetime"].dt.hour.between(7, 9))
+                | (df["local_datetime"].dt.hour.between(16, 18))
+            ]
+        elif time_filter == "AM Peak (7-9 AM)":
+            df = df[df["local_datetime"].dt.hour.between(7, 9)]
+        elif time_filter == "PM Peak (4-6 PM)":
+            df = df[df["local_datetime"].dt.hour.between(16, 18)]
+        elif time_filter == "Off-Peak":
+            df = df[
+                ~(df["local_datetime"].dt.hour.between(7, 9))
+                & ~(df["local_datetime"].dt.hour.between(16, 18))
+            ]
+        elif time_filter == "Custom Range" and start_hour is not None and end_hour is not None:
+            df = df[df["local_datetime"].dt.hour.between(start_hour, end_hour - 1)]
 
-    # If granular is Hourly but timestamps are sub-hourly, consolidate first
-    def _hourly_group(gdf: pd.DataFrame, by_cols: list[str], metrics: list[str], how: str = "mean") -> pd.DataFrame:
-        gdf = gdf.copy()
-        gdf["hour"] = gdf["local_datetime"].dt.floor("H")
-        agg = gdf.groupby(by_cols + ["hour"], observed=True)[metrics].agg(how).reset_index()
-        agg = agg.rename(columns={"hour": "local_datetime"})
-        return agg
-
-    is_corridor = "segment_name" in df.columns
-    is_volume = "intersection_id" in df.columns or "total_volume" in df.columns
-
-    if is_corridor:
-        # Ensure numeric dtypes
-        for c in ("average_delay", "average_traveltime", "average_speed"):
-            if c in df.columns:
-                df[c] = pd.to_numeric(df[c], errors="coerce")
-        # Aggregate to requested granularity
-        if granularity == "Hourly":
-            # Consolidate sub-hourly to hourly if needed
-            if (df["local_datetime"].dt.minute != 0).any():
-                df = _hourly_group(df, ["corridor_id", "direction", "segment_name"], ["average_delay", "average_traveltime", "average_speed"], how="mean")
-        elif granularity == "Daily":
+    # Determine data type and aggregate accordingly
+    if "segment_name" in df.columns:  # Corridor data (delay/speed/travel time)
+        if granularity == "Daily":
             df["date_group"] = df["local_datetime"].dt.date
-            df = df.groupby(["date_group", "corridor_id", "direction", "segment_name"], observed=True)[
-                ["average_delay", "average_traveltime", "average_speed"]
-            ].mean().reset_index().rename(columns={"date_group": "local_datetime"})
-            df["local_datetime"] = pd.to_datetime(df["local_datetime"])
+            grouped = df.groupby(["date_group", "corridor_id", "direction", "segment_name"]).agg(
+                {
+                    "average_delay": "mean",
+                    "average_traveltime": "mean",
+                    "average_speed": "mean",
+                }
+            ).reset_index()
+            grouped["local_datetime"] = pd.to_datetime(grouped["date_group"])
+
         elif granularity == "Weekly":
             df["week_group"] = df["local_datetime"].dt.to_period("W").dt.start_time
-            df = df.groupby(["week_group", "corridor_id", "direction", "segment_name"], observed=True)[
-                ["average_delay", "average_traveltime", "average_speed"]
-            ].mean().reset_index().rename(columns={"week_group": "local_datetime"})
+            grouped = df.groupby(["week_group", "corridor_id", "direction", "segment_name"]).agg(
+                {
+                    "average_delay": "mean",
+                    "average_traveltime": "mean",
+                    "average_speed": "mean",
+                }
+            ).reset_index()
+            grouped["local_datetime"] = grouped["week_group"]
+
         elif granularity == "Monthly":
             df["month_group"] = df["local_datetime"].dt.to_period("M").dt.start_time
-            df = df.groupby(["month_group", "corridor_id", "direction", "segment_name"], observed=True)[
-                ["average_delay", "average_traveltime", "average_speed"]
-            ].mean().reset_index().rename(columns={"month_group": "local_datetime"})
+            grouped = df.groupby(["month_group", "corridor_id", "direction", "segment_name"]).agg(
+                {
+                    "average_delay": "mean",
+                    "average_traveltime": "mean",
+                    "average_speed": "mean",
+                }
+            ).reset_index()
+            grouped["local_datetime"] = grouped["month_group"]
 
-        # Apply time-of-day filters only when Hourly
-        if granularity == "Hourly" and tf:
-            hrs = df["local_datetime"].dt.hour
-            if tf == "Peak Hours (7-9 AM, 4-6 PM)":
-                df = df[hrs.between(7, 9) | hrs.between(16, 18)]
-            elif tf == "AM Peak (7-9 AM)":
-                df = df[hrs.between(7, 9)]
-            elif tf == "PM Peak (4-6 PM)":
-                df = df[hrs.between(16, 18)]
-            elif tf == "Off-Peak":
-                df = df[~hrs.between(7, 9) & ~hrs.between(16, 18)]
-            elif tf == "Custom Range" and start_hour is not None and end_hour is not None:
-                df = df[hrs.between(int(start_hour), int(end_hour) - 1)]
+        else:  # Hourly - no aggregation needed
+            grouped = df
 
-        return df.sort_values("local_datetime").reset_index(drop=True)
-
-    if is_volume:
-        # Volume aggregation
-        if "total_volume" in df.columns:
-            df["total_volume"] = pd.to_numeric(df["total_volume"], errors="coerce").fillna(0)
-        if granularity == "Hourly":
-            if (df["local_datetime"].dt.minute != 0).any():
-                # sum volumes to the hour
-                df = _hourly_group(df, ["intersection_id", "direction", "intersection_name" if "intersection_name" in df.columns else "intersection_id"], ["total_volume"], how="sum")
-        elif granularity == "Daily":
+    elif "intersection_id" in df.columns:  # Volume data
+        if granularity == "Daily":
             df["date_group"] = df["local_datetime"].dt.date
-            df = df.groupby(["date_group", "intersection_id", "direction", "intersection_name"], observed=True)["total_volume"].sum().reset_index().rename(columns={"date_group": "local_datetime"})
-            df["local_datetime"] = pd.to_datetime(df["local_datetime"])
+            grouped = df.groupby(["date_group", "intersection_id", "direction", "intersection_name"]).agg(
+                {"total_volume": "sum"}
+            ).reset_index()
+            grouped["local_datetime"] = pd.to_datetime(grouped["date_group"])
+
         elif granularity == "Weekly":
             df["week_group"] = df["local_datetime"].dt.to_period("W").dt.start_time
-            df = df.groupby(["week_group", "intersection_id", "direction", "intersection_name"], observed=True)["total_volume"].sum().reset_index().rename(columns={"week_group": "local_datetime"})
+            grouped = df.groupby(["week_group", "intersection_id", "direction", "intersection_name"]).agg(
+                {"total_volume": "sum"}
+            ).reset_index()
+            grouped["local_datetime"] = grouped["week_group"]
+
         elif granularity == "Monthly":
             df["month_group"] = df["local_datetime"].dt.to_period("M").dt.start_time
-            df = df.groupby(["month_group", "intersection_id", "direction", "intersection_name"], observed=True)["total_volume"].sum().reset_index().rename(columns={"month_group": "local_datetime"})
+            grouped = df.groupby(["month_group", "intersection_id", "direction", "intersection_name"]).agg(
+                {"total_volume": "sum"}
+            ).reset_index()
+            grouped["local_datetime"] = grouped["month_group"]
 
-        # Hourly time filter for volume
-        if granularity == "Hourly" and tf:
-            hrs = df["local_datetime"].dt.hour
-            if tf == "Peak Hours (7-9 AM, 4-6 PM)":
-                df = df[hrs.between(7, 9) | hrs.between(16, 18)]
-            elif tf == "AM Peak (7-9 AM)":
-                df = df[hrs.between(7, 9)]
-            elif tf == "PM Peak (4-6 PM)":
-                df = df[hrs.between(16, 18)]
-            elif tf == "Off-Peak":
-                df = df[~hrs.between(7, 9) & ~hrs.between(16, 18)]
-            elif tf == "Custom Range" and start_hour is not None and end_hour is not None:
-                df = df[hrs.between(int(start_hour), int(end_hour) - 1)]
+        else:  # Hourly - no aggregation needed
+            grouped = df
 
-        return df.sort_values("local_datetime").reset_index(drop=True)
+    else:
+        # Fallback - just return filtered data
+        grouped = df
 
-    # Fallback - return filtered df
-    return df.sort_values("local_datetime").reset_index(drop=True)
+    return grouped

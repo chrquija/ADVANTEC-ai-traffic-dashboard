@@ -548,21 +548,15 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs(["Pg.1 ITERIS CLEARGUIDE", "Pg.2 KINETIC 
 # -------------------------
 with tab1:
 
-    # Load corridor metadata only; full data are lazy-loaded on Search for Tab 1 performance
-    try:
-        # Use segment registry to build O-D lists without loading all CSVs
-        from sidebar_functions import get_iteris_segment_sources, load_traffic_segments
-        SEGMENT_SOURCES = get_iteris_segment_sources()
-    except Exception:
-        SEGMENT_SOURCES = {}
-    corridor_df = pd.DataFrame()  # avoid eager full load; we will lazy-load on Search
+    # Load Prediction once to populate controls (safe to load; results stay blank until Search)
+    corridor_df = get_corridor_df()
 
     # -------- Sidebar controls (commit on Search) --------
     with st.sidebar:
         st.image("Logos/ACE-logo-HiRes.jpg", width=210)
         st.image("Logos/CV Sync__.jpg", width=205)
 
-        with st.expander("⚙️ Pg.1 ITERIS CLEARGUIDE SETTINGS", expanded=True):
+        with st.expander("⚙️ Pg.1 ITERIS CLEARGUIDE SETTINGS", expanded=False):
             active_t1 = is_active_tab("t1")
             if active_t1:
                 st.markdown(
@@ -588,20 +582,9 @@ with tab1:
             )
 
             origin, destination = None, None
-            if od_mode:
-                # Build node list from segment registry without loading data
-                try:
-                    seg_keys = list(SEGMENT_SOURCES.keys())
-                except Exception:
-                    seg_keys = []
-                nodes_found = set()
-                for s in seg_keys:
-                    parts = [p.strip() for p in str(s).split("→")]
-                    if len(parts) == 2:
-                        nodes_found.add(parts[0])
-                        nodes_found.add(parts[1])
-                # Order nodes by desired canonical corridor order
-                node_list = [n for n in DESIRED_NODE_ORDER_BOTTOM_UP if n in nodes_found]
+            if od_mode and not corridor_df.empty:
+                nodes_in_data = _canonical_order_in_data(corridor_df)
+                node_list = nodes_in_data if len(nodes_in_data) >= 2 else _build_node_order(corridor_df)
 
                 if len(node_list) >= 2:
                     cA, cB = st.columns(2)
@@ -685,66 +668,60 @@ with tab1:
             st.warning(" Press **Search** to refresh.")
 
         try:
-            # Unpack committed params
-            od_mode = t1_params.get("od_mode", True)
-            origin = t1_params.get("origin")
-            destination = t1_params.get("destination")
-            date_range = t1_params.get("date_range")
-            granularity = t1_params.get("granularity", "Hourly")
-            time_filter = t1_params.get("time_filter")
-            start_hour = t1_params.get("start_hour")
-            end_hour = t1_params.get("end_hour")
-
-            # --- Prepare working set / O-D path subset (LAZY LOADING) ---
-            working_df = pd.DataFrame()
-            route_label = "All Segments"
-            desired_dir: str | None = None
-
-            if od_mode and origin and destination:
-                # Build canonical order from registry
-                seg_keys = list(SEGMENT_SOURCES.keys()) if isinstance(SEGMENT_SOURCES, dict) else []
-                nodes_found = []
-                for name in seg_keys:
-                    parts = [p.strip() for p in str(name).split("→")]
-                    if len(parts) == 2:
-                        nodes_found.extend(parts)
-                nodes_present = set(nodes_found)
-                canonical = [n for n in DESIRED_NODE_ORDER_BOTTOM_UP if n in nodes_present]
-
-                if origin in canonical and destination in canonical:
-                    i0, i1 = canonical.index(origin), canonical.index(destination)
-                    if i0 < i1:
-                        desired_dir = "nb"
-                    elif i0 > i1:
-                        desired_dir = "sb"
-                    else:
-                        desired_dir = None
-
-                    imin, imax = (i0, i1) if i0 < i1 else (i1, i0)
-                    candidate_segments = [f"{canonical[j]} → {canonical[j + 1]}" for j in range(imin, imax)]
-                    # keep only those we actually have URLs for
-                    path_segments = tuple([s for s in candidate_segments if s in SEGMENT_SOURCES])
-
-                    if len(path_segments) > 0:
-                        # Lazy-load only these segments within the chosen date range
-                        seg_df = load_traffic_segments(path_segments, tuple(date_range) if date_range else None)
-                        if not seg_df.empty and "direction" in seg_df.columns and desired_dir is not None:
-                            dnorm = normalize_dir(seg_df["direction"])
-                            seg_df = seg_df.loc[dnorm == desired_dir].copy()
-                        working_df = seg_df.copy()
-                        route_label = f"{origin} → {destination}"
-                    else:
-                        st.info("No matching segments found for the selected O-D on the canonical path.")
-                else:
-                    st.info("Selected origin/destination are not on the known corridor order.")
+            base_df = corridor_df.copy() if not corridor_df.empty else pd.DataFrame()
+            if base_df.empty:
+                st.error("❌ Failed to load corridor Prediction. Please check your Prediction sources.")
             else:
-                st.info("Select an Origin and Destination, then press Search to load data.")
+                # Unpack committed params
+                od_mode = t1_params.get("od_mode", True)
+                origin = t1_params.get("origin")
+                destination = t1_params.get("destination")
+                date_range = t1_params.get("date_range")
+                granularity = t1_params.get("granularity", "Hourly")
+                time_filter = t1_params.get("time_filter")
+                start_hour = t1_params.get("start_hour")
+                end_hour = t1_params.get("end_hour")
 
-            # ensure numeric types early
-            if not working_df.empty:
+                # --- Prepare working set / O-D path subset ---
+                working_df = base_df.copy()
+                route_label = "All Segments"
+
+                # ensure numeric types early
                 for c in ["average_traveltime", "average_delay", "average_speed"]:
                     if c in working_df.columns:
                         working_df[c] = pd.to_numeric(working_df[c], errors="coerce")
+
+                desired_dir: str | None = None
+
+                if od_mode and origin and destination:
+                    canonical = _canonical_order_in_data(base_df)
+                    if len(canonical) < 2:
+                        canonical = _build_node_order(base_df)
+
+                    if origin in canonical and destination in canonical:
+                        i0, i1 = canonical.index(origin), canonical.index(destination)
+                        if i0 < i1:
+                            desired_dir = "nb"
+                        elif i0 > i1:
+                            desired_dir = "sb"
+                        else:
+                            desired_dir = None
+
+                        imin, imax = (i0, i1) if i0 < i1 else (i1, i0)
+                        candidate_segments = [f"{canonical[j]} → {canonical[j + 1]}" for j in range(imin, imax)]
+                        seg_names_in_data = set(base_df["segment_name"].dropna().unique().tolist())
+                        path_segments = [s for s in candidate_segments if s in seg_names_in_data]
+
+                        if path_segments:
+                            seg_df = base_df[base_df["segment_name"].isin(path_segments)].copy()
+                            if "direction" in seg_df.columns and desired_dir is not None:
+                                dnorm = normalize_dir(seg_df["direction"])
+                                seg_df = seg_df.loc[dnorm == desired_dir].copy()
+
+                            working_df = seg_df.copy()
+                            route_label = f"{origin} → {destination}"
+                        else:
+                            st.info("No matching segments found for the selected O-D on the canonical path.")
 
                 # ---------- Layout: wide content + sticky right rail ----------
                 main_col_t1, right_col_t1 = st.columns([7, 3.5], gap="large")
