@@ -562,7 +562,7 @@ with tab1:
         st.image("Logos/ACE-logo-HiRes.jpg", width=210)
         st.image("Logos/CV Sync__.jpg", width=205)
 
-        with st.expander("⚙️ Pg.1 ITERIS CLEARGUIDE SETTINGS", expanded=False):
+        with st.expander("⚙️ Pg.1 ITERIS CLEARGUIDE SETTINGS", expanded=True):
             active_t1 = is_active_tab("t1")
             if active_t1:
                 st.markdown(
