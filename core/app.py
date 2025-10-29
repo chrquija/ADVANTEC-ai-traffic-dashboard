@@ -834,32 +834,27 @@ with tab1:
                     st.markdown('<div id="od-map-anchor"></div>', unsafe_allow_html=True)
                     st.markdown("##### Corridor Map", help="Stays visible while you scroll the analysis on the left.")
 
-                    # When Analysis Pro is OFF, hide the map and show info message
-                    if not od_mode:
-                        st.markdown('<div class="cvag-map-card">', unsafe_allow_html=True)
-                        st.info("Analysis Pro Required to view the corridor map.")
+                    # Corridor map remains visible regardless of Analysis Pro mode
+                    fig_od = None
+                    if origin and destination and origin != destination:
+                        try:
+                            fig_od = build_corridor_map(origin, destination)
+                        except Exception:
+                            fig_od = None
+
+                    if fig_od:
+                        try:
+                            fig_od.update_layout(height=MAP_HEIGHT, margin=dict(l=0, r=0, t=32, b=0))
+                        except Exception:
+                            pass
+                        st.markdown(f'<div class="cvag-map-card">', unsafe_allow_html=True)
+                        st.plotly_chart(fig_od, use_container_width=True, config=PLOTLY_CONFIG)
+                        st.caption(f"Corridor Segment: **{origin} → {destination}**")
                         st.markdown("</div>", unsafe_allow_html=True)
                     else:
-                        fig_od = None
-                        if origin and destination and origin != destination:
-                            try:
-                                fig_od = build_corridor_map(origin, destination)
-                            except Exception:
-                                fig_od = None
-
-                        if fig_od:
-                            try:
-                                fig_od.update_layout(height=MAP_HEIGHT, margin=dict(l=0, r=0, t=32, b=0))
-                            except Exception:
-                                pass
-                            st.markdown(f'<div class="cvag-map-card">', unsafe_allow_html=True)
-                            st.plotly_chart(fig_od, use_container_width=True, config=PLOTLY_CONFIG)
-                            st.caption(f"Corridor Segment: **{origin} → {destination}**")
-                            st.markdown("</div>", unsafe_allow_html=True)
-                        else:
-                            st.markdown('<div class="cvag-map-card">', unsafe_allow_html=True)
-                            st.info("Select an **Origin** and **Destination** to display the corridor map.")
-                            st.markdown("</div>", unsafe_allow_html=True)
+                        st.markdown('<div class="cvag-map-card">', unsafe_allow_html=True)
+                        st.info("Select an **Origin** and **Destination** to display the corridor map.")
+                        st.markdown("</div>", unsafe_allow_html=True)
 
                 # Left/main content
                 with main_col_t1:
@@ -1044,7 +1039,7 @@ with tab1:
                                             if tc:
                                                 st.plotly_chart(tc, use_container_width=True, config=PLOTLY_CONFIG)
 
-                                        if 'od_series' in locals() and not od_series.empty:
+                                        if od_mode and 'od_series' in locals() and not od_series.empty:
                                             st.subheader("🔍Which Dates/Times have the highest Travel Time and Delay?")
 
                                             # Format the display dataframe with units
@@ -1091,11 +1086,13 @@ with tab1:
                                     # =========================
                                     # 🚨 Comprehensive Bottleneck Analysis
                                     # =========================
-                                    step("Running bottleneck analysis", 95)
-                                    st.subheader("🚨 Comprehensive Bottleneck Analysis")
+                                    if od_mode:
+                                        step("Running bottleneck analysis", 95)
+                                        st.subheader("🚨 Comprehensive Bottleneck Analysis")
                                     # Add legend for Performance Rating and Impact Score
-                                    with st.expander("📊 **Rating Methodology & Legend**", expanded=False):
-                                        st.markdown("""
+                                    if od_mode:
+                                        with st.expander("📊 **Rating Methodology & Legend**", expanded=False):
+                                            st.markdown("""
                                                                             ### Impact Score Calculation
                                                                             The **Impact Score** (0-100) is a weighted composite metric that identifies bottlenecks:
                                                                             - **45%** weight: Peak Delay (maximum delay observed)
@@ -1138,7 +1135,7 @@ with tab1:
                                             st.caption("Severe bottleneck")
 
 
-                                    if 'raw_data' in locals() and not raw_data.empty and "segment_name" in working_df.columns:
+                                    if od_mode and 'raw_data' in locals() and not raw_data.empty and "segment_name" in working_df.columns:
                                         try:
                                             analysis_df = working_df[
                                                 (working_df["local_datetime"].dt.date >= date_range[0])
