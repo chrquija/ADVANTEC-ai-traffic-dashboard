@@ -815,16 +815,52 @@ with tab1:
                         seg_names_in_data = set(base_df["segment_name"].dropna().unique().tolist())
                         path_segments = [s for s in candidate_segments if s in seg_names_in_data]
 
+                        seg_df = pd.DataFrame()
+                        used_fallback_direct = False
+
                         if path_segments:
                             seg_df = base_df[base_df["segment_name"].isin(path_segments)].copy()
+                        else:
+                            # Fallback: use a single aggregated segment if it exists (e.g., "Avenue 41 → Country Club Drive")
+                            direct_name = f"{origin} → {destination}"
+                            if direct_name in seg_names_in_data:
+                                seg_df = base_df[base_df["segment_name"] == direct_name].copy()
+                                used_fallback_direct = True
+
+                        if not seg_df.empty:
                             if "direction" in seg_df.columns and desired_dir is not None:
                                 dnorm = normalize_dir(seg_df["direction"])
                                 seg_df = seg_df.loc[dnorm == desired_dir].copy()
 
-                            working_df = seg_df.copy()
-                            route_label = f"{origin} → {destination}"
+                            if seg_df.empty:
+                                st.info("No data found in the selected direction for this O-D.")
+                            else:
+                                working_df = seg_df.copy()
+                                route_label = f"{origin} → {destination}"
+                                if used_fallback_direct:
+                                    st.caption("Using combined segment data for this O-D (intermediate subsegments unavailable).")
                         else:
-                            st.info("No matching segments found for the selected O-D on the canonical path.")
+                            # Provide contextual guidance for known NB combined-segment case around Harris Lane
+                            try:
+                                if desired_dir == "nb":
+                                    trio = {origin, destination}
+                                    if {"Avenue 41", "Country Club Drive"}.issuperset(trio) or {"Harris Lane", "Country Club Drive"}.issuperset(trio) or {"Avenue 41", "Harris Lane"}.issuperset(trio):
+                                        if "Avenue 41 → Country Club Drive" in seg_names_in_data and not (
+                                            origin == "Avenue 41" and destination == "Country Club Drive"
+                                        ):
+                                            st.info(
+                                                "Northbound subsegments involving Harris Lane are not available individually. "
+                                                "However, combined segment data exists for Avenue 41 → Country Club Drive. "
+                                                "Please set Origin to 'Avenue 41' and Destination to 'Country Club Drive' (NB)."
+                                            )
+                                        else:
+                                            st.info("No matching segments found for the selected O-D on the canonical path.")
+                                    else:
+                                        st.info("No matching segments found for the selected O-D on the canonical path.")
+                                else:
+                                    st.info("No matching segments found for the selected O-D on the canonical path.")
+                            except Exception:
+                                st.info("No matching segments found for the selected O-D on the canonical path.")
 
                 # ---------- Layout: wide content + sticky right rail ----------
                 main_col_t1, right_col_t1 = st.columns([7, 3.5], gap="large")
