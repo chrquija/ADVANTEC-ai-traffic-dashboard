@@ -423,7 +423,7 @@ def performance_chart(data: pd.DataFrame, metric_type: str = "delay"):
     fig = make_subplots(
         rows=2, cols=1,
         subplot_titles=("Time Series Analysis", "Distribution Analysis"),
-        vertical_spacing=0.3,
+        vertical_spacing=0.28,
     )
 
     fig.add_trace(
@@ -497,7 +497,7 @@ def volume_charts(
         rows=2,
         cols=1,
         subplot_titles=("Volume Distribution by Intersection", "Hourly Avg Volume Heatmap"),
-        vertical_spacing=0.12,
+        vertical_spacing=0.22,
     )
 
     # Box plots
@@ -1061,7 +1061,7 @@ def render_tab3_analysis():
                         fig = make_subplots(
                             rows=2, cols=1,
                             subplot_titles=("Speed Time Series Analysis", "Speed Distribution Analysis"),
-                            vertical_spacing=0.1,
+                            vertical_spacing=0.28,
                         )
 
                         # Time series plot
