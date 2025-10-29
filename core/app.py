@@ -894,7 +894,7 @@ with tab1:
                                                 display:flex;align-items:center;justify-content:center;
                                                 box-shadow:inset 0 0 0 1px rgba(255,255,255,.15);">📊</div>
                                     <div style="font-size:1.9rem;font-weight:800;letter-spacing:.2px;">
-                                      Travel Time Analysis: {route_label}
+                                      Iteris Clearguide Travel Time Analysis: {route_label}
                                     </div>
                                   </div>
                                   <div style="margin-top:10px;display:flex;flex-direction:column;gap:6px;">
