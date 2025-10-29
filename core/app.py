@@ -1497,7 +1497,7 @@ with tab2:
                                 raw["total_volume"] = pd.to_numeric(raw.get("total_volume", np.nan), errors="coerce")
                                 raw["local_datetime"] = pd.to_datetime(raw["local_datetime"])
 
-                                st.subheader("🚦 Traffic Demand Performance Indicators")
+                                st.subheader(" Traffic Demand Performance Indicators")
                                 if raw.empty or raw["total_volume"].dropna().empty:
                                     st.info("No raw hourly volume in this window.")
                                 else:

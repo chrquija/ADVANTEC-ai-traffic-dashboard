@@ -970,7 +970,7 @@ def render_tab3_analysis():
                     filtered_data[col] = pd.to_numeric(filtered_data[col], errors="coerce")
 
             # ---- KPIs Section (matching Tab 1 order and style) ----
-            st.subheader("🚦 KPI's (Key Performance Indicators)")
+            st.subheader(" KPI's (Key Performance Indicators)")
             if not filtered_data.empty:
                 # Calculate KPI values
                 avg_tt = float(np.nanmean(

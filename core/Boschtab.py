@@ -527,7 +527,7 @@ def render_bosch_tab():
             )
 
             # ---------- KPIs ----------
-            st.subheader("🚦 Multimodal Performance Indicators")
+            st.subheader(" Multimodal Performance Indicators")
 
             if not wide_df.empty:
                 total_volume = float(wide_df.get("total_counts", pd.Series([0])).sum())
