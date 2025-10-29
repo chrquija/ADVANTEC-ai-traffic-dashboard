@@ -678,7 +678,16 @@ with tab1:
                 min_date = corridor_df["local_datetime"].dt.date.min()
                 max_date = corridor_df["local_datetime"].dt.date.max()
 
+            # If Analysis Pro is OFF, restrict selectable dates to the last 60 days
+            if not od_mode:
+                cap_start = max_date - timedelta(days=60)
+                # Ensure within dataset bounds
+                min_date = max(min_date, cap_start)
+                # max_date remains the same (today/data max)
+
             st.markdown("## 📅 Date And Time")
+            if not od_mode:
+                st.info("Analysis Pro is OFF: Date range limited to the last 60 days.")
             date_range = date_range_preset_controls(min_date, max_date, key_prefix="perf")
 
             # Analysis Settings
@@ -761,6 +770,25 @@ with tab1:
                 working_df = base_df.copy()
                 route_label = "All Segments"
 
+                # Enforce 60-day date cap when Analysis Pro is OFF even if previous params had a wider range
+                if date_range and not od_mode:
+                    try:
+                        # Determine data bounds
+                        if not base_df.empty and "local_datetime" in base_df.columns:
+                            data_min = base_df["local_datetime"].dt.date.min()
+                            data_max = base_df["local_datetime"].dt.date.max()
+                        else:
+                            data_min = datetime.today().date() - timedelta(days=60)
+                            data_max = datetime.today().date()
+                        cap_start = max(data_min, data_max - timedelta(days=60))
+                        # Clamp the incoming range
+                        start, end = date_range
+                        start = max(start, cap_start)
+                        end = min(end, data_max)
+                        date_range = (start, end)
+                    except Exception:
+                        pass
+
                 # ensure numeric types early
                 for c in ["average_traveltime", "average_delay", "average_speed"]:
                     if c in working_df.columns:
@@ -805,26 +833,33 @@ with tab1:
                 with right_col_t1:
                     st.markdown('<div id="od-map-anchor"></div>', unsafe_allow_html=True)
                     st.markdown("##### Corridor Map", help="Stays visible while you scroll the analysis on the left.")
-                    fig_od = None
-                    if od_mode and origin and destination and origin != destination:
-                        try:
-                            fig_od = build_corridor_map(origin, destination)
-                        except Exception:
-                            fig_od = None
 
-                    if fig_od:
-                        try:
-                            fig_od.update_layout(height=MAP_HEIGHT, margin=dict(l=0, r=0, t=32, b=0))
-                        except Exception:
-                            pass
-                        st.markdown(f'<div class="cvag-map-card">', unsafe_allow_html=True)
-                        st.plotly_chart(fig_od, use_container_width=True, config=PLOTLY_CONFIG)
-                        st.caption(f"Corridor Segment: **{origin} → {destination}**")
+                    # When Analysis Pro is OFF, hide the map and show info message
+                    if not od_mode:
+                        st.markdown('<div class="cvag-map-card">', unsafe_allow_html=True)
+                        st.info("Analysis Pro Required to view the corridor map.")
                         st.markdown("</div>", unsafe_allow_html=True)
                     else:
-                        st.markdown('<div class="cvag-map-card">', unsafe_allow_html=True)
-                        st.info("Select an **Origin** and **Destination** to display the corridor map.")
-                        st.markdown("</div>", unsafe_allow_html=True)
+                        fig_od = None
+                        if origin and destination and origin != destination:
+                            try:
+                                fig_od = build_corridor_map(origin, destination)
+                            except Exception:
+                                fig_od = None
+
+                        if fig_od:
+                            try:
+                                fig_od.update_layout(height=MAP_HEIGHT, margin=dict(l=0, r=0, t=32, b=0))
+                            except Exception:
+                                pass
+                            st.markdown(f'<div class="cvag-map-card">', unsafe_allow_html=True)
+                            st.plotly_chart(fig_od, use_container_width=True, config=PLOTLY_CONFIG)
+                            st.caption(f"Corridor Segment: **{origin} → {destination}**")
+                            st.markdown("</div>", unsafe_allow_html=True)
+                        else:
+                            st.markdown('<div class="cvag-map-card">', unsafe_allow_html=True)
+                            st.info("Select an **Origin** and **Destination** to display the corridor map.")
+                            st.markdown("</div>", unsafe_allow_html=True)
 
                 # Left/main content
                 with main_col_t1:
@@ -1225,26 +1260,29 @@ with tab1:
                                                 },
                                             )
 
-                                            st.download_button(
-                                                "⬇️ Download Bottleneck Table (CSV)",
-                                                data=final.to_csv(index=False).encode("utf-8"),
-                                                file_name="bottlenecks.csv",
-                                                mime="text/csv",
-                                            )
-                                            st.download_button(
-                                                "⬇️ Download Filtered Performance (CSV)",
-                                                data=filtered_data.to_csv(index=False).encode("utf-8"),
-                                                file_name="performance_filtered.csv",
-                                                mime="text/csv",
-                                            )
-                                            # Add your new 5-minute download button
-                                            st.download_button(
-                                                "⬇️ Download Raw CSV (5-minute)",
-                                                data=create_5min_data(filtered_data).to_csv(index=False).encode(
-                                                    "utf-8"),
-                                                file_name="performance_5min_raw.csv",
-                                                mime="text/csv",
-                                            )
+                                            if od_mode:
+                                                st.download_button(
+                                                    "⬇️ Download Bottleneck Table (CSV)",
+                                                    data=final.to_csv(index=False).encode("utf-8"),
+                                                    file_name="bottlenecks.csv",
+                                                    mime="text/csv",
+                                                )
+                                                st.download_button(
+                                                    "⬇️ Download Filtered Performance (CSV)",
+                                                    data=filtered_data.to_csv(index=False).encode("utf-8"),
+                                                    file_name="performance_filtered.csv",
+                                                    mime="text/csv",
+                                                )
+                                                # Add your new 5-minute download button
+                                                st.download_button(
+                                                    "⬇️ Download Raw CSV (5-minute)",
+                                                    data=create_5min_data(filtered_data).to_csv(index=False).encode(
+                                                        "utf-8"),
+                                                    file_name="performance_5min_raw.csv",
+                                                    mime="text/csv",
+                                                )
+                                            else:
+                                                st.info("Analysis Pro Required to download data files.")
                                         except Exception as e:
                                             st.error(f"❌ Error in performance analysis: {e}")
 
