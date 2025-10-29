@@ -884,7 +884,7 @@ def render_vantage_tab():
             raw["volume"] = pd.to_numeric(raw["volume"], errors="coerce")
             raw["local_datetime"] = pd.to_datetime(raw["local_datetime"])
 
-            st.subheader(f"🚦 {mode_label} Volume Performance Indicators")
+            st.subheader(f"🚦 {mode_label} Demand Performance Indicators")
             if not raw.empty and raw["volume"].notna().any():
                 bucket_all = _prep_bucket(raw, granularity).groupby("local_datetime", as_index=False)["volume"].sum().sort_values("local_datetime")
                 if granularity == "Monthly":
