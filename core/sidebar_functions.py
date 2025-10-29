@@ -475,7 +475,8 @@ def performance_chart(data: pd.DataFrame, metric_type: str = "delay"):
     fig = make_subplots(
         rows=2, cols=1,
         subplot_titles=("Time Series Analysis", "Distribution Analysis"),
-        vertical_spacing=0.1,
+        # Increase spacing between the top chart and the Distribution subtitle to prevent overlap
+        vertical_spacing=0.18,
     )
 
     # Time series plot
