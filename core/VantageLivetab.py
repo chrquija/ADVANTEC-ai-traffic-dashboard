@@ -794,7 +794,7 @@ def render_vantage_tab():
             span = (date_range[1] - date_range[0]).days + 1
             total_obs = len(analysis_df)
             header_title = (
-                f"{mode_label} Volume Analysis: {intersection}"
+                f"Iteris Vantagelive {mode_label} Volume Analysis: {intersection}"
                 if intersection != "All Intersections"
                 else f"{mode_label} Volume Analysis: Washington Street Corridor"
             )
