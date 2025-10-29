@@ -776,3 +776,88 @@ def process_traffic_data(df, date_range, granularity, time_filter=None, start_ho
 
     # Fallback - return filtered df
     return df.sort_values("local_datetime").reset_index(drop=True)
+
+#Function to help download 5 minute CSV
+def create_5min_data(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Convert filtered data to 5-minute intervals by interpolating between existing data points.
+    This creates more granular data for detailed analysis without requiring actual 5-minute source data.
+    """
+    if df is None or df.empty:
+        return pd.DataFrame()
+
+    # Make a copy and ensure datetime column exists
+    result_df = df.copy()
+    if "local_datetime" not in result_df.columns:
+        return result_df
+
+    # Ensure datetime is properly formatted
+    result_df["local_datetime"] = pd.to_datetime(result_df["local_datetime"], errors="coerce")
+    result_df = result_df.dropna(subset=["local_datetime"]).sort_values("local_datetime")
+
+    if len(result_df) < 2:
+        return result_df
+
+    # Create 5-minute intervals between min and max dates
+    start_time = result_df["local_datetime"].min().floor("5T")
+    end_time = result_df["local_datetime"].max().ceil("5T")
+
+    # Generate 5-minute time range
+    time_range = pd.date_range(start=start_time, end=end_time, freq="5T")
+
+    # For each unique combination of non-datetime columns, interpolate
+    id_cols = [col for col in result_df.columns if col not in ["local_datetime"]
+               and not pd.api.types.is_numeric_dtype(result_df[col])]
+    numeric_cols = [col for col in result_df.columns
+                    if col != "local_datetime" and pd.api.types.is_numeric_dtype(result_df[col])]
+
+    if not id_cols:  # If no grouping columns, treat as single series
+        # Simple case - just one series to interpolate
+        temp_df = pd.DataFrame({"local_datetime": time_range})
+        merged = pd.merge(temp_df, result_df, on="local_datetime", how="left")
+
+        # Interpolate numeric columns
+        for col in numeric_cols:
+            if col in merged.columns:
+                merged[col] = merged[col].interpolate(method="time")
+
+        return merged.dropna()
+
+    # Complex case - multiple groups to interpolate
+    all_interpolated = []
+
+    for group_vals, group_df in result_df.groupby(id_cols):
+        if len(group_df) < 2:
+            continue
+
+        # Create time range for this group
+        group_start = group_df["local_datetime"].min().floor("5T")
+        group_end = group_df["local_datetime"].max().ceil("5T")
+        group_time_range = pd.date_range(start=group_start, end=group_end, freq="5T")
+
+        # Create base dataframe with 5-minute intervals
+        temp_df = pd.DataFrame({"local_datetime": group_time_range})
+
+        # Add the group identifier columns
+        if isinstance(group_vals, tuple):
+            for i, col in enumerate(id_cols):
+                temp_df[col] = group_vals[i]
+        else:
+            temp_df[id_cols[0]] = group_vals
+
+        # Merge with existing data
+        merged = pd.merge(temp_df, group_df, on=["local_datetime"] + id_cols, how="left")
+
+        # Interpolate numeric columns
+        for col in numeric_cols:
+            if col in merged.columns:
+                merged[col] = merged[col].interpolate(method="time")
+
+        # Only keep rows that have interpolated data
+        merged = merged.dropna(subset=numeric_cols, how="all")
+        all_interpolated.append(merged)
+
+    if all_interpolated:
+        return pd.concat(all_interpolated, ignore_index=True).sort_values("local_datetime")
+    else:
+        return pd.DataFrame()

@@ -31,6 +31,7 @@ from sidebar_functions import (
     date_range_preset_controls,
     compute_perf_kpis_interpretable,
     render_badge,
+    create_5min_data,
 )
 
 # Cycle length section
@@ -626,7 +627,7 @@ with tab1:
                         dest_index = len(node_list) - 1
 
                     with cA:
-                        origin = st.selectbox("Origin", node_list, index=origin_index, key="od_origin")
+                        origin = st.selectbox("Origin", node_list, key="od_origin")
                     with flip_col:
                         # Center the flip button visually
                         st.markdown("<div style='height: 0.5rem'></div>", unsafe_allow_html=True)
@@ -638,7 +639,7 @@ with tab1:
                             on_click=_flip_od_state,
                         )
                     with cB:
-                        destination = st.selectbox("Destination", node_list, index=dest_index, key="od_destination")
+                        destination = st.selectbox("Destination", node_list, key="od_destination")
 
                     # Route direction indicator
                     try:
@@ -1234,6 +1235,14 @@ with tab1:
                                                 "⬇️ Download Filtered Performance (CSV)",
                                                 data=filtered_data.to_csv(index=False).encode("utf-8"),
                                                 file_name="performance_filtered.csv",
+                                                mime="text/csv",
+                                            )
+                                            # Add your new 5-minute download button
+                                            st.download_button(
+                                                "⬇️ Download Raw CSV (5-minute)",
+                                                data=create_5min_data(filtered_data).to_csv(index=False).encode(
+                                                    "utf-8"),
+                                                file_name="performance_5min_raw.csv",
                                                 mime="text/csv",
                                             )
                                         except Exception as e:
