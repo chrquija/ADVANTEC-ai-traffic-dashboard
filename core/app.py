@@ -1258,6 +1258,29 @@ with tab1:
                                             )
 
                                             if od_mode:
+                                                # Premium title block for downloads (buttons and file names unchanged)
+                                                st.markdown(
+                                                    """
+                                                    <div style="
+                                                        background: linear-gradient(135deg, #0f172a 0%, #111827 100%);
+                                                        border: 1px solid rgba(148,163,184,0.25);
+                                                        padding: 14px 16px; border-radius: 14px; margin: 8px 0 12px;
+                                                        box-shadow: 0 6px 20px rgba(2,6,23,0.35), inset 0 0 0 1px rgba(255,255,255,0.02);
+                                                    ">
+                                                      <div style="display:flex; align-items:center; gap:12px;">
+                                                        <div style="width:36px;height:36px;border-radius:10px; display:flex; align-items:center; justify-content:center;
+                                                                    background: linear-gradient(135deg,#fde047,#f59e0b);
+                                                                    color:#111; font-weight:900; box-shadow: 0 2px 8px rgba(245,158,11,.45);">⬇️</div>
+                                                        <div>
+                                                          <div style="font-size:1.05rem; font-weight:800; letter-spacing:.2px; color:#e5e7eb;">Premium Data Exports</div>
+                                                          <div style="font-size:.85rem; color:#94a3b8; margin-top:2px;">Download production‑ready CSVs for offline analysis and reporting.</div>
+                                                        </div>
+                                                      </div>
+                                                    </div>
+                                                    """,
+                                                    unsafe_allow_html=True,
+                                                )
+
                                                 st.download_button(
                                                     "⬇️ Download Bottleneck Table (CSV)",
                                                     data=final.to_csv(index=False).encode("utf-8"),
