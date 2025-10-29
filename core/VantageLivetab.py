@@ -796,7 +796,7 @@ def render_vantage_tab():
             header_title = (
                 f"Iteris Vantagelive {mode_label} Volume Analysis: {intersection}"
                 if intersection != "All Intersections"
-                else f"{mode_label} Volume Analysis: Washington Street Corridor"
+                else f"Iteris Vantagelive {mode_label} Volume Analysis: Washington Street Corridor"
             )
             emoji = _mode_emoji("Vehicles" if mode_label == "All Modes" else mode_label)
             st.markdown(
