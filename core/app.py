@@ -1104,35 +1104,35 @@ with tab1:
                                                                             ### Performance Rating Categories
                                                                             """)
 
-                                        # Create a visual legend with colored badges
-                                        legend_col1, legend_col2, legend_col3, legend_col4, legend_col5 = st.columns(5)
-                                        with legend_col1:
-                                            st.markdown(
-                                                '<span class="performance-badge badge-excellent">🟢 Excellent</span>',
-                                                unsafe_allow_html=True)
-                                            st.caption("Score: 0-20")
-                                            st.caption("Optimal flow")
-                                        with legend_col2:
-                                            st.markdown('<span class="performance-badge badge-good">🔵 Good</span>',
-                                                        unsafe_allow_html=True)
-                                            st.caption("Score: 20-40")
-                                            st.caption("Minor delays")
-                                        with legend_col3:
-                                            st.markdown('<span class="performance-badge badge-fair">🟡 Fair</span>',
-                                                        unsafe_allow_html=True)
-                                            st.caption("Score: 40-60")
-                                            st.caption("Moderate congestion")
-                                        with legend_col4:
-                                            st.markdown('<span class="performance-badge badge-poor">🟠 Poor</span>',
-                                                        unsafe_allow_html=True)
-                                            st.caption("Score: 60-80")
-                                            st.caption("Significant delays")
-                                        with legend_col5:
-                                            st.markdown(
-                                                '<span class="performance-badge badge-critical">🔴 Critical</span>',
-                                                unsafe_allow_html=True)
-                                            st.caption("Score: 80-100")
-                                            st.caption("Severe bottleneck")
+                                            # Create a visual legend with colored badges (kept inside expander)
+                                            legend_col1, legend_col2, legend_col3, legend_col4, legend_col5 = st.columns(5)
+                                            with legend_col1:
+                                                st.markdown(
+                                                    '<span class="performance-badge badge-excellent">🟢 Excellent</span>',
+                                                    unsafe_allow_html=True)
+                                                st.caption("Score: 0-20")
+                                                st.caption("Optimal flow")
+                                            with legend_col2:
+                                                st.markdown('<span class="performance-badge badge-good">🔵 Good</span>',
+                                                            unsafe_allow_html=True)
+                                                st.caption("Score: 20-40")
+                                                st.caption("Minor delays")
+                                            with legend_col3:
+                                                st.markdown('<span class="performance-badge badge-fair">🟡 Fair</span>',
+                                                            unsafe_allow_html=True)
+                                                st.caption("Score: 40-60")
+                                                st.caption("Moderate congestion")
+                                            with legend_col4:
+                                                st.markdown('<span class="performance-badge badge-poor">🟠 Poor</span>',
+                                                            unsafe_allow_html=True)
+                                                st.caption("Score: 60-80")
+                                                st.caption("Significant delays")
+                                            with legend_col5:
+                                                st.markdown(
+                                                    '<span class="performance-badge badge-critical">🔴 Critical</span>',
+                                                    unsafe_allow_html=True)
+                                                st.caption("Score: 80-100")
+                                                st.caption("Severe bottleneck")
 
 
                                     if od_mode and 'raw_data' in locals() and not raw_data.empty and "segment_name" in working_df.columns:
