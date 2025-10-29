@@ -778,6 +778,7 @@ def process_traffic_data(df, date_range, granularity, time_filter=None, start_ho
     return df.sort_values("local_datetime").reset_index(drop=True)
 
 #Function to help download 5 minute CSV
+
 def create_5min_data(df: pd.DataFrame) -> pd.DataFrame:
     """
     Convert filtered data to 5-minute intervals by interpolating between existing data points.
@@ -816,11 +817,16 @@ def create_5min_data(df: pd.DataFrame) -> pd.DataFrame:
         temp_df = pd.DataFrame({"local_datetime": time_range})
         merged = pd.merge(temp_df, result_df, on="local_datetime", how="left")
 
-        # Interpolate numeric columns
-        for col in numeric_cols:
-            if col in merged.columns:
-                merged[col] = merged[col].interpolate(method="time")
+        # Set datetime as index for time-based interpolation
+        merged_indexed = merged.set_index("local_datetime")
 
+        # Interpolate numeric columns using linear method (safer than time method)
+        for col in numeric_cols:
+            if col in merged_indexed.columns:
+                merged_indexed[col] = merged_indexed[col].interpolate(method="linear")
+
+        # Reset index to get datetime back as column
+        merged = merged_indexed.reset_index()
         return merged.dropna()
 
     # Complex case - multiple groups to interpolate
@@ -848,10 +854,16 @@ def create_5min_data(df: pd.DataFrame) -> pd.DataFrame:
         # Merge with existing data
         merged = pd.merge(temp_df, group_df, on=["local_datetime"] + id_cols, how="left")
 
-        # Interpolate numeric columns
+        # Set datetime as index for interpolation
+        merged_indexed = merged.set_index("local_datetime")
+
+        # Interpolate numeric columns using linear method
         for col in numeric_cols:
-            if col in merged.columns:
-                merged[col] = merged[col].interpolate(method="time")
+            if col in merged_indexed.columns:
+                merged_indexed[col] = merged_indexed[col].interpolate(method="linear")
+
+        # Reset index to get datetime back as column
+        merged = merged_indexed.reset_index()
 
         # Only keep rows that have interpolated data
         merged = merged.dropna(subset=numeric_cols, how="all")
