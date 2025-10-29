@@ -950,7 +950,7 @@ with tab1:
                                     st.info("No Prediction in this window.")
                                 else:
                                     step("Computing KPIs", 70)
-                                    st.subheader("🚦 KPI's (Key Performance Indicators)")
+                                    st.subheader("KPI's (Key Performance Indicators)")
                                     k = compute_perf_kpis_interpretable(raw_data, HIGH_DELAY_SEC)
 
                                     buffer_minutes = max(0.0, k["planning_time"]["value"] - k["avg_tt"]["value"])
