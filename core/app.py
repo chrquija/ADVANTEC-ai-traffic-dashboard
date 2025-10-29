@@ -597,12 +597,12 @@ with tab1:
             od_mode = st.checkbox(
                 "Analysis Pro",
                 value=True,
-                help="Allows you the power to select Origin and Destination. ",
+                help="Unlocks advanced analysis (tables, downloads) and removes the 60-day cap.",
                 key="od_mode_perf",
             )
 
             origin, destination = None, None
-            if od_mode and not corridor_df.empty:
+            if not corridor_df.empty:
                 nodes_in_data = _canonical_order_in_data(corridor_df)
                 node_list = nodes_in_data if len(nodes_in_data) >= 2 else _build_node_order(corridor_df)
 
