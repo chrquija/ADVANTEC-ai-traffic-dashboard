@@ -1261,13 +1261,13 @@ with tab1:
                                                 st.download_button(
                                                     "⬇️ Download Bottleneck Table (CSV)",
                                                     data=final.to_csv(index=False).encode("utf-8"),
-                                                    file_name="bottlenecks.csv",
+                                                    file_name="CVSYNC_bottlenecks_cquijano.csv",
                                                     mime="text/csv",
                                                 )
                                                 st.download_button(
-                                                    "⬇️ Download Filtered Performance (CSV)",
+                                                    "⬇️ Download Raw CSV (selected filters)",
                                                     data=filtered_data.to_csv(index=False).encode("utf-8"),
-                                                    file_name="performance_filtered.csv",
+                                                    file_name="Filtered_CVSYNCDashboard_RAWDATA_cquijano.csv",
                                                     mime="text/csv",
                                                 )
                                                 # Add your new 5-minute download button
@@ -1275,7 +1275,7 @@ with tab1:
                                                     "⬇️ Download Raw CSV (5-minute)",
                                                     data=create_5min_data(filtered_data).to_csv(index=False).encode(
                                                         "utf-8"),
-                                                    file_name="performance_5min_raw.csv",
+                                                    file_name="5-minute_CVSYNCDashboard_RAWDATA_cquijano.csv",
                                                     mime="text/csv",
                                                 )
                                             else:
