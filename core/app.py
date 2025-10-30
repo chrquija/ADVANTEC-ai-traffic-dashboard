@@ -660,11 +660,25 @@ with tab1:
 
                     if route_text:
                         st.markdown(
-                            f"""
-                            <div style="margin-top: 0.25rem; padding: 6px 10px; border-radius: 8px; background: rgba(79,172,254,0.08); border: 1px solid rgba(79,172,254,0.25); color: #123; font-weight: 600;">
-                                {route_text}
-                            </div>
+                            """
+                            <style>
+                              .od-route-chip {
+                                margin-top: 0.25rem; padding: 6px 10px; border-radius: 8px; font-weight: 700;
+                                background: rgba(79,172,254,0.08); border: 1px solid rgba(79,172,254,0.25); color: #0b2538;
+                              }
+                              @media (prefers-color-scheme: dark) {
+                                .od-route-chip {
+                                  background: rgba(79,172,254,0.12);
+                                  border-color: rgba(79,172,254,0.45);
+                                  color: #e6f2ff; /* high-contrast for dark mode */
+                                }
+                              }
+                            </style>
                             """,
+                            unsafe_allow_html=True,
+                        )
+                        st.markdown(
+                            f'<div class="od-route-chip">{route_text}</div>',
                             unsafe_allow_html=True,
                         )
                 else:
