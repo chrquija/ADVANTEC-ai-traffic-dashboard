@@ -1387,9 +1387,42 @@ with tab2:
 
             st.caption("Select Intersection(s) and Date Range")
             st.caption("Data: Vehicle Volume")
-            intersections = ["All Intersections"] + sorted(
+            intersections = ["Select"] + (["All Intersections"] + sorted(
                 volume_df["intersection_name"].dropna().unique().tolist()
-            ) if not volume_df.empty and "intersection_name" in volume_df.columns else ["All Intersections"]
+            ) if not volume_df.empty and "intersection_name" in volume_df.columns else ["All Intersections"]) 
+
+            # --- Hydrate from URL query params (once) ---
+            if not st.session_state.get("t2_qp_hydrated", False):
+                qp = st.query_params
+                try:
+                    qp_inter = qp.get("t2_intersection")
+                    if qp_inter and qp_inter in intersections and "intersection_vol" not in st.session_state:
+                        st.session_state["intersection_vol"] = qp_inter
+
+                    # If a prior search was committed, restore it
+                    if qp.get("t2_ready") == "1":
+                        # Build restored params
+                        ds = qp.get("t2_date_start")
+                        de = qp.get("t2_date_end")
+                        try:
+                            d_start = pd.to_datetime(ds).date() if ds else None
+                            d_end = pd.to_datetime(de).date() if de else None
+                        except Exception:
+                            d_start = d_end = None
+                        gran = qp.get("t2_granularity") or "Hourly"
+                        direc = qp.get("t2_direction") or "All Directions"
+                        inter = qp_inter if qp_inter in intersections else st.session_state.get("intersection_vol", "Select")
+                        t2_params_h = {
+                            "intersection": inter or "Select",
+                            "date_range_vol": (d_start, d_end) if d_start and d_end else None,
+                            "granularity_vol": gran,
+                            "direction_filter": direc,
+                        }
+                        st.session_state["t2_params"] = t2_params_h
+                        st.session_state["t2_ready"] = True
+                        st.session_state["last_active_tab"] = "t2"
+                finally:
+                    st.session_state["t2_qp_hydrated"] = True
 
             st.markdown("## 🚦 Select Intersection")
             intersection = st.selectbox(
@@ -1399,12 +1432,49 @@ with tab2:
                 label_visibility="collapsed",
             )
 
-            # Availability preview for selected intersection (before date picker)
+            # Detect selection changes to drive loading animation and URL state
+            prev_intersection = st.session_state.get("intersection_vol_prev")
+            if prev_intersection != intersection:
+                st.session_state["intersection_vol_prev"] = intersection
+                # Update URL query params for persistence
+                if intersection != "Select":
+                    # Loading bar while we compute/refresh availability UI
+                    pb = st.progress(0, text="Loading Data availability info...")
+                    for i in range(0, 101, 10):
+                        time.sleep(0.02)
+                        pb.progress(i, text="Loading Data availability info...")
+                    pb.empty()
+                    try:
+                        st.query_params.update(t2_intersection=intersection)
+                        # Do not mark ready unless user presses Search
+                        if "t2_ready" in st.query_params:
+                            del st.query_params["t2_ready"]
+                        for k in ("t2_date_start", "t2_date_end", "t2_granularity", "t2_direction"):
+                            if k in st.query_params:
+                                del st.query_params[k]
+                    except Exception:
+                        pass
+                else:
+                    # User re-selected placeholder: hide controls and clear state + URL
+                    for k in ("t2_ready", "t2_params"):
+                        if k in st.session_state:
+                            del st.session_state[k]
+                    try:
+                        for k in ("t2_intersection", "t2_ready", "t2_date_start", "t2_date_end", "t2_granularity", "t2_direction"):
+                            if k in st.query_params:
+                                del st.query_params[k]
+                    except Exception:
+                        pass
+
+            # Availability preview for selected intersection (always visible)
             try:
+                # When in initial state ("Select"), summarize overall dataset
+                base_df = volume_df if volume_df is not None else pd.DataFrame()
+                intersection_for_avail = None if intersection == "Select" else intersection
                 avail = compute_data_availability(
-                    volume_df if volume_df is not None else pd.DataFrame(),
+                    base_df,
                     intersection_col="intersection_name",
-                    intersection=intersection,
+                    intersection=intersection_for_avail,
                     max_gaps=3,
                     current_date=datetime.now(),
                 )
@@ -1424,45 +1494,76 @@ with tab2:
                 # Don't fail sidebar if preview errors
                 pass
 
-            if volume_df.empty or "local_datetime" not in volume_df.columns:
-                min_date = datetime.today().date() - timedelta(days=7)
-                max_date = datetime.today().date()
+            # Progressive disclosure: only render the rest after a selection (including "All Intersections")
+            if intersection != "Select":
+                if volume_df.empty or "local_datetime" not in volume_df.columns:
+                    min_date = datetime.today().date() - timedelta(days=7)
+                    max_date = datetime.today().date()
+                else:
+                    min_date = volume_df["local_datetime"].dt.date.min()
+                    max_date = volume_df["local_datetime"].dt.date.max()
+
+                st.markdown("## 📅 Date And Time")
+                date_range_vol = date_range_preset_controls(min_date, max_date, key_prefix="vol")
+
+                st.markdown("## Granularity")
+                granularity_vol = st.selectbox(
+                    "Data Aggregation",
+                    ["Hourly", "Daily", "Weekly", "Monthly"],
+                    index=0,
+                    key="granularity_vol",
+                )
+
+                if not volume_df.empty and "direction" in volume_df.columns:
+                    direction_options = ["All Directions"] + sorted(volume_df["direction"].dropna().unique().tolist())
+                else:
+                    direction_options = ["All Directions"]
+                direction_filter = st.selectbox("🔄 Direction Filter", direction_options, key="direction_filter_vol")
+
+                # track uncommitted controls
+                t2_current = {
+                    "intersection": intersection,
+                    "date_range_vol": tuple(date_range_vol) if date_range_vol else None,
+                    "granularity_vol": granularity_vol,
+                    "direction_filter": direction_filter,
+                }
+                st.session_state["t2_current"] = t2_current
+
+                if st.button("🔍 **Search**", key="search_tab2", type="primary", use_container_width=True):
+                    st.session_state["t2_params"] = t2_current
+                    st.session_state["t2_ready"] = True
+                    set_active_search_tab("t2")
+                    st.session_state["last_active_tab"] = "t2"
+                    # Persist committed search to URL
+                    try:
+                        ds, de = None, None
+                        if t2_current.get("date_range_vol"):
+                            ds = t2_current["date_range_vol"][0].isoformat()
+                            de = t2_current["date_range_vol"][1].isoformat()
+                        st.query_params.update(
+                            t2_ready="1",
+                            t2_intersection=intersection,
+                            t2_date_start=ds or "",
+                            t2_date_end=de or "",
+                            t2_granularity=granularity_vol,
+                            t2_direction=direction_filter,
+                        )
+                    except Exception:
+                        pass
             else:
-                min_date = volume_df["local_datetime"].dt.date.min()
-                max_date = volume_df["local_datetime"].dt.date.max()
-
-            st.markdown("## 📅 Date And Time")
-            date_range_vol = date_range_preset_controls(min_date, max_date, key_prefix="vol")
-
-            st.markdown("## Granularity")
-            granularity_vol = st.selectbox(
-                "Data Aggregation",
-                ["Hourly", "Daily", "Weekly", "Monthly"],
-                index=0,
-                key="granularity_vol",
-            )
-
-            if not volume_df.empty and "direction" in volume_df.columns:
-                direction_options = ["All Directions"] + sorted(volume_df["direction"].dropna().unique().tolist())
-            else:
-                direction_options = ["All Directions"]
-            direction_filter = st.selectbox("🔄 Direction Filter", direction_options, key="direction_filter_vol")
-
-            # track uncommitted controls
-            t2_current = {
-                "intersection": intersection,
-                "date_range_vol": tuple(date_range_vol) if date_range_vol else None,
-                "granularity_vol": granularity_vol,
-                "direction_filter": direction_filter,
-            }
-            st.session_state["t2_current"] = t2_current
-
-
-            if st.button("🔍 **Search**", key="search_tab2", type="primary", use_container_width=True):
-                st.session_state["t2_params"] = t2_current
-                st.session_state["t2_ready"] = True
-                set_active_search_tab("t2")
-                st.session_state["last_active_tab"] = "t2"
+                # Clean up any stale current params to avoid main area prompts depending on hidden inputs
+                st.session_state["t2_current"] = {"intersection": intersection}
+                # Also ensure main area resets and URL cleared when user re-selects placeholder
+                if st.session_state.get("t2_ready"):
+                    del st.session_state["t2_ready"]
+                if st.session_state.get("t2_params"):
+                    del st.session_state["t2_params"]
+                try:
+                    for k in ("t2_intersection", "t2_ready", "t2_date_start", "t2_date_end", "t2_granularity", "t2_direction"):
+                        if k in st.query_params:
+                            del st.query_params[k]
+                except Exception:
+                    pass
 
 
     # -------- Main content area (render only when "Search" committed) --------
