@@ -662,17 +662,17 @@ def render_vantage_tab():
                         header_label = "Available Data for this Corridor"
                     else:
                         header_label = f"Available Data for {intersection}"
-                    st.markdown(f"**{header_label}:**")
-                    st.markdown(f"- Date Range: {start_str} → {end_str} {size_str}")
+                    st.caption(header_label)
+                    st.caption(f"• Date Range: {start_str} → {end_str} {size_str}")
                     tail_gap = avail.get("tail_gap")
                     if tail_gap:
-                        st.markdown("- Missing Data: " + tail_gap)
+                        st.caption("• Missing Data: " + tail_gap)
                     else:
                         gaps = avail.get("gaps") or []
                         if len(gaps) == 0:
-                            st.markdown("- Missing Data: None")
+                            st.caption("• Missing Data: None")
                         else:
-                            st.markdown("- Missing Data: " + "; ".join(gaps))
+                            st.caption("• Missing Data: " + "; ".join(gaps))
             except Exception:
                 pass
 

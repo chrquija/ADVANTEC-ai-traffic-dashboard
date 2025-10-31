@@ -1490,13 +1490,13 @@ with tab2:
                         header_label = "Available Data for this Corridor"
                     else:
                         header_label = f"Available Data for {intersection}"
-                    st.markdown(f"**{header_label}:**")
-                    st.markdown(f"- Date Range: {start_str} → {end_str} {size_str}")
+                    st.caption(header_label)
+                    st.caption(f"• Date Range: {start_str} → {end_str} {size_str}")
                     gaps = avail.get("gaps") or []
                     if len(gaps) == 0:
-                        st.markdown("- Missing Data: None")
+                        st.caption("• Missing Data: None")
                     else:
-                        st.markdown("- Missing Data: " + "; ".join(gaps))
+                        st.caption("• Missing Data: " + "; ".join(gaps))
             except Exception as _e:
                 # Don't fail sidebar if preview errors
                 pass
