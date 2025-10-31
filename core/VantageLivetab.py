@@ -657,7 +657,12 @@ def render_vantage_tab():
                     end_str = avail["end"].strftime("%b %d, %Y %I:%M %p")
                     mb = avail.get("size_mb", 0.0)
                     size_str = f"({mb:.1f} MB)" if mb > 0 else ""
-                    st.markdown("**Available Data for This Intersection:**")
+                    # Dynamic header based on selection
+                    if intersection == "All Intersections":
+                        header_label = "Available Data for this Corridor"
+                    else:
+                        header_label = f"Available Data for {intersection}"
+                    st.markdown(f"**{header_label}:**")
                     st.markdown(f"- Date Range: {start_str} → {end_str} {size_str}")
                     tail_gap = avail.get("tail_gap")
                     if tail_gap:

@@ -1483,7 +1483,14 @@ with tab2:
                     end_str = avail["end"].strftime("%b %d, %Y %I:%M %p")
                     mb = avail.get("size_mb", 0.0)
                     size_str = f"({mb:.1f} MB)" if mb > 0 else ""
-                    st.markdown("**Available Data for This Intersection:**")
+                    # Dynamic header based on selection
+                    if intersection == "Select":
+                        header_label = "Available Data"
+                    elif intersection == "All Intersections":
+                        header_label = "Available Data for this Corridor"
+                    else:
+                        header_label = f"Available Data for {intersection}"
+                    st.markdown(f"**{header_label}:**")
                     st.markdown(f"- Date Range: {start_str} → {end_str} {size_str}")
                     gaps = avail.get("gaps") or []
                     if len(gaps) == 0:
