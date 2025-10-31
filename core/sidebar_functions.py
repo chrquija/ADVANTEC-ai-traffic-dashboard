@@ -675,9 +675,9 @@ def compute_data_availability(
           so gaps after the last observed point up to `current_date` are counted as missing.
           Future times after `current_date` are never considered missing.
 
-    Returns a dict with keys: start (Timestamp), end (Timestamp), size_mb (float), gaps (list[str]).
+    Returns a dict with keys: start (Timestamp), end (Timestamp), size_mb (float), gaps (list[str]), tail_gap (str | None).
     """
-    out = {"start": None, "end": None, "size_mb": 0.0, "gaps": []}
+    out = {"start": None, "end": None, "size_mb": 0.0, "gaps": [], "tail_gap": None}
     if df is None or df.empty or datetime_col not in df.columns:
         return out
 
@@ -778,7 +778,26 @@ def compute_data_availability(
         actual = s.dt.floor("H")
 
     missing = pd.Index(full_index).difference(pd.Index(actual.unique())).sort_values()
-    if len(missing) == 0:
+    # Precompute step for later use (tail gap too)
+    step = (full_index[1] - full_index[0]) if len(full_index) > 1 else (pd.Timedelta(minutes=5) if isinstance(freq, str) and freq.endswith("T") else pd.Timedelta(hours=1))
+
+    # Tail gap (from first expected tick after the last observed tick → now/current_date), only if current_date > end_ts
+    tail_gap_tuple = None
+    try:
+        if now_cap is not None and now_cap > end_ts:
+            last_tick = actual.max()
+            next_tick = last_tick + step if pd.notna(last_tick) else start_ts
+            # We want to extend to the end of the present day (last expected tick today), not just 'now'.
+            # Compute the last tick of today based on the inferred step.
+            today_start = now_cap.normalize()
+            day_end_candidate = today_start + pd.Timedelta(days=1) - step
+            end_at = day_end_candidate
+            if end_at > next_tick:
+                tail_gap_tuple = (next_tick, end_at)
+    except Exception:
+        tail_gap_tuple = None
+
+    if len(missing) == 0 and not tail_gap_tuple:
         out["gaps"] = []
         return out
 
@@ -787,7 +806,6 @@ def compute_data_availability(
     if len(missing) > 0:
         run_start = missing[0]
         prev = missing[0]
-        step = (full_index[1] - full_index[0]) if len(full_index) > 1 else (pd.Timedelta(minutes=5) if freq.endswith("T") else pd.Timedelta(hours=1))
         for ts in missing[1:]:
             if ts - prev > step + pd.Timedelta(seconds=1):
                 gaps.append((run_start, prev))
@@ -813,6 +831,13 @@ def compute_data_availability(
         extra = len(gap_strs) - max_gaps
         gap_strs = gap_strs[:max_gaps] + [f"… and {extra} more"]
     out["gaps"] = gap_strs
+
+    # Attach tail gap formatted string if present
+    if tail_gap_tuple is not None:
+        out["tail_gap"] = _fmt_range(tail_gap_tuple[0], tail_gap_tuple[1])
+    else:
+        out["tail_gap"] = None
+
     return out
 
 

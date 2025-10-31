@@ -659,11 +659,15 @@ def render_vantage_tab():
                     size_str = f"({mb:.1f} MB)" if mb > 0 else ""
                     st.markdown("**Available Data for This Intersection:**")
                     st.markdown(f"- Date Range: {start_str} → {end_str} {size_str}")
-                    gaps = avail.get("gaps") or []
-                    if len(gaps) == 0:
-                        st.markdown("- Missing Data: None")
+                    tail_gap = avail.get("tail_gap")
+                    if tail_gap:
+                        st.markdown("- Missing Data: " + tail_gap)
                     else:
-                        st.markdown("- Missing Data: " + "; ".join(gaps))
+                        gaps = avail.get("gaps") or []
+                        if len(gaps) == 0:
+                            st.markdown("- Missing Data: None")
+                        else:
+                            st.markdown("- Missing Data: " + "; ".join(gaps))
             except Exception:
                 pass
 
