@@ -597,7 +597,7 @@ def render_vantage_tab():
 
     # -------- Sidebar controls --------
     with st.sidebar:
-        with st.expander("⚙️ Pg.4 ITERIS VANTAGE LIVE SETTINGS", expanded=False):
+        with st.expander("⚙️ Pg.4 ITERIS VANTAGE LIVE SETTINGS", expanded=True):
             active_t4 = is_active_tab("t4")
             if active_t4:
                 st.markdown(

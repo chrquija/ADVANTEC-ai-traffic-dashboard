@@ -1369,7 +1369,7 @@ with tab2:
     volume_df = get_volume_df()
 
     with st.sidebar:
-        with st.expander("⚙️ Pg.2 KINETIC MOBILITY SETTINGS", expanded=False):
+        with st.expander("⚙️ Pg.2 KINETIC MOBILITY SETTINGS", expanded=True):
 
             active_t2 = is_active_tab("t2")
             if active_t2:
