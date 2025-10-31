@@ -12,6 +12,7 @@ from sidebar_functions import (
     date_range_preset_controls,
     render_badge,
     get_performance_rating,
+    compute_data_availability,
 )
 from cycle_length_recommendations import render_cycle_length_section
 from Map import build_intersections_overview
@@ -626,6 +627,44 @@ def render_vantage_tab():
                 ["All Intersections"] + CANONICAL_INTERSECTIONS,
                 key="vantage_intersection",
             )
+
+            # Availability preview for selected intersection (before date picker)
+            try:
+                # Choose the dataset based on mode selection
+                if mode == "Vehicles":
+                    base_df = vehicles_df
+                elif mode == "Bikes":
+                    base_df = bikes_df
+                elif mode == "Pedestrians":
+                    base_df = peds_df
+                else:
+                    # Combined (All Modes): concatenate the three (aligned on datetime/name only)
+                    frames = []
+                    for d in (vehicles_df, bikes_df, peds_df):
+                        if d is not None and not d.empty:
+                            frames.append(d[[c for c in d.columns if c in ("local_datetime", "intersection_name")]])
+                    base_df = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+
+                avail = compute_data_availability(
+                    base_df if base_df is not None else pd.DataFrame(),
+                    intersection_col="intersection_name",
+                    intersection=intersection,
+                    max_gaps=3,
+                )
+                if avail.get("start") and avail.get("end"):
+                    start_str = avail["start"].strftime("%b %d, %Y")
+                    end_str = avail["end"].strftime("%b %d, %Y")
+                    mb = avail.get("size_mb", 0.0)
+                    size_str = f"({mb:.1f} MB)" if mb > 0 else ""
+                    st.markdown("**Available Data for This Intersection:**")
+                    st.markdown(f"- Date Range: {start_str} → {end_str} {size_str}")
+                    gaps = avail.get("gaps") or []
+                    if len(gaps) == 0:
+                        st.markdown("- Missing Data: None")
+                    else:
+                        st.markdown("- Missing Data: " + "; ".join(gaps))
+            except Exception:
+                pass
 
             # Date range bounds
             candidates = []

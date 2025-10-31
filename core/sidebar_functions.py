@@ -655,6 +655,132 @@ def date_range_preset_controls(min_date: datetime.date, max_date: datetime.date,
 
 
 # =========================
+# Data availability helper (for sidebar preview)
+# =========================
+def compute_data_availability(
+    df: pd.DataFrame,
+    *,
+    datetime_col: str = "local_datetime",
+    intersection_col: str | None = None,
+    intersection: str | None = None,
+    max_gaps: int = 3,
+) -> dict:
+    """
+    Compute a compact availability summary for an (optionally filtered) dataframe:
+      - date range (min → max)
+      - approximate size in MB (memory footprint of filtered frame)
+      - list of missing-date ranges (contiguous sequences), limited to `max_gaps` entries
+
+    Returns a dict with keys: start, end, size_mb, gaps (list[str]).
+    """
+    out = {"start": None, "end": None, "size_mb": 0.0, "gaps": []}
+    if df is None or df.empty or datetime_col not in df.columns:
+        return out
+
+    dfx = df.copy()
+    # Optional intersection filter
+    if intersection and intersection_col and intersection_col in dfx.columns and intersection != "All Intersections":
+        dfx = dfx[dfx[intersection_col] == intersection]
+        if dfx.empty:
+            return out
+
+    # Ensure datetime and sort
+    dfx[datetime_col] = pd.to_datetime(dfx[datetime_col], errors="coerce")
+    dfx = dfx.dropna(subset=[datetime_col]).sort_values(datetime_col).reset_index(drop=True)
+    if dfx.empty:
+        return out
+
+    start_ts = dfx[datetime_col].iloc[0]
+    end_ts = dfx[datetime_col].iloc[-1]
+    out["start"], out["end"] = start_ts, end_ts
+
+    # Approx memory size in MB of the filtered data
+    try:
+        size_mb = float(dfx.memory_usage(deep=True).sum()) / (1024.0 ** 2)
+    except Exception:
+        size_mb = 0.0
+    out["size_mb"] = size_mb
+
+    # Determine expected frequency; fall back to hourly if unclear
+    s = dfx[datetime_col]
+    freq = None
+    try:
+        freq = pd.infer_freq(s)
+    except Exception:
+        freq = None
+
+    if freq is None:
+        # Estimate most common delta in minutes; default to 60 min
+        deltas = s.diff().dropna().dt.total_seconds() / 60.0
+        if not deltas.empty:
+            common_min = float(deltas.mode().iloc[0])
+            # Snap to common granularities
+            if common_min <= 6:
+                freq = "5T"  # 5 min
+            elif common_min <= 15:
+                freq = "15T"
+            elif common_min <= 30:
+                freq = "30T"
+            else:
+                freq = "H"
+        else:
+            freq = "H"
+
+    # Build the expected index and find missing timestamps
+    try:
+        full_index = pd.date_range(start=start_ts.floor(freq), end=end_ts.ceil(freq), freq=freq)
+    except Exception:
+        # As a very safe fallback, use hourly
+        full_index = pd.date_range(start=start_ts.floor("H"), end=end_ts.ceil("H"), freq="H")
+        freq = "H"
+
+    # Align actual to same freq precision
+    try:
+        if freq.endswith("T"):
+            # minute-based
+            actual = s.dt.floor(freq)
+        else:
+            actual = s.dt.floor("H") if freq == "H" else s
+    except Exception:
+        actual = s.dt.floor("H")
+
+    missing = pd.Index(full_index).difference(pd.Index(actual.unique())).sort_values()
+    if len(missing) == 0:
+        out["gaps"] = []
+        return out
+
+    # Group consecutive missing timestamps into ranges
+    gaps = []
+    if len(missing) > 0:
+        run_start = missing[0]
+        prev = missing[0]
+        step = (full_index[1] - full_index[0]) if len(full_index) > 1 else pd.Timedelta(hours=1)
+        for ts in missing[1:]:
+            if ts - prev > step + pd.Timedelta(seconds=1):
+                gaps.append((run_start, prev))
+                run_start = ts
+            prev = ts
+        gaps.append((run_start, prev))
+
+    # Merge contiguous missing timestamps into calendar-date ranges
+    def _fmt_range(a: pd.Timestamp, b: pd.Timestamp) -> str:
+        a_d, b_d = a.date(), b.date()
+        if a_d == b_d:
+            return a_d.strftime("%b %d, %Y")
+        # Same year → omit year in start for brevity
+        if a.year == b.year:
+            return f"{a_d.strftime('%b %d')}–{b_d.strftime('%b %d, %Y')}"
+        return f"{a_d.strftime('%b %d, %Y')}–{b_d.strftime('%b %d, %Y')}"
+
+    gap_strs = [_fmt_range(a, b) for a, b in gaps]
+    if len(gap_strs) > max_gaps:
+        extra = len(gap_strs) - max_gaps
+        gap_strs = gap_strs[:max_gaps] + [f"… and {extra} more"]
+    out["gaps"] = gap_strs
+    return out
+
+
+# =========================
 # Processing
 # =========================
 def process_traffic_data(df, date_range, granularity, time_filter=None, start_hour=None, end_hour=None):

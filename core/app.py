@@ -32,6 +32,7 @@ from sidebar_functions import (
     compute_perf_kpis_interpretable,
     render_badge,
     create_5min_data,
+    compute_data_availability,
 )
 
 # Cycle length section
@@ -1397,6 +1398,30 @@ with tab2:
                 key="intersection_vol",
                 label_visibility="collapsed",
             )
+
+            # Availability preview for selected intersection (before date picker)
+            try:
+                avail = compute_data_availability(
+                    volume_df if volume_df is not None else pd.DataFrame(),
+                    intersection_col="intersection_name",
+                    intersection=intersection,
+                    max_gaps=3,
+                )
+                if avail.get("start") and avail.get("end"):
+                    start_str = avail["start"].strftime("%b %d, %Y")
+                    end_str = avail["end"].strftime("%b %d, %Y")
+                    mb = avail.get("size_mb", 0.0)
+                    size_str = f"({mb:.1f} MB)" if mb > 0 else ""
+                    st.markdown("**Available Data for This Intersection:**")
+                    st.markdown(f"- Date Range: {start_str} → {end_str} {size_str}")
+                    gaps = avail.get("gaps") or []
+                    if len(gaps) == 0:
+                        st.markdown("- Missing Data: None")
+                    else:
+                        st.markdown("- Missing Data: " + "; ".join(gaps))
+            except Exception as _e:
+                # Don't fail sidebar if preview errors
+                pass
 
             if volume_df.empty or "local_datetime" not in volume_df.columns:
                 min_date = datetime.today().date() - timedelta(days=7)
