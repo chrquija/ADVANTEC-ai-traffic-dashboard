@@ -650,10 +650,11 @@ def render_vantage_tab():
                     intersection_col="intersection_name",
                     intersection=intersection,
                     max_gaps=3,
+                    current_date=datetime.now(),
                 )
                 if avail.get("start") and avail.get("end"):
-                    start_str = avail["start"].strftime("%b %d, %Y")
-                    end_str = avail["end"].strftime("%b %d, %Y")
+                    start_str = avail["start"].strftime("%b %d, %Y %I:%M %p")
+                    end_str = avail["end"].strftime("%b %d, %Y %I:%M %p")
                     mb = avail.get("size_mb", 0.0)
                     size_str = f"({mb:.1f} MB)" if mb > 0 else ""
                     st.markdown("**Available Data for This Intersection:**")

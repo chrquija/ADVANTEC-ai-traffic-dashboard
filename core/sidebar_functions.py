@@ -664,14 +664,18 @@ def compute_data_availability(
     intersection_col: str | None = None,
     intersection: str | None = None,
     max_gaps: int = 3,
+    current_date: datetime | None = None,
 ) -> dict:
     """
     Compute a compact availability summary for an (optionally filtered) dataframe:
-      - date range (min → max)
+      - date/time range (min → max) of available data
       - approximate size in MB (memory footprint of filtered frame)
-      - list of missing-date ranges (contiguous sequences), limited to `max_gaps` entries
+      - list of missing ranges (contiguous sequences), limited to `max_gaps` entries
+        • If `current_date` is provided, expected timeline extends to `current_date` (now),
+          so gaps after the last observed point up to `current_date` are counted as missing.
+          Future times after `current_date` are never considered missing.
 
-    Returns a dict with keys: start, end, size_mb, gaps (list[str]).
+    Returns a dict with keys: start (Timestamp), end (Timestamp), size_mb (float), gaps (list[str]).
     """
     out = {"start": None, "end": None, "size_mb": 0.0, "gaps": []}
     if df is None or df.empty or datetime_col not in df.columns:
@@ -701,46 +705,75 @@ def compute_data_availability(
         size_mb = 0.0
     out["size_mb"] = size_mb
 
-    # Determine expected frequency; fall back to hourly if unclear
+    # Determine expected frequency robustly; prefer hourly when timestamps align on the hour
     s = dfx[datetime_col]
-    freq = None
+    # Normalize to naive timestamps for ops
     try:
-        freq = pd.infer_freq(s)
+        s = s.dt.tz_convert(None)
     except Exception:
-        freq = None
+        pass
 
-    if freq is None:
-        # Estimate most common delta in minutes; default to 60 min
-        deltas = s.diff().dropna().dt.total_seconds() / 60.0
-        if not deltas.empty:
-            common_min = float(deltas.mode().iloc[0])
-            # Snap to common granularities
+    inferred = None
+    try:
+        inferred = pd.infer_freq(s)
+    except Exception:
+        inferred = None
+
+    # Heuristic based on alignment of minutes within hour
+    minutes = s.dt.minute
+    seconds = s.dt.second
+    if seconds.notna().any() and (seconds != 0).any():
+        # If seconds present, fall back to minute-based checks
+        seconds_unique = seconds.dropna().unique()
+    # Prefer hourly if all timestamps land on :00
+    if minutes.notna().all() and (minutes == 0).all():
+        freq = "H"
+    elif (minutes % 15 == 0).all():
+        freq = "15T"
+    elif (minutes % 5 == 0).all():
+        freq = "5T"
+    else:
+        # Use mode of deltas in minutes and snap to common granularities
+        deltas_min = s.diff().dropna().dt.total_seconds() / 60.0
+        if not deltas_min.empty:
+            common_min = float(deltas_min.mode().iloc[0])
             if common_min <= 6:
-                freq = "5T"  # 5 min
+                freq = "5T"
             elif common_min <= 15:
                 freq = "15T"
             elif common_min <= 30:
                 freq = "30T"
+            elif common_min <= 90:
+                freq = "H"
             else:
+                # If very sparse, still treat as hourly for gap grouping
                 freq = "H"
         else:
-            freq = "H"
+            # Fall back to whatever Pandas inferred or hourly
+            freq = inferred if inferred in ("5T", "15T", "30T", "H") else "H"
+
+    # Build expected range up to current_date (if provided), otherwise up to end_ts
+    # Ensure we don't consider future past current_date
+    try:
+        now_cap = pd.Timestamp(current_date) if current_date is not None else None
+    except Exception:
+        now_cap = None
+    expected_end = now_cap if now_cap is not None and now_cap > end_ts else end_ts
 
     # Build the expected index and find missing timestamps
     try:
-        full_index = pd.date_range(start=start_ts.floor(freq), end=end_ts.ceil(freq), freq=freq)
+        full_index = pd.date_range(start=start_ts.floor(freq), end=expected_end.ceil(freq), freq=freq)
     except Exception:
         # As a very safe fallback, use hourly
-        full_index = pd.date_range(start=start_ts.floor("H"), end=end_ts.ceil("H"), freq="H")
+        full_index = pd.date_range(start=start_ts.floor("H"), end=expected_end.ceil("H"), freq="H")
         freq = "H"
 
     # Align actual to same freq precision
     try:
         if freq.endswith("T"):
-            # minute-based
             actual = s.dt.floor(freq)
         else:
-            actual = s.dt.floor("H") if freq == "H" else s
+            actual = s.dt.floor("H")
     except Exception:
         actual = s.dt.floor("H")
 
@@ -754,7 +787,7 @@ def compute_data_availability(
     if len(missing) > 0:
         run_start = missing[0]
         prev = missing[0]
-        step = (full_index[1] - full_index[0]) if len(full_index) > 1 else pd.Timedelta(hours=1)
+        step = (full_index[1] - full_index[0]) if len(full_index) > 1 else (pd.Timedelta(minutes=5) if freq.endswith("T") else pd.Timedelta(hours=1))
         for ts in missing[1:]:
             if ts - prev > step + pd.Timedelta(seconds=1):
                 gaps.append((run_start, prev))
@@ -762,15 +795,18 @@ def compute_data_availability(
             prev = ts
         gaps.append((run_start, prev))
 
-    # Merge contiguous missing timestamps into calendar-date ranges
+    # Format with times
     def _fmt_range(a: pd.Timestamp, b: pd.Timestamp) -> str:
-        a_d, b_d = a.date(), b.date()
-        if a_d == b_d:
-            return a_d.strftime("%b %d, %Y")
-        # Same year → omit year in start for brevity
+        same_day = (a.date() == b.date())
+        if same_day:
+            a_str = a.strftime("%b %d, %Y %I:%M %p")
+            b_str = b.strftime("%I:%M %p")
+            if a == b:
+                return a_str
+            return f"{a_str}–{b_str}"
         if a.year == b.year:
-            return f"{a_d.strftime('%b %d')}–{b_d.strftime('%b %d, %Y')}"
-        return f"{a_d.strftime('%b %d, %Y')}–{b_d.strftime('%b %d, %Y')}"
+            return f"{a.strftime('%b %d %I:%M %p')}–{b.strftime('%b %d, %Y %I:%M %p')}"
+        return f"{a.strftime('%b %d, %Y %I:%M %p')}–{b.strftime('%b %d, %Y %I:%M %p')}"
 
     gap_strs = [_fmt_range(a, b) for a, b in gaps]
     if len(gap_strs) > max_gaps:
