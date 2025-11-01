@@ -4,6 +4,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
+import time
 import plotly.graph_objects as go
 import plotly.express as px
 
@@ -624,9 +625,20 @@ def render_vantage_tab():
             st.markdown("## 🚦 Select Intersection")
             intersection = st.selectbox(
                 "Intersection",
-                ["All Intersections"] + CANONICAL_INTERSECTIONS,
+                ["Select", "All Intersections"] + CANONICAL_INTERSECTIONS,
                 key="vantage_intersection",
             )
+
+            # Loading animation when a real selection is made (leaving 'Select')
+            prev_vantage_intersection = st.session_state.get("vantage_intersection_prev")
+            if prev_vantage_intersection != intersection:
+                st.session_state["vantage_intersection_prev"] = intersection
+                if intersection != "Select":
+                    pb = st.progress(0, text="Loading Data availability info...")
+                    for i in range(0, 101, 10):
+                        time.sleep(0.02)
+                        pb.progress(i, text="Loading Data availability info...")
+                    pb.empty()
 
             # Availability preview for selected intersection (before date picker)
             try:
@@ -645,10 +657,12 @@ def render_vantage_tab():
                             frames.append(d[[c for c in d.columns if c in ("local_datetime", "intersection_name")]])
                     base_df = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
 
+                # When 'Select' is chosen, summarize the whole (mode) dataset by passing intersection=None
+                intersection_for_avail = None if intersection == "Select" else intersection
                 avail = compute_data_availability(
                     base_df if base_df is not None else pd.DataFrame(),
                     intersection_col="intersection_name",
-                    intersection=intersection,
+                    intersection=intersection_for_avail,
                     max_gaps=3,
                     current_date=datetime.now(),
                 )
@@ -658,7 +672,9 @@ def render_vantage_tab():
                     mb = avail.get("size_mb", 0.0)
                     size_str = f"({mb:.1f} MB)" if mb > 0 else ""
                     # Dynamic header based on selection
-                    if intersection == "All Intersections":
+                    if intersection == "Select":
+                        header_label = "Available Data"
+                    elif intersection == "All Intersections":
                         header_label = "Available Data for this Corridor"
                     else:
                         header_label = f"Available Data for {intersection}"
@@ -674,71 +690,74 @@ def render_vantage_tab():
                         else:
                             st.caption("• Missing Data: " + "; ".join(gaps))
             except Exception:
+                # Don’t break the sidebar if availability fails
                 pass
 
-            # Date range bounds
-            candidates = []
-            if not bikes_df.empty: candidates += [bikes_df["local_datetime"]]
-            if not vehicles_df.empty: candidates += [vehicles_df["local_datetime"]]
-            if not peds_df.empty: candidates += [peds_df["local_datetime"]]
-            if candidates:
-                min_date = min(c.min().date() for c in candidates)
-                max_date = max(c.max().date() for c in candidates)
-            else:
-                min_date = datetime.today().date() - timedelta(days=7)
-                max_date = datetime.today().date()
+            # Progressive disclosure: reveal the rest only after a valid selection
+            if intersection != "Select":
+                # Date range bounds
+                candidates = []
+                if not bikes_df.empty: candidates += [bikes_df["local_datetime"]]
+                if not vehicles_df.empty: candidates += [vehicles_df["local_datetime"]]
+                if not peds_df.empty: candidates += [peds_df["local_datetime"]]
+                if candidates:
+                    min_date = min(c.min().date() for c in candidates)
+                    max_date = max(c.max().date() for c in candidates)
+                else:
+                    min_date = datetime.today().date() - timedelta(days=7)
+                    max_date = datetime.today().date()
 
-            st.markdown("## 📅 Date And Time")
-            date_range = date_range_preset_controls(min_date, max_date, key_prefix="vantage")
+                st.markdown("## 📅 Date And Time")
+                date_range = date_range_preset_controls(min_date, max_date, key_prefix="vantage")
 
-            st.markdown("## Granularity")
-            granularity = st.selectbox(
-                "Data Aggregation",
-                ["Hourly", "Daily", "Weekly", "Monthly"],
-                index=1,  # Daily by default
-                key="granularity_vantage",
-            )
-
-            # (cleaner sidebar) — no extra headings for filters
-            direction_filter = st.selectbox(
-                "Direction",
-                ["All Directions", "NB", "SB", "EB", "WB"],
-                key="direction_filter_vantage",
-            )
-
-            turn_filter = None
-            if mode in ["Vehicles", "Combined (All Modes)"]:
-                turn_filter = st.selectbox(
-                    "Turn Type",
-                    ["All Turns", "Through", "Left", "Right"],
-                    key="turn_filter_vantage",
+                st.markdown("## Granularity")
+                granularity = st.selectbox(
+                    "Data Aggregation",
+                    ["Hourly", "Daily", "Weekly", "Monthly"],
+                    index=1,  # Daily by default
+                    key="granularity_vantage",
                 )
 
-            st.markdown("## 📊 Chart Type")
-            chart_type = st.radio(
-                "Visualization",
-                ["Trend (Line)", "Share (Pie)", "TMC (Turning Movement Counts)"],
-                index=0 if mode != "Bikes" else 1,
-                horizontal=True,
-                key="vantage_chart_type",
-            )
+                # (cleaner sidebar) — no extra headings for filters
+                direction_filter = st.selectbox(
+                    "Direction",
+                    ["All Directions", "NB", "SB", "EB", "WB"],
+                    key="direction_filter_vantage",
+                )
 
-            vantage_current = {
-                "mode": mode,
-                "intersection": intersection,
-                "date_range": tuple(date_range) if date_range else None,
-                "granularity": granularity,
-                "direction_filter": direction_filter,
-                "turn_filter": turn_filter,
-                "chart_type": chart_type,
-            }
-            st.session_state["vantage_current"] = vantage_current
+                turn_filter = None
+                if mode in ["Vehicles", "Combined (All Modes)"]:
+                    turn_filter = st.selectbox(
+                        "Turn Type",
+                        ["All Turns", "Through", "Left", "Right"],
+                        key="turn_filter_vantage",
+                    )
 
-            if st.button("🔍 **Search**", key="search_vantage", type="primary", use_container_width=True):
-                st.session_state["vantage_params"] = vantage_current
-                st.session_state["vantage_ready"] = True
-                set_active_search_tab("t4")
-                st.session_state["last_active_tab"] = "t4"
+                st.markdown("## 📊 Chart Type")
+                chart_type = st.radio(
+                    "Visualization",
+                    ["Trend (Line)", "Share (Pie)", "TMC (Turning Movement Counts)"],
+                    index=0 if mode != "Bikes" else 1,
+                    horizontal=True,
+                    key="vantage_chart_type",
+                )
+
+                vantage_current = {
+                    "mode": mode,
+                    "intersection": intersection,
+                    "date_range": tuple(date_range) if date_range else None,
+                    "granularity": granularity,
+                    "direction_filter": direction_filter,
+                    "turn_filter": turn_filter,
+                    "chart_type": chart_type,
+                }
+                st.session_state["vantage_current"] = vantage_current
+
+                if st.button("🔍 **Search**", key="search_vantage", type="primary", use_container_width=True):
+                    st.session_state["vantage_params"] = vantage_current
+                    st.session_state["vantage_ready"] = True
+                    set_active_search_tab("t4")
+                    st.session_state["last_active_tab"] = "t4"
 
     # -------- Main content area --------
     if not st.session_state.get("vantage_ready", False):
