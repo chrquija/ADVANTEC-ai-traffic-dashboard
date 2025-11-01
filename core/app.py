@@ -685,6 +685,85 @@ with tab1:
                 else:
                     st.info("Not enough nodes found to build O-D options.")
 
+            # ---- Loading animation when O-D changes ----
+            try:
+                od_pair = (st.session_state.get("od_origin"), st.session_state.get("od_destination"))
+                prev_od_pair = st.session_state.get("od_pair_prev")
+                if prev_od_pair != od_pair:
+                    st.session_state["od_pair_prev"] = od_pair
+                    # only show when both are selected and distinct
+                    if od_pair[0] and od_pair[1] and od_pair[0] != od_pair[1]:
+                        pb = st.progress(0, text="Loading Data availability info...")
+                        for i in range(0, 101, 10):
+                            time.sleep(0.02)
+                            pb.progress(i, text="Loading Data availability info...")
+                        pb.empty()
+            except Exception:
+                pass
+
+            # ---- Availability preview (always visible) ----
+            try:
+                base_df = corridor_df if corridor_df is not None else pd.DataFrame()
+                header_label = "Available Data"
+                dfx = base_df.copy()
+                path_mask = None
+                if origin and destination and origin != destination and dfx is not None and not dfx.empty:
+                    # Build path segments between origin and destination, inclusive
+                    nodes = _canonical_order_in_data(dfx)
+                    if origin in nodes and destination in nodes:
+                        oi = nodes.index(origin)
+                        di = nodes.index(destination)
+                        if oi < di:
+                            segs = [f"{nodes[i]} → {nodes[i+1]}" for i in range(oi, di)]
+                            dir_target = "nb"
+                        else:
+                            segs = [f"{nodes[i+1]} → {nodes[i]}" for i in range(di, oi)]
+                            dir_target = "sb"
+                        # Filter by segment names present
+                        if "segment_name" in dfx.columns:
+                            path_mask = dfx["segment_name"].isin(segs)
+                        # Filter by direction when available
+                        if "direction" in dfx.columns:
+                            try:
+                                dir_norm = normalize_dir(dfx["direction"])
+                                dir_mask = dir_norm == dir_target
+                                dfx = dfx[dir_mask]
+                            except Exception:
+                                pass
+                        if path_mask is not None:
+                            dfx = dfx[path_mask]
+                        # Dynamic header text
+                        arrow = "→" if oi < di else "←"
+                        header_label = f"Available Data for {origin} {arrow} {destination}"
+                    else:
+                        header_label = "Available Data for this Corridor"
+                elif origin and destination and origin == destination:
+                    header_label = "Available Data"
+                else:
+                    header_label = "Available Data for this Corridor"
+
+                avail = compute_data_availability(
+                    dfx if dfx is not None else pd.DataFrame(),
+                    datetime_col="local_datetime",
+                    max_gaps=3,
+                    current_date=datetime.now(),
+                )
+                if avail.get("start") and avail.get("end"):
+                    start_str = avail["start"].strftime("%b %d, %Y %I:%M %p")
+                    end_str = avail["end"].strftime("%b %d, %Y %I:%M %p")
+                    mb = avail.get("size_mb", 0.0)
+                    size_str = f"({mb:.1f} MB)" if mb > 0 else ""
+                    st.caption(header_label)
+                    st.caption(f"• Date Range: {start_str} → {end_str} {size_str}")
+                    gaps = avail.get("gaps") or []
+                    if len(gaps) == 0:
+                        st.caption("• Missing Data: None")
+                    else:
+                        st.caption("• Missing Data: " + "; ".join(gaps))
+            except Exception:
+                # keep sidebar resilient
+                pass
+
             # Analysis Period
             if corridor_df.empty or "local_datetime" not in corridor_df.columns:
                 min_date = datetime.today().date() - timedelta(days=7)
@@ -700,60 +779,65 @@ with tab1:
                 min_date = max(min_date, cap_start)
                 # max_date remains the same (today/data max)
 
-            st.markdown("## 📅 Date And Time")
-            if not od_mode:
-                st.info("Analysis Pro is OFF: Date range limited to the last 60 days.")
-            date_range = date_range_preset_controls(min_date, max_date, key_prefix="perf")
+            valid_od = bool(origin and destination and origin != destination)
+            if valid_od:
+                st.markdown("## 📅 Date And Time")
+                if not od_mode:
+                    st.info("Analysis Pro is OFF: Date range limited to the last 60 days.")
+                date_range = date_range_preset_controls(min_date, max_date, key_prefix="perf")
 
-            # Analysis Settings
-            st.markdown("## Granularity")
-            granularity = st.selectbox(
-                "Data Aggregation",
-                ["Hourly", "Daily", "Weekly", "Monthly"],
-                index=0,
-                key="granularity_perf",
-                help="Higher aggregation smooths trends but may hide peaks",
-            )
-
-            time_filter, start_hour, end_hour = None, None, None
-            if granularity == "Hourly":
-                time_filter = st.selectbox(
-                    "Time Period Focus",
-                    [
-                        "All Hours",
-                        "Peak Hours (7–9 AM, 4–6 PM)",
-                        "AM Peak (7–9 AM)",
-                        "PM Peak (4–6 PM)",
-                        "Off-Peak",
-                        "Custom Range",
-                    ],
-                    key="time_period_focus_perf",
+                # Analysis Settings
+                st.markdown("## Granularity")
+                granularity = st.selectbox(
+                    "Data Aggregation",
+                    ["Hourly", "Daily", "Weekly", "Monthly"],
+                    index=0,
+                    key="granularity_perf",
+                    help="Higher aggregation smooths trends but may hide peaks",
                 )
-                if time_filter == "Custom Range":
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        start_hour = st.number_input("Start Hour (0–23)", 0, 23, 7, step=1, key="start_hour_perf")
-                    with c2:
-                        end_hour = st.number_input("End Hour (1–24)", 1, 24, 18, step=1, key="end_hour_perf")
 
-            # track uncommitted controls
-            t1_current = {
-                "od_mode": od_mode,
-                "origin": origin,
-                "destination": destination,
-                "date_range": tuple(date_range) if date_range else None,
-                "granularity": granularity,
-                "time_filter": time_filter if granularity == "Hourly" else None,
-                "start_hour": start_hour if (granularity == "Hourly" and time_filter == "Custom Range") else None,
-                "end_hour": end_hour if (granularity == "Hourly" and time_filter == "Custom Range") else None,
-            }
-            st.session_state["t1_current"] = t1_current
+                time_filter, start_hour, end_hour = None, None, None
+                if granularity == "Hourly":
+                    time_filter = st.selectbox(
+                        "Time Period Focus",
+                        [
+                            "All Hours",
+                            "Peak Hours (7–9 AM, 4–6 PM)",
+                            "AM Peak (7–9 AM)",
+                            "PM Peak (4–6 PM)",
+                            "Off-Peak",
+                            "Custom Range",
+                        ],
+                        key="time_period_focus_perf",
+                    )
+                    if time_filter == "Custom Range":
+                        c1, c2 = st.columns(2)
+                        with c1:
+                            start_hour = st.number_input("Start Hour (0–23)", 0, 23, 7, step=1, key="start_hour_perf")
+                        with c2:
+                            end_hour = st.number_input("End Hour (1–24)", 1, 24, 18, step=1, key="end_hour_perf")
 
-            if st.button("🔍 **Search**", key="search_tab1", type="primary", use_container_width=True):
-                st.session_state["t1_params"] = t1_current
-                st.session_state["t1_ready"] = True
-                set_active_search_tab("t1")
-                st.session_state["last_active_tab"] = "t1"
+                # track uncommitted controls
+                t1_current = {
+                    "od_mode": od_mode,
+                    "origin": origin,
+                    "destination": destination,
+                    "date_range": tuple(date_range) if date_range else None,
+                    "granularity": granularity,
+                    "time_filter": time_filter if granularity == "Hourly" else None,
+                    "start_hour": start_hour if (granularity == "Hourly" and time_filter == "Custom Range") else None,
+                    "end_hour": end_hour if (granularity == "Hourly" and time_filter == "Custom Range") else None,
+                }
+                st.session_state["t1_current"] = t1_current
+
+                if st.button("🔍 **Search**", key="search_tab1", type="primary", use_container_width=True):
+                    st.session_state["t1_params"] = t1_current
+                    st.session_state["t1_ready"] = True
+                    set_active_search_tab("t1")
+                    st.session_state["last_active_tab"] = "t1"
+            else:
+                # Reset current to minimal to avoid stale diffs
+                st.session_state["t1_current"] = {"origin": origin, "destination": destination, "od_mode": od_mode}
 
     # -------- Main content area (render only when "Search" committed) --------
     t1_ready = st.session_state.get("t1_ready", False)
