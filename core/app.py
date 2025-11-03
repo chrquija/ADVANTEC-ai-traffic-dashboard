@@ -1480,7 +1480,7 @@ with tab2:
 
             st.caption("Select Intersection(s) and Date Range")
             st.caption("Data: Vehicle Volume")
-            intersections = ["Select"] + (["All Intersections"] + sorted(
+            intersections = ["SELECT"] + (["All Intersections"] + sorted(
                 volume_df["intersection_name"].dropna().unique().tolist()
             ) if not volume_df.empty and "intersection_name" in volume_df.columns else ["All Intersections"]) 
 
@@ -1504,9 +1504,9 @@ with tab2:
                             d_start = d_end = None
                         gran = qp.get("t2_granularity") or "Hourly"
                         direc = qp.get("t2_direction") or "All Directions"
-                        inter = qp_inter if qp_inter in intersections else st.session_state.get("intersection_vol", "Select")
+                        inter = qp_inter if qp_inter in intersections else st.session_state.get("intersection_vol", "SELECT")
                         t2_params_h = {
-                            "intersection": inter or "Select",
+                            "intersection": inter or "SELECT",
                             "date_range_vol": (d_start, d_end) if d_start and d_end else None,
                             "granularity_vol": gran,
                             "direction_filter": direc,
@@ -1530,7 +1530,7 @@ with tab2:
             if prev_intersection != intersection:
                 st.session_state["intersection_vol_prev"] = intersection
                 # Update URL query params for persistence
-                if intersection != "Select":
+                if intersection != "SELECT": 
                     # Loading bar while we compute/refresh availability UI
                     pb = st.progress(0, text="Loading Data availability info...")
                     for i in range(0, 101, 10):
@@ -1561,9 +1561,9 @@ with tab2:
 
             # Availability preview for selected intersection (always visible)
             try:
-                # When in initial state ("Select"), summarize overall dataset
+                # When in initial state ("SELECT"), summarize overall dataset
                 base_df = volume_df if volume_df is not None else pd.DataFrame()
-                intersection_for_avail = None if intersection == "Select" else intersection
+                intersection_for_avail = None if intersection == "SELECT" else intersection
                 avail = compute_data_availability(
                     base_df,
                     intersection_col="intersection_name",
@@ -1577,7 +1577,7 @@ with tab2:
                     mb = avail.get("size_mb", 0.0)
                     size_str = f"({mb:.1f} MB)" if mb > 0 else ""
                     # Dynamic header based on selection
-                    if intersection == "Select":
+                    if intersection == "SELECT":
                         header_label = "Available Data"
                     elif intersection == "All Intersections":
                         header_label = "Available Data for this Corridor"
@@ -1595,7 +1595,7 @@ with tab2:
                 pass
 
             # Progressive disclosure: only render the rest after a selection (including "All Intersections")
-            if intersection != "Select":
+            if intersection != "SELECT":
                 if volume_df.empty or "local_datetime" not in volume_df.columns:
                     min_date = datetime.today().date() - timedelta(days=7)
                     max_date = datetime.today().date()
