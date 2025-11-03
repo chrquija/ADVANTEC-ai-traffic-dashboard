@@ -344,38 +344,7 @@ def render_bosch_tab():
             st.caption("Select Corridor and Date Range")
             st.caption("Data: Multimodal Traffic from Bosch Sensors")
 
-            # Corridor selector (keys of BOSCH_RAW_URLS)
-            st.markdown("## 🛣️ Select Corridor")
-            corridor = st.selectbox(
-                "Corridor",
-                list(BOSCH_RAW_URLS.keys()),
-                key="bosch_corridor",
-            )
-
-            # Load data for selected corridor
-            bosch_df = load_bosch_data(corridor)
-
-            # Date range
-            if bosch_df.empty or "local_datetime" not in bosch_df.columns:
-                min_date = datetime.today().date() - timedelta(days=7)
-                max_date = datetime.today().date()
-            else:
-                min_date = bosch_df["local_datetime"].dt.date.min()
-                max_date = bosch_df["local_datetime"].dt.date.max()
-
-            st.markdown("## 📅 Date And Time")
-            date_range = date_range_preset_controls(min_date, max_date, key_prefix="bosch")
-
-            # Granularity
-            st.markdown("## Granularity")
-            granularity = st.selectbox(
-                "Data Aggregation",
-                ["Hourly", "Daily", "Weekly", "Monthly"],
-                index=0,
-                key="granularity_bosch",
-            )
-
-            # Mode filter
+            # Mode filter first (moved above corridor selection)
             st.markdown("## 🚗 Mode Filter")
             mode_filter = st.multiselect(
                 "Select Modes to Include",
@@ -383,6 +352,41 @@ def render_bosch_tab():
                 default=["Trucks", "Cars", "Buses", "Motorcycles"],
                 key="mode_filter_bosch",
             )
+
+            # Corridor selector with a placeholder so it behaves like other tabs
+            st.markdown("## 🛣️ Select Corridor")
+            corridor = st.selectbox(
+                "Corridor",
+                ["SELECT"] + list(BOSCH_RAW_URLS.keys()),
+                key="bosch_corridor",
+            )
+
+            # Initialize defaults when corridor not chosen yet
+            date_range = None
+            granularity = "Hourly"
+
+            # Only load data and reveal date/granularity after a real corridor selection
+            if corridor != "SELECT":
+                bosch_df = load_bosch_data(corridor)
+
+                if bosch_df.empty or "local_datetime" not in bosch_df.columns:
+                    min_date = datetime.today().date() - timedelta(days=7)
+                    max_date = datetime.today().date()
+                else:
+                    min_date = bosch_df["local_datetime"].dt.date.min()
+                    max_date = bosch_df["local_datetime"].dt.date.max()
+
+                st.markdown("## 📅 Date And Time")
+                date_range = date_range_preset_controls(min_date, max_date, key_prefix="bosch")
+
+                # Granularity
+                st.markdown("## Granularity")
+                granularity = st.selectbox(
+                    "Data Aggregation",
+                    ["Hourly", "Daily", "Weekly", "Monthly"],
+                    index=0,
+                    key="granularity_bosch",
+                )
 
             bosch_current = {
                 "corridor": corridor,
@@ -392,11 +396,22 @@ def render_bosch_tab():
             }
             st.session_state["bosch_current"] = bosch_current
 
-            if st.button("🔍 **Search**", key="search_bosch", type="primary", use_container_width=True):
-                st.session_state["bosch_params"] = bosch_current
-                st.session_state["bosch_ready"] = True
-                set_active_search_tab("t5")
-                st.session_state["last_active_tab"] = "t5"
+            if corridor != "SELECT":
+                if st.button("🔍 **Search**", key="search_bosch", type="primary", use_container_width=True):
+                    st.session_state["bosch_params"] = bosch_current
+                    st.session_state["bosch_ready"] = True
+                    set_active_search_tab("t5")
+                    st.session_state["last_active_tab"] = "t5"
+            else:
+                # Reset when placeholder is selected to mirror other tabs' behavior
+                st.session_state["bosch_current"] = {
+                    "corridor": corridor,
+                    "mode_filter": tuple(sorted(mode_filter)) if mode_filter else None,
+                }
+                if st.session_state.get("bosch_ready"):
+                    del st.session_state["bosch_ready"]
+                if st.session_state.get("bosch_params"):
+                    del st.session_state["bosch_params"]
 
     # -------- Main content area --------
     if not st.session_state.get("bosch_ready", False):
