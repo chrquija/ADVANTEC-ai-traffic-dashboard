@@ -568,8 +568,7 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs(["Pg.1 ITERIS CLEARGUIDE", "Pg.2 KINETIC 
 # TAB 1: Performance / Travel Time (Search-gated, NO forms)
 # -------------------------
 with tab1:
-
-    # Load Prediction once to populate controls (safe to load; results stay blank until Search)
+    # Load data once to populate controls (safe to load; results stay blank until Search)
     corridor_df = get_corridor_df()
 
     # -------- Sidebar controls (commit on Search) --------
@@ -586,7 +585,7 @@ with tab1:
                         background: linear-gradient(90deg, #ffe58f, #ffd666);
                         border: 1px solid #fadb14; color: #613400;
                         padding: 6px 10px; border-radius: 8px; font-weight: 700; margin-bottom: 6px;">
-                        • You’re viewing: Pg.1 ITERIS CLEARGUIDE
+                        • You're viewing: Pg.1 ITERIS CLEARGUIDE
                     </div>
                     """,
                     unsafe_allow_html=True,
@@ -608,80 +607,77 @@ with tab1:
                 node_list = nodes_in_data if len(nodes_in_data) >= 2 else _build_node_order(corridor_df)
 
                 if len(node_list) >= 2:
+                    # Add "SELECT" as the first option for both origin and destination
+                    origin_options = ["SELECT"] + node_list
+                    destination_options = ["SELECT"] + node_list
+
                     # Initialize session state defaults for Tab 1 O-D if missing
-                    if "od_origin" not in st.session_state or st.session_state.get("od_origin") not in node_list:
-                        st.session_state["od_origin"] = node_list[0]
-                    if "od_destination" not in st.session_state or st.session_state.get("od_destination") not in node_list:
-                        st.session_state["od_destination"] = node_list[-1]
+                    if "od_origin" not in st.session_state:
+                        st.session_state["od_origin"] = "SELECT"
+                    if "od_destination" not in st.session_state:
+                        st.session_state["od_destination"] = "SELECT"
 
                     # 3-column layout: Origin | Flip | Destination
                     cA, flip_col, cB = st.columns([5, 2, 5])
 
-                    # Select current indexes based on session state
-                    try:
-                        origin_index = node_list.index(st.session_state["od_origin"]) if st.session_state.get("od_origin") in node_list else 0
-                    except Exception:
-                        origin_index = 0
-                    try:
-                        dest_index = node_list.index(st.session_state["od_destination"]) if st.session_state.get("od_destination") in node_list else len(node_list) - 1
-                    except Exception:
-                        dest_index = len(node_list) - 1
-
                     with cA:
-                        origin = st.selectbox("Origin", node_list, key="od_origin")
+                        origin = st.selectbox("Origin", origin_options, key="od_origin")
                     with flip_col:
                         # Center the flip button visually
                         st.markdown("<div style='height: 0.5rem'></div>", unsafe_allow_html=True)
-                        st.button(
-                            "🔄",
-                            key="od_flip_button",
-                            help="Flip origin and destination",
-                            use_container_width=True,
-                            on_click=_flip_od_state,
-                        )
+                        # Only show flip button when both selections are made
+                        if origin != "SELECT" and destination != "SELECT":
+                            st.button(
+                                "🔄",
+                                key="od_flip_button",
+                                help="Flip origin and destination",
+                                use_container_width=True,
+                                on_click=_flip_od_state,
+                            )
                     with cB:
-                        destination = st.selectbox("Destination", node_list, key="od_destination")
+                        destination = st.selectbox("Destination", destination_options, key="od_destination")
 
-                    # Route direction indicator
-                    try:
-                        oi = node_list.index(st.session_state.get("od_origin"))
-                        di = node_list.index(st.session_state.get("od_destination"))
-                        if oi < di:
-                            arrow = "→"
-                            bound = "Northbound"
-                            route_text = f"{st.session_state['od_origin']} {arrow} {st.session_state['od_destination']} ({bound})"
-                        elif oi > di:
-                            arrow = "←"
-                            bound = "Southbound"
-                            route_text = f"{st.session_state['od_origin']} {arrow} {st.session_state['od_destination']} ({bound})"
-                        else:
-                            route_text = f"{st.session_state['od_origin']}"
-                    except Exception:
-                        route_text = None
+                    # Route direction indicator - only show when both are selected
+                    if origin != "SELECT" and destination != "SELECT":
+                        try:
+                            oi = node_list.index(origin)
+                            di = node_list.index(destination)
+                            if oi < di:
+                                arrow = "→"
+                                bound = "Northbound"
+                                route_text = f"{origin} {arrow} {destination} ({bound})"
+                            elif oi > di:
+                                arrow = "←"
+                                bound = "Southbound"
+                                route_text = f"{origin} {arrow} {destination} ({bound})"
+                            else:
+                                route_text = f"{origin}"
+                        except Exception:
+                            route_text = None
 
-                    if route_text:
-                        st.markdown(
-                            """
-                            <style>
-                              .od-route-chip {
-                                margin-top: 0.25rem; padding: 6px 10px; border-radius: 8px; font-weight: 700;
-                                background: rgba(79,172,254,0.08); border: 1px solid rgba(79,172,254,0.25); color: #0b2538;
-                              }
-                              @media (prefers-color-scheme: dark) {
-                                .od-route-chip {
-                                  background: rgba(79,172,254,0.12);
-                                  border-color: rgba(79,172,254,0.45);
-                                  color: #e6f2ff; /* high-contrast for dark mode */
-                                }
-                              }
-                            </style>
-                            """,
-                            unsafe_allow_html=True,
-                        )
-                        st.markdown(
-                            f'<div class="od-route-chip">{route_text}</div>',
-                            unsafe_allow_html=True,
-                        )
+                        if route_text:
+                            st.markdown(
+                                """
+                                <style>
+                                  .od-route-chip {
+                                    margin-top: 0.25rem; padding: 6px 10px; border-radius: 8px; font-weight: 700;
+                                    background: rgba(79,172,254,0.08); border: 1px solid rgba(79,172,254,0.25); color: #0b2538;
+                                  }
+                                  @media (prefers-color-scheme: dark) {
+                                    .od-route-chip {
+                                      background: rgba(79,172,254,0.12);
+                                      border-color: rgba(79,172,254,0.45);
+                                      color: #e6f2ff; /* high-contrast for dark mode */
+                                    }
+                                  }
+                                </style>
+                                """,
+                                unsafe_allow_html=True,
+                            )
+                            st.markdown(
+                                f'<div class="od-route-chip">{route_text}</div>',
+                                unsafe_allow_html=True,
+                            )
                 else:
                     st.info("Not enough nodes found to build O-D options.")
 
@@ -691,8 +687,10 @@ with tab1:
                 prev_od_pair = st.session_state.get("od_pair_prev")
                 if prev_od_pair != od_pair:
                     st.session_state["od_pair_prev"] = od_pair
-                    # only show when both are selected and distinct
-                    if od_pair[0] and od_pair[1] and od_pair[0] != od_pair[1]:
+                    # only show when both are selected and distinct and not "SELECT"
+                    if (od_pair[0] and od_pair[1] and
+                            od_pair[0] != "SELECT" and od_pair[1] != "SELECT" and
+                            od_pair[0] != od_pair[1]):
                         pb = st.progress(0, text="Loading Data availability info...")
                         for i in range(0, 101, 10):
                             time.sleep(0.02)
@@ -701,86 +699,92 @@ with tab1:
             except Exception:
                 pass
 
-            # ---- Availability preview (always visible) ----
-            try:
-                base_df = corridor_df if corridor_df is not None else pd.DataFrame()
-                header_label = "Available Data"
-                dfx = base_df.copy()
-                path_mask = None
-                if origin and destination and origin != destination and dfx is not None and not dfx.empty:
-                    # Build path segments between origin and destination, inclusive
-                    nodes = _canonical_order_in_data(dfx)
-                    if origin in nodes and destination in nodes:
-                        oi = nodes.index(origin)
-                        di = nodes.index(destination)
-                        if oi < di:
-                            segs = [f"{nodes[i]} → {nodes[i+1]}" for i in range(oi, di)]
-                            dir_target = "nb"
+            # ---- Availability preview (only show when both selections are made) ----
+            if (origin and destination and
+                    origin != "SELECT" and destination != "SELECT"):
+                try:
+                    base_df = corridor_df if corridor_df is not None else pd.DataFrame()
+                    header_label = "Available Data"
+                    dfx = base_df.copy()
+                    path_mask = None
+                    if origin != destination and dfx is not None and not dfx.empty:
+                        # Build path segments between origin and destination, inclusive
+                        nodes = _canonical_order_in_data(dfx)
+                        if origin in nodes and destination in nodes:
+                            oi = nodes.index(origin)
+                            di = nodes.index(destination)
+                            if oi < di:
+                                segs = [f"{nodes[i]} → {nodes[i + 1]}" for i in range(oi, di)]
+                                dir_target = "nb"
+                            else:
+                                segs = [f"{nodes[i + 1]} → {nodes[i]}" for i in range(di, oi)]
+                                dir_target = "sb"
+                            # Filter by segment names present
+                            if "segment_name" in dfx.columns:
+                                path_mask = dfx["segment_name"].isin(segs)
+                            # Filter by direction when available
+                            if "direction" in dfx.columns:
+                                try:
+                                    dir_norm = normalize_dir(dfx["direction"])
+                                    dir_mask = dir_norm == dir_target
+                                    dfx = dfx[dir_mask]
+                                except Exception:
+                                    pass
+                            if path_mask is not None:
+                                dfx = dfx[path_mask]
+                            # Dynamic header text
+                            arrow = "→" if oi < di else "←"
+                            header_label = f"Available Data for {origin} {arrow} {destination}"
                         else:
-                            segs = [f"{nodes[i+1]} → {nodes[i]}" for i in range(di, oi)]
-                            dir_target = "sb"
-                        # Filter by segment names present
-                        if "segment_name" in dfx.columns:
-                            path_mask = dfx["segment_name"].isin(segs)
-                        # Filter by direction when available
-                        if "direction" in dfx.columns:
-                            try:
-                                dir_norm = normalize_dir(dfx["direction"])
-                                dir_mask = dir_norm == dir_target
-                                dfx = dfx[dir_mask]
-                            except Exception:
-                                pass
-                        if path_mask is not None:
-                            dfx = dfx[path_mask]
-                        # Dynamic header text
-                        arrow = "→" if oi < di else "←"
-                        header_label = f"Available Data for {origin} {arrow} {destination}"
+                            header_label = "Available Data for this Corridor"
+                    elif origin == destination:
+                        header_label = "Available Data"
                     else:
                         header_label = "Available Data for this Corridor"
-                elif origin and destination and origin == destination:
-                    header_label = "Available Data"
-                else:
-                    header_label = "Available Data for this Corridor"
 
-                avail = compute_data_availability(
-                    dfx if dfx is not None else pd.DataFrame(),
-                    datetime_col="local_datetime",
-                    max_gaps=3,
-                    current_date=datetime.now(),
-                )
-                if avail.get("start") and avail.get("end"):
-                    start_str = avail["start"].strftime("%b %d, %Y %I:%M %p")
-                    end_str = avail["end"].strftime("%b %d, %Y %I:%M %p")
-                    mb = avail.get("size_mb", 0.0)
-                    size_str = f"({mb:.1f} MB)" if mb > 0 else ""
-                    st.caption(header_label)
-                    st.caption(f"• Date Range: {start_str} → {end_str} {size_str}")
-                    gaps = avail.get("gaps") or []
-                    if len(gaps) == 0:
-                        st.caption("• Missing Data: None")
-                    else:
-                        st.caption("• Missing Data: " + "; ".join(gaps))
-            except Exception:
-                # keep sidebar resilient
-                pass
+                    avail = compute_data_availability(
+                        dfx if dfx is not None else pd.DataFrame(),
+                        datetime_col="local_datetime",
+                        max_gaps=3,
+                        current_date=datetime.now(),
+                    )
+                    if avail.get("start") and avail.get("end"):
+                        start_str = avail["start"].strftime("%b %d, %Y %I:%M %p")
+                        end_str = avail["end"].strftime("%b %d, %Y %I:%M %p")
+                        mb = avail.get("size_mb", 0.0)
+                        size_str = f"({mb:.1f} MB)" if mb > 0 else ""
+                        st.caption(header_label)
+                        st.caption(f"• Date Range: {start_str} → {end_str} {size_str}")
+                        gaps = avail.get("gaps") or []
+                        if len(gaps) == 0:
+                            st.caption("• Missing Data: None")
+                        else:
+                            st.caption("• Missing Data: " + "; ".join(gaps))
+                except Exception:
+                    # keep sidebar resilient
+                    pass
 
-            # Analysis Period
-            if corridor_df.empty or "local_datetime" not in corridor_df.columns:
-                min_date = datetime.today().date() - timedelta(days=7)
-                max_date = datetime.today().date()
-            else:
-                min_date = corridor_df["local_datetime"].dt.date.min()
-                max_date = corridor_df["local_datetime"].dt.date.max()
+            # Progressive disclosure: only show the rest after both selections are made
+            valid_od = bool(origin and destination and
+                            origin != "SELECT" and destination != "SELECT" and
+                            origin != destination)
 
-            # If Analysis Pro is OFF, restrict selectable dates to the last 60 days
-            if not od_mode:
-                cap_start = max_date - timedelta(days=60)
-                # Ensure within dataset bounds
-                min_date = max(min_date, cap_start)
-                # max_date remains the same (today/data max)
-
-            valid_od = bool(origin and destination and origin != destination)
             if valid_od:
+                # Analysis Period
+                if corridor_df.empty or "local_datetime" not in corridor_df.columns:
+                    min_date = datetime.today().date() - timedelta(days=7)
+                    max_date = datetime.today().date()
+                else:
+                    min_date = corridor_df["local_datetime"].dt.date.min()
+                    max_date = corridor_df["local_datetime"].dt.date.max()
+
+                # If Analysis Pro is OFF, restrict selectable dates to the last 60 days
+                if not od_mode:
+                    cap_start = max_date - timedelta(days=60)
+                    # Ensure within dataset bounds
+                    min_date = max(min_date, cap_start)
+                    # max_date remains the same (today/data max)
+
                 st.markdown("## 📅 Date And Time")
                 if not od_mode:
                     st.info("Analysis Pro is OFF: Date range limited to the last 60 days.")
@@ -849,6 +853,8 @@ with tab1:
     else:
         if t1_pending:
             st.warning(" Press **Search** to refresh.")
+
+        # ... existing code continues unchanged from here ...
 
         try:
             base_df = corridor_df.copy() if not corridor_df.empty else pd.DataFrame()
