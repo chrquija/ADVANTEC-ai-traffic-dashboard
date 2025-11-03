@@ -699,13 +699,13 @@ with tab1:
             except Exception:
                 pass
 
-            # ---- Availability preview (only show when both selections are made) ----
-            if (origin and destination and
-                    origin != "SELECT" and destination != "SELECT"):
-                try:
-                    base_df = corridor_df if corridor_df is not None else pd.DataFrame()
-                    header_label = "Available Data"
-                    dfx = base_df.copy()
+            # ---- Availability preview (always show) ----
+            try:
+                base_df = corridor_df if corridor_df is not None else pd.DataFrame()
+                header_label = "Available Data"
+                dfx = base_df.copy()
+
+                if (origin and destination and origin != "SELECT" and destination != "SELECT"):
                     path_mask = None
                     if origin != destination and dfx is not None and not dfx.empty:
                         # Build path segments between origin and destination using canonical forward naming
@@ -740,32 +740,35 @@ with tab1:
                             header_label = f"Available Data for {origin} {arrow} {destination}"
                         else:
                             header_label = "Available Data for this Corridor"
-                    elif origin == destination:
+                    elif origin == destination and origin not in (None, "", "SELECT"):
                         header_label = "Available Data"
                     else:
-                        header_label = "Available Data for this Corridor"
+                        header_label = "Available Data"
+                else:
+                    # Initial state (no full O-D yet): summarize entire corridor dataset
+                    header_label = "Available Data"
 
-                    avail = compute_data_availability(
-                        dfx if dfx is not None else pd.DataFrame(),
-                        datetime_col="local_datetime",
-                        max_gaps=3,
-                        current_date=datetime.now(),
-                    )
-                    if avail.get("start") and avail.get("end"):
-                        start_str = avail["start"].strftime("%b %d, %Y %I:%M %p")
-                        end_str = avail["end"].strftime("%b %d, %Y %I:%M %p")
-                        mb = avail.get("size_mb", 0.0)
-                        size_str = f"({mb:.1f} MB)" if mb > 0 else ""
-                        st.caption(header_label)
-                        st.caption(f"• Date Range: {start_str} → {end_str} {size_str}")
-                        gaps = avail.get("gaps") or []
-                        if len(gaps) == 0:
-                            st.caption("• Missing Data: None")
-                        else:
-                            st.caption("• Missing Data: " + "; ".join(gaps))
-                except Exception:
-                    # keep sidebar resilient
-                    pass
+                avail = compute_data_availability(
+                    dfx if dfx is not None else pd.DataFrame(),
+                    datetime_col="local_datetime",
+                    max_gaps=3,
+                    current_date=datetime.now(),
+                )
+                if avail.get("start") and avail.get("end"):
+                    start_str = avail["start"].strftime("%b %d, %Y %I:%M %p")
+                    end_str = avail["end"].strftime("%b %d, %Y %I:%M %p")
+                    mb = avail.get("size_mb", 0.0)
+                    size_str = f"({mb:.1f} MB)" if mb > 0 else ""
+                    st.caption(header_label)
+                    st.caption(f"• Date Range: {start_str} → {end_str} {size_str}")
+                    gaps = avail.get("gaps") or []
+                    if len(gaps) == 0:
+                        st.caption("• Missing Data: None")
+                    else:
+                        st.caption("• Missing Data: " + "; ".join(gaps))
+            except Exception:
+                # keep sidebar resilient
+                pass
 
             # Progressive disclosure: only show the rest after both selections are made
             valid_od = bool(origin and destination and
