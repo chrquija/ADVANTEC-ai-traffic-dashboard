@@ -577,19 +577,6 @@ with tab1:
         st.image("Logos/CV Sync__.jpg", width=205)
 
         with st.expander("⚙️ Pg.1 ITERIS CLEARGUIDE SETTINGS", expanded=False):
-            active_t1 = is_active_tab("t1")
-            if active_t1:
-                st.markdown(
-                    """
-                    <div style="
-                        background: linear-gradient(90deg, #ffe58f, #ffd666);
-                        border: 1px solid #fadb14; color: #613400;
-                        padding: 6px 10px; border-radius: 8px; font-weight: 700; margin-bottom: 6px;">
-                        • You're viewing: Pg.1 ITERIS CLEARGUIDE
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
             st.caption("Select Route and Date Range")
             st.caption("Data: Vehicle Speed, Delay, and Travel Time")
             st.markdown("## 🗺️ Select Route")
@@ -1466,20 +1453,6 @@ with tab2:
 
     with st.sidebar:
         with st.expander("⚙️ Pg.2 KINETIC MOBILITY SETTINGS", expanded=False):
-
-            active_t2 = is_active_tab("t2")
-            if active_t2:
-                st.markdown(
-                    """
-                    <div style="
-                        background: linear-gradient(90deg, #ffe58f, #ffd666);
-                        border: 1px solid #fadb14; color: #613400;
-                        padding: 6px 10px; border-radius: 8px; font-weight: 700; margin-bottom: 6px;">
-                        • You’re viewing: Pg.2 KINETIC MOBILITY
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
 
             st.caption("Select Intersection(s) and Date Range")
             st.caption("Data: Vehicle Volume")

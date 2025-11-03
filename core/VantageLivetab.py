@@ -599,19 +599,6 @@ def render_vantage_tab():
     # -------- Sidebar controls --------
     with st.sidebar:
         with st.expander("⚙️ Pg.4 ITERIS VANTAGE LIVE SETTINGS", expanded=False):
-            active_t4 = is_active_tab("t4")
-            if active_t4:
-                st.markdown(
-                    """
-                    <div style="
-                        background: linear-gradient(90deg, #ffe58f, #ffd666);
-                        border: 1px solid #fadb14; color: #613400;
-                        padding: 6px 10px; border-radius: 8px; font-weight: 700; margin-bottom: 6px;">
-                        • You’re viewing: Pg.4 ITERIS VANTAGE LIVE
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
             st.caption("Select Mode, Intersection(s) and Date Range")
             st.caption("Data: Bike, Vehicle, and Pedestrian Volume from Iteris VantageLive")
 
@@ -625,7 +612,7 @@ def render_vantage_tab():
             st.markdown("## 🚦 Select Intersection")
             intersection = st.selectbox(
                 "Intersection",
-                ["Select", "All Intersections"] + CANONICAL_INTERSECTIONS,
+                ["SELECT", "All Intersections"] + CANONICAL_INTERSECTIONS,
                 key="vantage_intersection",
             )
 
@@ -633,7 +620,7 @@ def render_vantage_tab():
             prev_vantage_intersection = st.session_state.get("vantage_intersection_prev")
             if prev_vantage_intersection != intersection:
                 st.session_state["vantage_intersection_prev"] = intersection
-                if intersection != "Select":
+                if intersection != "SELECT": 
                     pb = st.progress(0, text="Loading Data availability info...")
                     for i in range(0, 101, 10):
                         time.sleep(0.02)
@@ -658,7 +645,7 @@ def render_vantage_tab():
                     base_df = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
 
                 # When 'Select' is chosen, summarize the whole (mode) dataset by passing intersection=None
-                intersection_for_avail = None if intersection == "Select" else intersection
+                intersection_for_avail = None if intersection == "SELECT" else intersection
                 avail = compute_data_availability(
                     base_df if base_df is not None else pd.DataFrame(),
                     intersection_col="intersection_name",
@@ -672,7 +659,7 @@ def render_vantage_tab():
                     mb = avail.get("size_mb", 0.0)
                     size_str = f"({mb:.1f} MB)" if mb > 0 else ""
                     # Dynamic header based on selection
-                    if intersection == "Select":
+                    if intersection == "SELECT":
                         header_label = "Available Data"
                     elif intersection == "All Intersections":
                         header_label = "Available Data for this Corridor"
@@ -694,7 +681,7 @@ def render_vantage_tab():
                 pass
 
             # Progressive disclosure: reveal the rest only after a valid selection
-            if intersection != "Select":
+            if intersection != "SELECT": 
                 # Date range bounds
                 candidates = []
                 if not bikes_df.empty: candidates += [bikes_df["local_datetime"]]

@@ -739,19 +739,6 @@ def render_tab3_analysis():
     # -------- Sidebar controls (matching Tab 1 & 2 style) --------
     with st.sidebar:
         with st.expander("⚙️ Pg.3 ACYCLICA SETTINGS", expanded=False):
-            active_t3 = is_active_tab("t3")
-            if active_t3:
-                st.markdown(
-                    """
-                    <div style="
-                        background: linear-gradient(90deg, #ffe58f, #ffd666);
-                        border: 1px solid #fadb14; color: #613400;
-                        padding: 6px 10px; border-radius: 8px; font-weight: 700; margin-bottom: 6px;">
-                        • You’re viewing: Pg.3 ACYCLICA
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
 
             # Data caption at top (before corridor selection)
             st.caption("Data: Travel Time, and Speed (Acyclica)")

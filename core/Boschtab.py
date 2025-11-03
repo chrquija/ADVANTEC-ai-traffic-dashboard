@@ -329,19 +329,6 @@ def render_bosch_tab():
     # -------- Sidebar controls --------
     with st.sidebar:
         with st.expander("⚙️ Pg.5 BOSCH SETTINGS", expanded=False):
-            active_t5 = is_active_tab("t5")
-            if active_t5:
-                st.markdown(
-                    """
-                    <div style="
-                        background: linear-gradient(90deg, #ffe58f, #ffd666);
-                        border: 1px solid #fadb14; color: #613400;
-                        padding: 6px 10px; border-radius: 8px; font-weight: 700; margin-bottom: 6px;">
-                        • You’re viewing: Pg.5 BOSCH CLOUD ANALYTICS
-                    </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
             st.caption("Select Corridor and Date Range")
             st.caption("Data: Multimodal Traffic from Bosch Sensors")
 
