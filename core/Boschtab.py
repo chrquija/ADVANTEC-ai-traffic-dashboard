@@ -13,6 +13,7 @@ from sidebar_functions import (
     date_range_preset_controls,
     render_badge,
     get_performance_rating,
+    compute_data_availability,
 )
 from cycle_length_recommendations import render_cycle_length_section
 from Map import build_all_segments_overview
@@ -360,6 +361,54 @@ def render_bosch_tab():
                 ["SELECT"] + list(BOSCH_RAW_URLS.keys()),
                 key="bosch_corridor",
             )
+
+            # --- Loading animation when corridor changes (only for real selections) ---
+            prev_bosch_corridor = st.session_state.get("bosch_corridor_prev")
+            if prev_bosch_corridor != corridor:
+                st.session_state["bosch_corridor_prev"] = corridor
+                if corridor != "SELECT":
+                    pb = st.progress(0, text="Loading Data availability info...")
+                    import time as _t
+                    for i in range(0, 101, 10):
+                        _t.sleep(0.02)
+                        pb.progress(i, text="Loading Data availability info...")
+                    pb.empty()
+
+            # ---- Availability preview (always show, scoped to selection when chosen) ----
+            try:
+                frames = []
+                if corridor == "SELECT":
+                    # Summarize across all Bosch corridors
+                    for c in BOSCH_RAW_URLS.keys():
+                        dfc = load_bosch_data(c)
+                        if dfc is not None and not dfc.empty:
+                            frames.append(dfc[[col for col in dfc.columns if col in ("local_datetime", "segment_name")]])
+                    base_df = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+                    header_label = "Available Data"
+                else:
+                    base_df = load_bosch_data(corridor)
+                    header_label = f"Available Data for {corridor}"
+
+                avail = compute_data_availability(
+                    base_df if base_df is not None else pd.DataFrame(),
+                    datetime_col="local_datetime",
+                    max_gaps=3,
+                    current_date=datetime.now(),
+                )
+                if avail.get("start") and avail.get("end"):
+                    start_str = avail["start"].strftime("%b %d, %Y %I:%M %p")
+                    end_str = avail["end"].strftime("%b %d, %Y %I:%M %p")
+                    mb = avail.get("size_mb", 0.0)
+                    size_str = f"({mb:.1f} MB)" if mb > 0 else ""
+                    st.caption(header_label)
+                    st.caption(f"• Date Range: {start_str} → {end_str} {size_str}")
+                    gaps = avail.get("gaps") or []
+                    if len(gaps) == 0:
+                        st.caption("• Missing Data: None")
+                    else:
+                        st.caption("• Missing Data: " + "; ".join(gaps))
+            except Exception:
+                pass
 
             # Initialize defaults when corridor not chosen yet
             date_range = None
