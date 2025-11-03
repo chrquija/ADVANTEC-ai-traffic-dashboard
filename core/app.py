@@ -708,30 +708,33 @@ with tab1:
                     dfx = base_df.copy()
                     path_mask = None
                     if origin != destination and dfx is not None and not dfx.empty:
-                        # Build path segments between origin and destination, inclusive
+                        # Build path segments between origin and destination using canonical forward naming
                         nodes = _canonical_order_in_data(dfx)
                         if origin in nodes and destination in nodes:
                             oi = nodes.index(origin)
                             di = nodes.index(destination)
-                            if oi < di:
-                                segs = [f"{nodes[i]} → {nodes[i + 1]}" for i in range(oi, di)]
-                                dir_target = "nb"
-                            else:
-                                segs = [f"{nodes[i + 1]} → {nodes[i]}" for i in range(di, oi)]
-                                dir_target = "sb"
-                            # Filter by segment names present
+                            imin, imax = (oi, di) if oi < di else (di, oi)
+                            segs = [f"{nodes[i]} → {nodes[i + 1]}" for i in range(imin, imax)]
+                            dir_target = "nb" if oi < di else "sb"
+                            # Filter by segment names present (always forward-named)
                             if "segment_name" in dfx.columns:
                                 path_mask = dfx["segment_name"].isin(segs)
-                            # Filter by direction when available
-                            if "direction" in dfx.columns:
-                                try:
-                                    dir_norm = normalize_dir(dfx["direction"])
-                                    dir_mask = dir_norm == dir_target
-                                    dfx = dfx[dir_mask]
-                                except Exception:
-                                    pass
+                            # Apply path filter first
                             if path_mask is not None:
-                                dfx = dfx[path_mask]
+                                dfx_path = dfx[path_mask]
+                            else:
+                                dfx_path = dfx
+                            # Filter by direction when available; if it drops everything, keep path-only
+                            if "direction" in dfx_path.columns:
+                                try:
+                                    dir_norm = normalize_dir(dfx_path["direction"])
+                                    dir_mask = dir_norm == dir_target
+                                    dfx_dir = dfx_path[dir_mask]
+                                    dfx = dfx_dir if not dfx_dir.empty else dfx_path
+                                except Exception:
+                                    dfx = dfx_path
+                            else:
+                                dfx = dfx_path
                             # Dynamic header text
                             arrow = "→" if oi < di else "←"
                             header_label = f"Available Data for {origin} {arrow} {destination}"
