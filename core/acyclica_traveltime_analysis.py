@@ -752,17 +752,29 @@ def render_tab3_analysis():
                     """,
                     unsafe_allow_html=True,
                 )
-            # Availability preview at the very top of the expander (corridor-aware)
+
+            # Get available corridors
+            if not acyclica_df.empty and "corridor_id" in acyclica_df.columns:
+                corridors = ["SELECT", "All Corridors"] + sorted(acyclica_df["corridor_id"].dropna().unique().tolist())
+            else:
+                corridors = ["SELECT", "All Corridors"]
+
+            st.markdown("## 🛣️ Select Corridor")
+            corridor = st.selectbox("Corridor", corridors, key="corridor_acyclica")
+
+            # Availability preview directly under the corridor selector (corridor-aware)
             try:
                 base_df = acyclica_df if acyclica_df is not None else pd.DataFrame()
-                # Use last selected corridor from session state (falls back to All Corridors)
-                corridor_ss = st.session_state.get("corridor_acyclica", "All Corridors")
-                # Compute availability: when 'All Corridors', summarize whole dataset
-                corridor_for_avail = None if corridor_ss in (None, "", "All Corridors") else corridor_ss
+                if corridor == "SELECT":
+                    corr_for_avail = None
+                elif corridor == "All Corridors":
+                    corr_for_avail = None
+                else:
+                    corr_for_avail = corridor
                 avail = compute_data_availability(
                     base_df if base_df is not None else pd.DataFrame(),
                     intersection_col="corridor_id",
-                    intersection=corridor_for_avail,
+                    intersection=corr_for_avail,
                     max_gaps=3,
                     current_date=datetime.now(),
                 )
@@ -771,10 +783,12 @@ def render_tab3_analysis():
                     end_str = avail["end"].strftime("%b %d, %Y %I:%M %p")
                     mb = avail.get("size_mb", 0.0)
                     size_str = f"({mb:.1f} MB)" if mb > 0 else ""
-                    # Dynamic header label
-                    header_label = (
-                        "Available Data" if corridor_for_avail is None else f"Available Data for {corridor_ss}"
-                    )
+                    if corridor == "SELECT":
+                        header_label = "Available Data"
+                    elif corridor == "All Corridors":
+                        header_label = "Available Data for this Corridor"
+                    else:
+                        header_label = f"Available Data for {corridor}"
                     st.caption(header_label)
                     st.caption(f"• Date Range: {start_str} → {end_str} {size_str}")
                     gaps = avail.get("gaps") or []
@@ -786,95 +800,92 @@ def render_tab3_analysis():
                 # Keep sidebar resilient if availability fails
                 pass
 
-            # Place the data caption just beneath availability, like other tabs
+            # Data caption under availability
             st.caption("Data: Travel Time, and Speed (Acyclica)")
 
-            # Get available corridors
-            if not acyclica_df.empty and "corridor_id" in acyclica_df.columns:
-                corridors = ["All Corridors"] + sorted(acyclica_df["corridor_id"].dropna().unique().tolist())
-            else:
-                corridors = ["All Corridors"]
-
-            st.markdown("## 🛣️ Select Corridor")
-            corridor = st.selectbox("Corridor", corridors, key="corridor_acyclica")
-
-            # Loading animation when corridor changes (mirrors other tabs)
+            # Loading animation when corridor changes (only for real selections)
             prev_corridor = st.session_state.get("corridor_acyclica_prev")
             if prev_corridor != corridor:
                 st.session_state["corridor_acyclica_prev"] = corridor
-                pb = st.progress(0, text="Loading Data availability info...")
-                for i in range(0, 101, 10):
-                    time.sleep(0.02)
-                    pb.progress(i, text="Loading Data availability info...")
-                pb.empty()
+                if corridor != "SELECT":
+                    pb = st.progress(0, text="Loading Data availability info...")
+                    for i in range(0, 101, 10):
+                        time.sleep(0.02)
+                        pb.progress(i, text="Loading Data availability info...")
+                    pb.empty()
 
-            # Date range
-            if acyclica_df.empty or "local_datetime" not in acyclica_df.columns:
-                min_date = datetime.today().date() - timedelta(days=7)
-                max_date = datetime.today().date()
-            else:
-                min_date = acyclica_df["local_datetime"].dt.date.min()
-                max_date = acyclica_df["local_datetime"].dt.date.max()
+            # Progressive disclosure: show controls only after a selection (including All Corridors)
+            if corridor != "SELECT":
+                # Date range
+                if acyclica_df.empty or "local_datetime" not in acyclica_df.columns:
+                    min_date = datetime.today().date() - timedelta(days=7)
+                    max_date = datetime.today().date()
+                else:
+                    min_date = acyclica_df["local_datetime"].dt.date.min()
+                    max_date = acyclica_df["local_datetime"].dt.date.max()
 
-            st.markdown("## 📅 Date And Time")
-            date_range = date_range_preset_controls(min_date, max_date, key_prefix="acyclica")
+                st.markdown("## 📅 Date And Time")
+                date_range = date_range_preset_controls(min_date, max_date, key_prefix="acyclica")
 
-            # Granularity
-            st.markdown("## Granularity")
-            granularity = st.selectbox(
-                "Data Aggregation",
-                ["Hourly", "Daily", "Weekly", "Monthly"],
-                index=0,
-                key="granularity_acyclica",
-            )
-
-            # Direction filter
-            if not acyclica_df.empty and "direction" in acyclica_df.columns:
-                direction_options = ["All Directions"] + sorted(acyclica_df["direction"].dropna().unique().tolist())
-            else:
-                direction_options = ["All Directions"]
-            direction_filter = st.selectbox("🔄 Direction Filter", direction_options, key="direction_filter_acyclica")
-
-            # Time period focus for hourly
-            time_filter, start_hour, end_hour = None, None, None
-            if granularity == "Hourly":
-                time_filter = st.selectbox(
-                    "Time Period Focus",
-                    [
-                        "All Hours",
-                        "Peak Hours (7–9 AM, 4–6 PM)",
-                        "AM Peak (7–9 AM)",
-                        "PM Peak (4–6 PM)",
-                        "Off-Peak",
-                        "Custom Range",
-                    ],
-                    key="time_period_focus_acyclica",
+                # Granularity
+                st.markdown("## Granularity")
+                granularity = st.selectbox(
+                    "Data Aggregation",
+                    ["Hourly", "Daily", "Weekly", "Monthly"],
+                    index=0,
+                    key="granularity_acyclica",
                 )
-                if time_filter == "Custom Range":
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        start_hour = st.number_input("Start Hour (0–23)", 0, 23, 7, step=1, key="start_hour_acyclica")
-                    with c2:
-                        end_hour = st.number_input("End Hour (1–24)", 1, 24, 18, step=1, key="end_hour_acyclica")
 
-            # Track uncommitted controls (current live sidebar values)
-            t3_current = {
-                "corridor": corridor,
-                "date_range": tuple(date_range) if date_range else None,
-                "granularity": granularity,
-                "direction_filter": direction_filter,
-                "time_filter": time_filter,
-                "start_hour": start_hour,
-                "end_hour": end_hour,
-            }
-            st.session_state["t3_current"] = t3_current
+                # Direction filter
+                if not acyclica_df.empty and "direction" in acyclica_df.columns:
+                    direction_options = ["All Directions"] + sorted(acyclica_df["direction"].dropna().unique().tolist())
+                else:
+                    direction_options = ["All Directions"]
+                direction_filter = st.selectbox("🔄 Direction Filter", direction_options, key="direction_filter_acyclica")
 
-            # Search button (matching other tabs)
-            if st.button("🔍 **Search**", key="search_tab3", type="primary", use_container_width=True):
-                st.session_state["t3_ready"] = True
-                st.session_state["t3_params"] = t3_current
-                set_active_search_tab("t3")
-                st.session_state["last_active_tab"] = "t3"
+                # Time period focus for hourly
+                time_filter, start_hour, end_hour = None, None, None
+                if granularity == "Hourly":
+                    time_filter = st.selectbox(
+                        "Time Period Focus",
+                        [
+                            "All Hours",
+                            "Peak Hours (7–9 AM, 4–6 PM)",
+                            "AM Peak (7–9 AM)",
+                            "PM Peak (4–6 PM)",
+                            "Off-Peak",
+                            "Custom Range",
+                        ],
+                        key="time_period_focus_acyclica",
+                    )
+                    if time_filter == "Custom Range":
+                        c1, c2 = st.columns(2)
+                        with c1:
+                            start_hour = st.number_input("Start Hour (0–23)", 0, 23, 7, step=1, key="start_hour_acyclica")
+                        with c2:
+                            end_hour = st.number_input("End Hour (1–24)", 1, 24, 18, step=1, key="end_hour_acyclica")
+
+                # Track uncommitted controls (current live sidebar values)
+                t3_current = {
+                    "corridor": corridor,
+                    "date_range": tuple(date_range) if date_range else None,
+                    "granularity": granularity,
+                    "direction_filter": direction_filter,
+                    "time_filter": time_filter,
+                    "start_hour": start_hour,
+                    "end_hour": end_hour,
+                }
+                st.session_state["t3_current"] = t3_current
+
+                # Search button (matching other tabs)
+                if st.button("🔍 **Search**", key="search_tab3", type="primary", use_container_width=True):
+                    st.session_state["t3_ready"] = True
+                    st.session_state["t3_params"] = t3_current
+                    set_active_search_tab("t3")
+                    st.session_state["last_active_tab"] = "t3"
+            else:
+                # Reset current minimal state when placeholder is selected
+                st.session_state["t3_current"] = {"corridor": corridor}
 
     # -------- Main content area (only render after Search) --------
     t3_ready = st.session_state.get("t3_ready", False)
