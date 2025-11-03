@@ -590,76 +590,7 @@ with tab1:
                     """,
                     unsafe_allow_html=True,
                 )
-            # Availability preview moved to top of expander per request
-            try:
-                base_df = corridor_df if corridor_df is not None else pd.DataFrame()
-                header_label = "Available Data"
-                dfx = base_df.copy()
-
-                # Use current selections from session state (may still be SELECT)
-                origin_ss = st.session_state.get("od_origin", "SELECT")
-                destination_ss = st.session_state.get("od_destination", "SELECT")
-
-                if (origin_ss and destination_ss and origin_ss != "SELECT" and destination_ss != "SELECT"):
-                    path_mask = None
-                    if origin_ss != destination_ss and dfx is not None and not dfx.empty:
-                        # Build path segments using canonical forward naming (A → B)
-                        nodes = _canonical_order_in_data(dfx)
-                        if origin_ss in nodes and destination_ss in nodes:
-                            oi = nodes.index(origin_ss)
-                            di = nodes.index(destination_ss)
-                            imin, imax = (oi, di) if oi < di else (di, oi)
-                            segs = [f"{nodes[i]} → {nodes[i + 1]}" for i in range(imin, imax)]
-                            dir_target = "nb" if oi < di else "sb"
-                            # Filter by segment names present (forward-named)
-                            if "segment_name" in dfx.columns:
-                                path_mask = dfx["segment_name"].isin(segs)
-                            # Apply path filter first
-                            dfx_path = dfx[path_mask] if path_mask is not None else dfx
-                            # Filter by direction when available; safe fallback to path-only
-                            if "direction" in dfx_path.columns:
-                                try:
-                                    dir_norm = normalize_dir(dfx_path["direction"])
-                                    dir_mask = dir_norm == dir_target
-                                    dfx_dir = dfx_path[dir_mask]
-                                    dfx = dfx_dir if not dfx_dir.empty else dfx_path
-                                except Exception:
-                                    dfx = dfx_path
-                            else:
-                                dfx = dfx_path
-                            arrow = "→" if oi < di else "←"
-                            header_label = f"Available Data for {origin_ss} {arrow} {destination_ss}"
-                        else:
-                            header_label = "Available Data for this Corridor"
-                    elif origin_ss == destination_ss and origin_ss not in (None, "", "SELECT"):
-                        header_label = "Available Data"
-                    else:
-                        header_label = "Available Data"
-                else:
-                    header_label = "Available Data"
-
-                avail = compute_data_availability(
-                    dfx if dfx is not None else pd.DataFrame(),
-                    datetime_col="local_datetime",
-                    max_gaps=3,
-                    current_date=datetime.now(),
-                )
-                if avail.get("start") and avail.get("end"):
-                    start_str = avail["start"].strftime("%b %d, %Y %I:%M %p")
-                    end_str = avail["end"].strftime("%b %d, %Y %I:%M %p")
-                    mb = avail.get("size_mb", 0.0)
-                    size_str = f"({mb:.1f} MB)" if mb > 0 else ""
-                    st.caption(header_label)
-                    st.caption(f"• Date Range: {start_str} → {end_str} {size_str}")
-                    gaps = avail.get("gaps") or []
-                    if len(gaps) == 0:
-                        st.caption("• Missing Data: None")
-                    else:
-                        st.caption("• Missing Data: " + "; ".join(gaps))
-            except Exception:
-                # keep sidebar resilient
-                pass
-
+            st.caption("Select Route and Date Range")
             st.caption("Data: Vehicle Speed, Delay, and Travel Time")
             st.markdown("## 🗺️ Select Route")
 
@@ -768,6 +699,76 @@ with tab1:
             except Exception:
                 pass
 
+            # ---- Availability preview (always show) ----
+            try:
+                base_df = corridor_df if corridor_df is not None else pd.DataFrame()
+                header_label = "Available Data"
+                dfx = base_df.copy()
+
+                if (origin and destination and origin != "SELECT" and destination != "SELECT"):
+                    path_mask = None
+                    if origin != destination and dfx is not None and not dfx.empty:
+                        # Build path segments between origin and destination using canonical forward naming
+                        nodes = _canonical_order_in_data(dfx)
+                        if origin in nodes and destination in nodes:
+                            oi = nodes.index(origin)
+                            di = nodes.index(destination)
+                            imin, imax = (oi, di) if oi < di else (di, oi)
+                            segs = [f"{nodes[i]} → {nodes[i + 1]}" for i in range(imin, imax)]
+                            dir_target = "nb" if oi < di else "sb"
+                            # Filter by segment names present (always forward-named)
+                            if "segment_name" in dfx.columns:
+                                path_mask = dfx["segment_name"].isin(segs)
+                            # Apply path filter first
+                            if path_mask is not None:
+                                dfx_path = dfx[path_mask]
+                            else:
+                                dfx_path = dfx
+                            # Filter by direction when available; if it drops everything, keep path-only
+                            if "direction" in dfx_path.columns:
+                                try:
+                                    dir_norm = normalize_dir(dfx_path["direction"])
+                                    dir_mask = dir_norm == dir_target
+                                    dfx_dir = dfx_path[dir_mask]
+                                    dfx = dfx_dir if not dfx_dir.empty else dfx_path
+                                except Exception:
+                                    dfx = dfx_path
+                            else:
+                                dfx = dfx_path
+                            # Dynamic header text
+                            arrow = "→" if oi < di else "←"
+                            header_label = f"Available Data for {origin} {arrow} {destination}"
+                        else:
+                            header_label = "Available Data for this Corridor"
+                    elif origin == destination and origin not in (None, "", "SELECT"):
+                        header_label = "Available Data"
+                    else:
+                        header_label = "Available Data"
+                else:
+                    # Initial state (no full O-D yet): summarize entire corridor dataset
+                    header_label = "Available Data"
+
+                avail = compute_data_availability(
+                    dfx if dfx is not None else pd.DataFrame(),
+                    datetime_col="local_datetime",
+                    max_gaps=3,
+                    current_date=datetime.now(),
+                )
+                if avail.get("start") and avail.get("end"):
+                    start_str = avail["start"].strftime("%b %d, %Y %I:%M %p")
+                    end_str = avail["end"].strftime("%b %d, %Y %I:%M %p")
+                    mb = avail.get("size_mb", 0.0)
+                    size_str = f"({mb:.1f} MB)" if mb > 0 else ""
+                    st.caption(header_label)
+                    st.caption(f"• Date Range: {start_str} → {end_str} {size_str}")
+                    gaps = avail.get("gaps") or []
+                    if len(gaps) == 0:
+                        st.caption("• Missing Data: None")
+                    else:
+                        st.caption("• Missing Data: " + "; ".join(gaps))
+            except Exception:
+                # keep sidebar resilient
+                pass
 
             # Progressive disclosure: only show the rest after both selections are made
             valid_od = bool(origin and destination and
