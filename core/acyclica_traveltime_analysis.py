@@ -753,6 +753,9 @@ def render_tab3_analysis():
                     unsafe_allow_html=True,
                 )
 
+            # Data caption at top (before corridor selection)
+            st.caption("Data: Travel Time, and Speed (Acyclica)")
+
             # Get available corridors
             if not acyclica_df.empty and "corridor_id" in acyclica_df.columns:
                 corridors = ["SELECT", "All Corridors"] + sorted(acyclica_df["corridor_id"].dropna().unique().tolist())
@@ -800,8 +803,6 @@ def render_tab3_analysis():
                 # Keep sidebar resilient if availability fails
                 pass
 
-            # Data caption under availability
-            st.caption("Data: Travel Time, and Speed (Acyclica)")
 
             # Loading animation when corridor changes (only for real selections)
             prev_corridor = st.session_state.get("corridor_acyclica_prev")
