@@ -3,6 +3,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
+import time
 
 # Plotly for chart helpers
 import plotly.express as px
@@ -17,6 +18,12 @@ try:
     from ui_utils import cad_loader as scoped_cad_loader, set_active_search_tab, is_active_tab
 except ModuleNotFoundError:
     from core.ui_utils import cad_loader as scoped_cad_loader, set_active_search_tab, is_active_tab
+
+# Availability utility
+try:
+    from sidebar_functions import compute_data_availability
+except ModuleNotFoundError:
+    from core.sidebar_functions import compute_data_availability
 
 
 # ------------------------------------------------------------------
@@ -745,8 +752,42 @@ def render_tab3_analysis():
                     """,
                     unsafe_allow_html=True,
                 )
-            st.caption("Select Corridor and Date Range")
-            st.caption("Data: Travel Time & Speed from Acyclica sensors")
+            # Availability preview at the very top of the expander (corridor-aware)
+            try:
+                base_df = acyclica_df if acyclica_df is not None else pd.DataFrame()
+                # Use last selected corridor from session state (falls back to All Corridors)
+                corridor_ss = st.session_state.get("corridor_acyclica", "All Corridors")
+                # Compute availability: when 'All Corridors', summarize whole dataset
+                corridor_for_avail = None if corridor_ss in (None, "", "All Corridors") else corridor_ss
+                avail = compute_data_availability(
+                    base_df if base_df is not None else pd.DataFrame(),
+                    intersection_col="corridor_id",
+                    intersection=corridor_for_avail,
+                    max_gaps=3,
+                    current_date=datetime.now(),
+                )
+                if avail.get("start") and avail.get("end"):
+                    start_str = avail["start"].strftime("%b %d, %Y %I:%M %p")
+                    end_str = avail["end"].strftime("%b %d, %Y %I:%M %p")
+                    mb = avail.get("size_mb", 0.0)
+                    size_str = f"({mb:.1f} MB)" if mb > 0 else ""
+                    # Dynamic header label
+                    header_label = (
+                        "Available Data" if corridor_for_avail is None else f"Available Data for {corridor_ss}"
+                    )
+                    st.caption(header_label)
+                    st.caption(f"• Date Range: {start_str} → {end_str} {size_str}")
+                    gaps = avail.get("gaps") or []
+                    if len(gaps) == 0:
+                        st.caption("• Missing Data: None")
+                    else:
+                        st.caption("• Missing Data: " + "; ".join(gaps))
+            except Exception:
+                # Keep sidebar resilient if availability fails
+                pass
+
+            # Place the data caption just beneath availability, like other tabs
+            st.caption("Data: Travel Time, and Speed (Acyclica)")
 
             # Get available corridors
             if not acyclica_df.empty and "corridor_id" in acyclica_df.columns:
@@ -756,6 +797,16 @@ def render_tab3_analysis():
 
             st.markdown("## 🛣️ Select Corridor")
             corridor = st.selectbox("Corridor", corridors, key="corridor_acyclica")
+
+            # Loading animation when corridor changes (mirrors other tabs)
+            prev_corridor = st.session_state.get("corridor_acyclica_prev")
+            if prev_corridor != corridor:
+                st.session_state["corridor_acyclica_prev"] = corridor
+                pb = st.progress(0, text="Loading Data availability info...")
+                for i in range(0, 101, 10):
+                    time.sleep(0.02)
+                    pb.progress(i, text="Loading Data availability info...")
+                pb.empty()
 
             # Date range
             if acyclica_df.empty or "local_datetime" not in acyclica_df.columns:
