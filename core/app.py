@@ -85,9 +85,9 @@ st.set_page_config(
 
 # --- Authentication gate ---
 try:
-    from auth import require_company_login
+    from auth import require_company_login, render_auth_sidebar_footer
 except ModuleNotFoundError:
-    from core.auth import require_company_login
+    from core.auth import require_company_login, render_auth_sidebar_footer
 
 # Only allow @advantec-usa.com emails
 if not require_company_login("advantec-usa.com"):
@@ -2197,6 +2197,11 @@ with tab4:
 with tab5:
     render_bosch_tab()
 
+# -- Auth footer at the very bottom of the sidebar --
+try:
+    render_auth_sidebar_footer()
+except Exception:
+    pass
 
 # =========================
 # FOOTER
