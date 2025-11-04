@@ -194,31 +194,21 @@ def require_company_login(domain: str = _ALLOWED_DOMAIN) -> bool:
     if is_authenticated(domain):
         return True
 
-    # Center the entire sign-in experience within a narrower column so the page
-    # doesn't feel "wide" on large displays while keeping the main app wide.
-    left, center, right = st.columns([1, 2, 1])
-    with center:
-        st.markdown(
-            """
-            <div style='max-width:720px;margin:40px auto 10px; padding:24px; border-radius:16px;'
-                 'background:linear-gradient(135deg, rgba(79,172,254,.08), rgba(0,242,254,.08));'
-                 'border:1px solid rgba(79,172,254,.25); box-shadow:0 8px 26px rgba(0,0,0,.08);'>
-              <h2 style='margin:0 0 8px 0;'>ADVANTEC Dashboard — Sign in</h2>
-              <p style='margin:0;opacity:.85;'>Use your company email and password</p>
-            </div>
-        """,
-            unsafe_allow_html=True,
-        )
+    st.markdown("""
+        <div style='max-width:720px;margin:40px auto 10px; padding:24px; border-radius:16px;'
+             'background:linear-gradient(135deg, rgba(79,172,254,.08), rgba(0,242,254,.08));'
+             'border:1px solid rgba(79,172,254,.25); box-shadow:0 8px 26px rgba(0,0,0,.08);'>
+          <h2 style='margin:0 0 8px 0;'>ADVANTEC Dashboard — Sign in</h2>
+          <p style='margin:0;opacity:.85;'>Use your company email and password</p>
+        </div>
+    """, unsafe_allow_html=True)
 
-        tabs = st.tabs(["Sign In", "Forgot Password", "Admin: Add User"])
+    tabs = st.tabs(["Sign In", "Forgot Password", "Admin: Add User"])
 
     # Sign In tab
     with tabs[0]:
         with st.form("auth_signin", clear_on_submit=False):
-            email = st.text_input(
-                "Company Email",
-                value=_normalize_email(st.session_state.get("auth_email", "")),
-            )
+            email = st.text_input("Company Email", value=_normalize_email(st.session_state.get("auth_email", "")))
             password = st.text_input("Password", type="password")
             submitted = st.form_submit_button("Sign In", type="primary")
         if submitted:
