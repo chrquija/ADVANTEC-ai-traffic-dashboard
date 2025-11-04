@@ -83,6 +83,16 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+# --- Authentication gate ---
+try:
+    from auth import require_company_login
+except ModuleNotFoundError:
+    from core.auth import require_company_login
+
+# Only allow @advantec-usa.com emails
+if not require_company_login("advantec-usa.com"):
+    st.stop()
+
 # -------- CAD-style loader (progress bar + step text) --------
 @contextlib.contextmanager
 def cad_loader(title: str = "Processing…"):
