@@ -598,10 +598,30 @@ with tab1:
                 key="od_mode_perf",
             )
 
+            # Corridor selection (required before O-D and date/time)
+            corridor_choice = None
+            filtered_corridor_df = corridor_df.copy() if corridor_df is not None else pd.DataFrame()
+            try:
+                corridors = [
+                    "SELECT",
+                ] + (sorted([c for c in filtered_corridor_df["corridor_id"].dropna().astype(str).unique().tolist()]) if (not filtered_corridor_df.empty and "corridor_id" in filtered_corridor_df.columns) else [])
+            except Exception:
+                corridors = ["SELECT"]
+            if "t1_corridor_id" not in st.session_state:
+                st.session_state["t1_corridor_id"] = "SELECT"
+            corridor_choice = st.selectbox("Corridor", corridors, key="t1_corridor_id", help="Choose a corridor to analyze.")
+            if corridor_choice and corridor_choice != "SELECT" and ("corridor_id" in filtered_corridor_df.columns):
+                filtered_corridor_df = filtered_corridor_df[filtered_corridor_df["corridor_id"].astype(str) == str(corridor_choice)]
+            else:
+                # No corridor selected → hide downstream controls by using empty df
+                filtered_corridor_df = pd.DataFrame()
+
+            corridor_selected = not filtered_corridor_df.empty
+
             origin, destination = None, None
-            if not corridor_df.empty:
-                nodes_in_data = _canonical_order_in_data(corridor_df)
-                node_list = nodes_in_data if len(nodes_in_data) >= 2 else _build_node_order(corridor_df)
+            if corridor_selected and not filtered_corridor_df.empty:
+                nodes_in_data = _canonical_order_in_data(filtered_corridor_df)
+                node_list = nodes_in_data if len(nodes_in_data) >= 2 else _build_node_order(filtered_corridor_df)
 
                 if len(node_list) >= 2:
                     # Add "SELECT" as the first option for both origin and destination
@@ -696,9 +716,9 @@ with tab1:
             except Exception:
                 pass
 
-            # ---- Availability preview (always show) ----
+            # ---- Availability preview (always show within selected corridor) ----
             try:
-                base_df = corridor_df if corridor_df is not None else pd.DataFrame()
+                base_df = filtered_corridor_df if filtered_corridor_df is not None else pd.DataFrame()
                 header_label = "Available Data"
                 dfx = base_df.copy()
 
@@ -768,18 +788,18 @@ with tab1:
                 pass
 
             # Progressive disclosure: only show the rest after both selections are made
-            valid_od = bool(origin and destination and
+            valid_od = bool(corridor_selected and origin and destination and
                             origin != "SELECT" and destination != "SELECT" and
                             origin != destination)
 
             if valid_od:
                 # Analysis Period
-                if corridor_df.empty or "local_datetime" not in corridor_df.columns:
+                if filtered_corridor_df.empty or "local_datetime" not in filtered_corridor_df.columns:
                     min_date = datetime.today().date() - timedelta(days=7)
                     max_date = datetime.today().date()
                 else:
-                    min_date = corridor_df["local_datetime"].dt.date.min()
-                    max_date = corridor_df["local_datetime"].dt.date.max()
+                    min_date = filtered_corridor_df["local_datetime"].dt.date.min()
+                    max_date = filtered_corridor_df["local_datetime"].dt.date.max()
 
                 # If Analysis Pro is OFF, restrict selectable dates to the last 60 days
                 if not od_mode:
@@ -827,6 +847,7 @@ with tab1:
                 # track uncommitted controls
                 t1_current = {
                     "od_mode": od_mode,
+                    "corridor_id": corridor_choice if corridor_selected else None,
                     "origin": origin,
                     "destination": destination,
                     "date_range": tuple(date_range) if date_range else None,
@@ -852,7 +873,7 @@ with tab1:
     t1_pending = t1_ready and _freeze_params(t1_params) != _freeze_params(st.session_state.get("t1_current", {}))
 
     if not t1_ready:
-        st.info("Choose your Route and Date Range in the settings to the left.")
+        st.info("Select a Corridor, Origin, and Destination in the left settings, then press Search.")
     else:
         if t1_pending:
             st.warning(" Press **Search** to refresh.")
@@ -866,6 +887,7 @@ with tab1:
             else:
                 # Unpack committed params
                 od_mode = t1_params.get("od_mode", True)
+                selected_corridor_id = t1_params.get("corridor_id")
                 origin = t1_params.get("origin")
                 destination = t1_params.get("destination")
                 date_range = t1_params.get("date_range")
@@ -873,6 +895,13 @@ with tab1:
                 time_filter = t1_params.get("time_filter")
                 start_hour = t1_params.get("start_hour")
                 end_hour = t1_params.get("end_hour")
+
+                # Apply corridor filter to the working base if selected
+                try:
+                    if selected_corridor_id and ("corridor_id" in base_df.columns):
+                        base_df = base_df[base_df["corridor_id"].astype(str) == str(selected_corridor_id)].copy()
+                except Exception:
+                    pass
 
                 # --- Prepare working set / O-D path subset ---
                 working_df = base_df.copy()
