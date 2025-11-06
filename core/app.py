@@ -1484,7 +1484,28 @@ with tab2:
                     # Intersection depends on corridor; construct valid list for hydration
                     corr_for_list = st.session_state.get("corridor_vol", corridors[0]) if corridors else "All Corridors"
                     corr_df = volume_df if corr_for_list == "All Corridors" else volume_df[volume_df["corridor_id"] == corr_for_list]
-                    intersections_pre = ["All Intersections"] + (sorted(corr_df["intersection_name"].dropna().unique().tolist()) if not corr_df.empty else [])
+                    # Custom bottom-to-top order for Washington Street
+                    order_list = [
+                        "Avenue 52",
+                        "Calle Tampico",
+                        "Village Shopping Ctr",
+                        "Avenue 50",
+                        "Sagebrush Ave",
+                        "Eisenhower Dr",
+                        "Avenue 48",
+                        "Avenue 47",
+                        "Point Happy Simon",
+                        "Hwy 111",
+                        "Channel Drive",
+                        "Miles Avenue",
+                        "Via Sevilla",
+                        "Avenue 42",
+                        "Harris Lane",
+                    ]
+                    order_map = {name: i for i, name in enumerate(order_list)}
+                    names = sorted(corr_df["intersection_name"].dropna().unique().tolist()) if not corr_df.empty else []
+                    names.sort(key=lambda x: order_map.get(x, 10_000 + (ord(x[:1]) if x else 0)))
+                    intersections_pre = ["All Intersections"] + names
 
                     qp_inter = qp.get("t2_intersection")
                     if qp_inter and qp_inter in intersections_pre and "intersection_vol" not in st.session_state:
@@ -1528,7 +1549,28 @@ with tab2:
             # Build intersections list based on corridor
             if not volume_df.empty and "intersection_name" in volume_df.columns:
                 corr_df = volume_df if corridor == "All Corridors" else volume_df[volume_df["corridor_id"] == corridor]
-                intersections = ["SELECT"] + (["All Intersections"] + sorted(corr_df["intersection_name"].dropna().unique().tolist()) if not corr_df.empty else ["All Intersections"]) 
+                # Apply custom corridor order
+                order_list = [
+                    "Avenue 52",
+                    "Calle Tampico",
+                    "Village Shopping Ctr",
+                    "Avenue 50",
+                    "Sagebrush Ave",
+                    "Eisenhower Dr",
+                    "Avenue 48",
+                    "Avenue 47",
+                    "Point Happy Simon",
+                    "Hwy 111",
+                    "Channel Drive",
+                    "Miles Avenue",
+                    "Via Sevilla",
+                    "Avenue 42",
+                    "Harris Lane",
+                ]
+                order_map = {name: i for i, name in enumerate(order_list)}
+                names = sorted(corr_df["intersection_name"].dropna().unique().tolist()) if not corr_df.empty else []
+                names.sort(key=lambda x: order_map.get(x, 10_000 + (ord(x[:1]) if x else 0)))
+                intersections = ["SELECT"] + (["All Intersections"] + names if names else ["All Intersections"]) 
             else:
                 intersections = ["SELECT", "All Intersections"]
 
