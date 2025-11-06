@@ -172,10 +172,12 @@ def load_volume_data():
             return ""
         r = raw
         # Explicit mapping for the 13 intersections (south → north), plus tolerated aliases
+
         explicit = {
             # Southbound to northbound official list
             "Washington_St_and_Avenue52": "Avenue 52",
             "Washington_St_and_CalleTampico": "Calle Tampico",
+            "Washington_St_and_Calle_Tampico": "Calle Tampico",  # Add this line for the underscore version
             "Washington_St_and_VillageShoppingCtr": "Village Shopping Ctr",
             "Washington_St_and_Village_Shopping_Center": "Village Shopping Ctr",
             "Washington_St_and_Avenue50": "Avenue 50",
