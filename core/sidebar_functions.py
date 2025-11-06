@@ -173,20 +173,7 @@ def load_volume_data():
         r = raw
         # Explicit mappings for north of Hwy 111
         explicit = {
-            # South to North canonical names
-            "Washington_St_and_Avenue52": "Avenue 52",
-            "Washington_St_and_CalleTampico": "Calle Tampico",
-            "Washington_St_and_VillageShoppingCtr": "Village Shopping Ctr",
-            "Washington_St_and_Avenue50": "Avenue 50",
-            "Washington_St_and_SagebrushAve": "Sagebrush Ave",
-            "Washington_St_and_EisenhowerDr": "Eisenhower Dr",
-            "Washington_St_and_Avenue48": "Avenue 48",
-            "Washington_St_and_Avenue47": "Avenue 47",
-            "Washington_St_and_PointHappySimon": "Point Happy Simon",
-            "Washington_St_and_Hwy111": "Hwy 111",
-            # North of Hwy 111
-            "Washington_St_and_ChannelDrive": "Channel Drive",
-            "Washington_St_and_MilesAvenue": "Miles Avenue",
+            "Washington_St_and_Channel_Drive": "Channel Drive",
             "Washington_St_and_MilesAve": "Miles Avenue",
             "Washington_St_and_ViaSevilla": "Via Sevilla",
             "Washington_St_and_Avenue42": "Avenue 42",
@@ -205,18 +192,11 @@ def load_volume_data():
         # Clean double spaces
         r2 = " ".join(r2.split())
         # Standardize Ave → Avenue etc.
-        # Gentle standardization without over-replacing substrings that cause typos
-        # e.g., avoid turning "Avenue47" into "Avenuenue47".
         r2 = (r2
               .replace("Ave ", "Avenue ")
+              .replace("Ave", "Avenue")
               .replace("Dr ", "Drive ")
-              .replace("Ctr", "Ctr"))
-        # Insert space between trailing letters and numbers for patterns like "Avenue47" → "Avenue 47"
-        try:
-            import re
-            r2 = re.sub(r"(?i)(Avenue)(\d)", r"\\1 \\2", r2)
-        except Exception:
-            pass
+              .replace("Ctr", "Center"))
         return r2.strip()
 
     try:
