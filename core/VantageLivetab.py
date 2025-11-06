@@ -1001,11 +1001,24 @@ def render_vantage_tab():
                 col1, col2, col3, col4, col5 = st.columns(5)
 
                 with col1:
+                    # Format the exact peak period label based on granularity
+                    if granularity == "Hourly":
+                        peak_period_str = f"{peak_date.strftime('%A')}, {peak_date.strftime('%m/%d/%Y %H:00')}"
+                    elif granularity == "Daily":
+                        peak_period_str = f"{peak_date.strftime('%A')}, {peak_date.strftime('%m/%d/%Y')}"
+                    elif granularity == "Weekly":
+                        p = pd.Period(peak_date, freq='W')
+                        ws, we = p.start_time, p.end_time
+                        peak_period_str = f"{ws.strftime('%m/%d/%Y')} – {we.strftime('%m/%d/%Y')}"
+                    else:  # Monthly
+                        peak_period_str = peak_date.strftime('%B %Y')
+
                     kpi_title(
                         peak_label,
-                        f"Highest {label} total within the selected period. Date shown below; 95th percentile is provided for context."
+                        f"Highest {label} total within the selected period. Shows the exact peak period below."
                     )
-                    st.metric("", f"{peak_val:,.0f} {unit}", delta=f"on {peak_date.strftime('%b %d, %Y')}")
+                    # Always show 'vehicles' as the unit for peak, regardless of granularity
+                    st.metric("", f"{peak_val:,.0f} vehicles", delta=peak_period_str)
                     badge = (
                         "badge-critical" if peak_util_pct > 90 else
                         "badge-poor" if peak_util_pct > 75 else
@@ -1016,7 +1029,6 @@ def render_vantage_tab():
                         f'<span class="performance-badge {badge}">{peak_util_pct:.0f}% of Capacity</span>',
                         unsafe_allow_html=True,
                     )
-                    st.caption(f"95th percentile: {p95_val:,.0f} {unit}")
 
                 with col2:
                     kpi_title(

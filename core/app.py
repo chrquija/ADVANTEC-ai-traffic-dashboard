@@ -2131,7 +2131,7 @@ with tab2:
                                             "Peak_Capacity_Util": "📊 Peak Capacity %",
                                             "Avg_Capacity_Util": "📊 Avg Capacity %",
                                             "total_volume_mean": "Avg Volume (vph)",
-                                            "total_volume_max": "Peak Volume (vph)",
+                                            "total_volume_max": "Peak Volume (vehicles)",
                                             "total_volume_count": "Data Points",
                                         }
                                     ).sort_values("🚨 Risk Score", ascending=False)
