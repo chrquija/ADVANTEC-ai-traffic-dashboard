@@ -178,7 +178,9 @@ def load_volume_data():
             "Washington_St_and_Avenue52": "Avenue 52",
             "Washington_St_and_CalleTampico": "Calle Tampico",
             "Washington_St_and_Calle_Tampico": "Calle Tampico",  # Add this line for the underscore version
-            "Washington_St_and_Village_Shopping_Center": "Village Shopping Center",
+            "Washington_St_and_Village_Shopping_Center": "Village Shopping Ctr",
+            "Washington_St_and_Village_Shopping_Ctr": "Village Shopping Ctr",
+            # Add this line for the abbreviated version
             "Washington_St_and_Avenue50": "Avenue 50",
             "Washington_St_and_SagebrushAve": "Sagebrush Ave",
             "Washington_St_and_Sagebrush_Avenue": "Sagebrush Ave",
