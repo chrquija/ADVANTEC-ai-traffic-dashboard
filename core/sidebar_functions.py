@@ -146,45 +146,111 @@ def load_traffic_data():
     return combined_df
 
 #Kinetic mobility data
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def load_volume_data():
     """
-    Load consolidated volume data for all Washington Street intersections.
-    Auto-fixes bad RAW URL pattern.
+    Load consolidated volume data for Pg.2 Kinetic Mobility from unified CSV.
+    Uses new file with added corridor_id and EB/WB directions.
+    Ensures presence of: local_datetime, corridor_id, intersection_name, direction, total_volume.
     """
     volume_url = _fix_raw_url(
-        "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/VOLUME/KMOB_LONG/LONG_MASTER_Avenue52_to_Avenue47_1hr_NS_VOLUME_OctoberTOJune.csv"
+        "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/VOLUME/KMOB_LONG/FULL_AvailableVolumeCounts_WashingtonCorridor.csv"
     )
 
-    try:
-        volume_df = pd.read_csv(volume_url)
-        volume_df["local_datetime"] = pd.to_datetime(volume_df["local_datetime"], errors="coerce")
-        volume_df = volume_df.dropna(subset=["local_datetime"]).sort_values("local_datetime").reset_index(drop=True)
-
-        # Create proper intersection names from intersection_id
-        volume_df["intersection_name"] = (
-            volume_df["intersection_id"]
-            .str.replace("_", " ", regex=False)
-            .str.replace("Washington St and ", "Washington St & ", regex=False)
-            .str.replace(" and ", " & ", regex=False)
-        )
-
-        # Create a sorting order for intersections (from south to north along Washington St)
-        intersection_order = {
-            "Washington St & Avenue52": 1,
-            "Washington St & Calle Tampico": 2,
-            "Washington St & Village Shop Ctr": 3,
-            "Washington St & Avenue50": 4,
-            "Washington St & Sagebrush Ave": 5,
-            "Washington St & Eisenhower": 6,
-            "Washington St & Ave48": 7,
-            "Washington St & Ave47": 8,
+    def _norm_dir(s: pd.Series) -> pd.Series:
+        s = s.astype(str).str.strip().str.upper()
+        map_dir = {
+            "N": "NB", "NB": "NB", "NORTH": "NB", "NORTHBOUND": "NB",
+            "S": "SB", "SB": "SB", "SOUTH": "SB", "SOUTHBOUND": "SB",
+            "E": "EB", "EB": "EB", "EAST": "EB", "EASTBOUND": "EB",
+            "W": "WB", "WB": "WB", "WEST": "WB", "WESTBOUND": "WB",
         }
+        return s.map(map_dir).fillna(s)
 
-        volume_df["sort_order"] = volume_df["intersection_name"].map(intersection_order).fillna(999)
-        volume_df = volume_df.sort_values("sort_order").drop("sort_order", axis=1)
-        return volume_df
+    def _friendly_label(raw: str) -> str:
+        if not isinstance(raw, str):
+            return ""
+        r = raw
+        # Explicit mappings for north of Hwy 111
+        explicit = {
+            "Washington_St_and_Channel_Drive": "Channel Drive",
+            "Washington_St_and_MilesAve": "Miles Avenue",
+            "Washington_St_and_ViaSevilla": "Via Sevilla",
+            "Washington_St_and_Avenue42": "Avenue 42",
+            "Washington_St_and_HarrisLane": "Harris Lane",
+        }
+        if r in explicit:
+            return explicit[r]
+        # Normalize common variants
+        r2 = (r.replace("_", " ")
+                .replace("Washington St and ", "")
+                .replace("Washington_St_and_", "")
+                .replace("Washington and ", "")
+                .replace("Washington Street and ", "")
+                .replace("Washington St & ", "")
+                .replace("Washington Street & ", ""))
+        # Clean double spaces
+        r2 = " ".join(r2.split())
+        # Standardize Ave → Avenue etc.
+        r2 = (r2
+              .replace("Ave ", "Avenue ")
+              .replace("Ave", "Avenue")
+              .replace("Dr ", "Drive ")
+              .replace("Ctr", "Center"))
+        return r2.strip()
 
+    try:
+        df = pd.read_csv(volume_url)
+        # Ensure datetime
+        if "local_datetime" in df.columns:
+            df["local_datetime"] = pd.to_datetime(df["local_datetime"], errors="coerce")
+        elif "datetime" in df.columns:
+            df = df.rename(columns={"datetime": "local_datetime"})
+            df["local_datetime"] = pd.to_datetime(df["local_datetime"], errors="coerce")
+        else:
+            raise RuntimeError("Missing local_datetime column in volume CSV")
+        df = df.dropna(subset=["local_datetime"]).sort_values("local_datetime").reset_index(drop=True)
+
+        # Corridor id (string)
+        if "corridor_id" not in df.columns:
+            df["corridor_id"] = "Washington_Street"
+        df["corridor_id"] = df["corridor_id"].astype("string")
+
+        # Direction normalization
+        if "direction" in df.columns:
+            df["direction"] = _norm_dir(df["direction"]).astype("category")
+        else:
+            df["direction"] = "NB"
+
+        # Intersection key/name extraction
+        # Prefer explicit id columns
+        inter_key_col = None
+        for c in ["intersection_id", "intersection", "intersection_key", "segment_id"]:
+            if c in df.columns:
+                inter_key_col = c
+                break
+        if inter_key_col is None and "intersection_name" in df.columns:
+            inter_key_col = "intersection_name"
+        if inter_key_col is None:
+            raise RuntimeError("Missing intersection identifier column in volume CSV")
+
+        # Build friendly intersection_name
+        df["intersection_name"] = df[inter_key_col].astype(str).apply(_friendly_label)
+
+        # Ensure numeric volume column
+        vol_col = "total_volume" if "total_volume" in df.columns else ("volume" if "volume" in df.columns else None)
+        if vol_col is None:
+            raise RuntimeError("Missing total_volume/volume column in volume CSV")
+        df["total_volume"] = pd.to_numeric(df[vol_col], errors="coerce")
+
+        # Memory optimizations
+        for c in ("intersection_name",):
+            df[c] = df[c].astype("string")
+        for c in ("corridor_id", "direction"):
+            if c in df.columns:
+                df[c] = df[c].astype("category")
+
+        return df
     except Exception as e:
         st.error(f"Error loading volume data: {e}")
         return pd.DataFrame()

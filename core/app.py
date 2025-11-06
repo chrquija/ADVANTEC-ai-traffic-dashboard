@@ -1466,16 +1466,28 @@ with tab2:
 
             st.caption("Select Intersection(s) and Date Range")
             st.caption("Data: Vehicle Volume")
-            intersections = ["SELECT"] + (["All Intersections"] + sorted(
-                volume_df["intersection_name"].dropna().unique().tolist()
-            ) if not volume_df.empty and "intersection_name" in volume_df.columns else ["All Intersections"]) 
+
+            # Build corridor options
+            if not volume_df.empty and "corridor_id" in volume_df.columns:
+                corridors = ["All Corridors"] + sorted(volume_df["corridor_id"].dropna().unique().tolist())
+            else:
+                corridors = ["All Corridors"]
 
             # --- Hydrate from URL query params (once) ---
             if not st.session_state.get("t2_qp_hydrated", False):
                 qp = st.query_params
                 try:
+                    qp_corr = qp.get("t2_corridor")
+                    if qp_corr and qp_corr in corridors and "corridor_vol" not in st.session_state:
+                        st.session_state["corridor_vol"] = qp_corr
+
+                    # Intersection depends on corridor; construct valid list for hydration
+                    corr_for_list = st.session_state.get("corridor_vol", corridors[0]) if corridors else "All Corridors"
+                    corr_df = volume_df if corr_for_list == "All Corridors" else volume_df[volume_df["corridor_id"] == corr_for_list]
+                    intersections_pre = ["All Intersections"] + (sorted(corr_df["intersection_name"].dropna().unique().tolist()) if not corr_df.empty else [])
+
                     qp_inter = qp.get("t2_intersection")
-                    if qp_inter and qp_inter in intersections and "intersection_vol" not in st.session_state:
+                    if qp_inter and qp_inter in intersections_pre and "intersection_vol" not in st.session_state:
                         st.session_state["intersection_vol"] = qp_inter
 
                     # If a prior search was committed, restore it
@@ -1490,8 +1502,9 @@ with tab2:
                             d_start = d_end = None
                         gran = qp.get("t2_granularity") or "Hourly"
                         direc = qp.get("t2_direction") or "All Directions"
-                        inter = qp_inter if qp_inter in intersections else st.session_state.get("intersection_vol", "SELECT")
+                        inter = qp_inter if qp_inter in intersections_pre else st.session_state.get("intersection_vol", "SELECT")
                         t2_params_h = {
+                            "corridor": st.session_state.get("corridor_vol", corridors[0]),
                             "intersection": inter or "SELECT",
                             "date_range_vol": (d_start, d_end) if d_start and d_end else None,
                             "granularity_vol": gran,
@@ -1503,6 +1516,22 @@ with tab2:
                 finally:
                     st.session_state["t2_qp_hydrated"] = True
 
+            # Corridor selector
+            st.markdown("## 🛣️ Select Corridor")
+            corridor = st.selectbox(
+                "🛣️ Select Corridor",
+                corridors,
+                key="corridor_vol",
+                label_visibility="collapsed",
+            )
+
+            # Build intersections list based on corridor
+            if not volume_df.empty and "intersection_name" in volume_df.columns:
+                corr_df = volume_df if corridor == "All Corridors" else volume_df[volume_df["corridor_id"] == corridor]
+                intersections = ["SELECT"] + (["All Intersections"] + sorted(corr_df["intersection_name"].dropna().unique().tolist()) if not corr_df.empty else ["All Intersections"]) 
+            else:
+                intersections = ["SELECT", "All Intersections"]
+
             st.markdown("## 🚦 Select Intersection")
             intersection = st.selectbox(
                 "🚦 Select Intersection",
@@ -1510,6 +1539,23 @@ with tab2:
                 key="intersection_vol",
                 label_visibility="collapsed",
             )
+
+            # Detect corridor changes to update URL and reset readiness
+            prev_corridor = st.session_state.get("corridor_vol_prev")
+            if prev_corridor != corridor:
+                st.session_state["corridor_vol_prev"] = corridor
+                try:
+                    st.query_params.update(t2_corridor=corridor)
+                    # Reset readiness until user searches again
+                    if "t2_ready" in st.session_state:
+                        del st.session_state["t2_ready"]
+                    if "t2_params" in st.session_state:
+                        del st.session_state["t2_params"]
+                    for k in ("t2_intersection", "t2_date_start", "t2_date_end", "t2_granularity", "t2_direction"):
+                        if k in st.query_params:
+                            del st.query_params[k]
+                except Exception:
+                    pass
 
             # Detect selection changes to drive loading animation and URL state
             prev_intersection = st.session_state.get("intersection_vol_prev")
@@ -1524,7 +1570,7 @@ with tab2:
                         pb.progress(i, text="Loading Data availability info...")
                     pb.empty()
                     try:
-                        st.query_params.update(t2_intersection=intersection)
+                        st.query_params.update(t2_corridor=corridor, t2_intersection=intersection)
                         # Do not mark ready unless user presses Search
                         if "t2_ready" in st.query_params:
                             del st.query_params["t2_ready"]
@@ -1539,7 +1585,7 @@ with tab2:
                         if k in st.session_state:
                             del st.session_state[k]
                     try:
-                        for k in ("t2_intersection", "t2_ready", "t2_date_start", "t2_date_end", "t2_granularity", "t2_direction"):
+                        for k in ("t2_corridor", "t2_intersection", "t2_ready", "t2_date_start", "t2_date_end", "t2_granularity", "t2_direction"):
                             if k in st.query_params:
                                 del st.query_params[k]
                     except Exception:
@@ -1600,14 +1646,22 @@ with tab2:
                     key="granularity_vol",
                 )
 
+                # Direction options scoped to selected corridor (and intersection if chosen)
                 if not volume_df.empty and "direction" in volume_df.columns:
-                    direction_options = ["All Directions"] + sorted(volume_df["direction"].dropna().unique().tolist())
+                    scope_df = volume_df
+                    if corridor != "All Corridors":
+                        scope_df = scope_df[scope_df["corridor_id"] == corridor]
+                    if intersection not in ("All Intersections", "SELECT"):
+                        scope_df = scope_df[scope_df["intersection_name"] == intersection]
+                    dirs = sorted(scope_df["direction"].dropna().unique().tolist()) if not scope_df.empty else []
+                    direction_options = ["All Directions"] + dirs
                 else:
                     direction_options = ["All Directions"]
                 direction_filter = st.selectbox("🔄 Direction Filter", direction_options, key="direction_filter_vol")
 
                 # track uncommitted controls
                 t2_current = {
+                    "corridor": corridor,
                     "intersection": intersection,
                     "date_range_vol": tuple(date_range_vol) if date_range_vol else None,
                     "granularity_vol": granularity_vol,
@@ -1628,6 +1682,7 @@ with tab2:
                             de = t2_current["date_range_vol"][1].isoformat()
                         st.query_params.update(
                             t2_ready="1",
+                            t2_corridor=corridor,
                             t2_intersection=intersection,
                             t2_date_start=ds or "",
                             t2_date_end=de or "",
@@ -1669,11 +1724,14 @@ with tab2:
                 st.error("❌ Failed to load volume Prediction. Please check your Prediction sources.")
             else:
                 # Unpack committed params
+                corridor = t2_params.get("corridor", "All Corridors")
                 intersection = t2_params.get("intersection", "All Intersections")
                 date_range_vol = t2_params.get("date_range_vol")
                 granularity_vol = t2_params.get("granularity_vol", "Hourly")
                 direction_filter = t2_params.get("direction_filter", "All Directions")
 
+                if corridor != "All Corridors" and "corridor_id" in base_df.columns:
+                    base_df = base_df[base_df["corridor_id"] == corridor]
                 if intersection != "All Intersections":
                     base_df = base_df[base_df["intersection_name"] == intersection]
                 if direction_filter != "All Directions" and "direction" in base_df.columns:
