@@ -171,17 +171,29 @@ def load_volume_data():
         if not isinstance(raw, str):
             return ""
         r = raw
-        # Explicit mappings for north of Hwy 111
+        # Explicit mapping for the 13 intersections (south → north), plus tolerated aliases
         explicit = {
-            "Washington_St_and_Channel_Drive": "Channel Drive",
-            "Washington_St_and_MilesAve": "Miles Avenue",
+            # Southbound to northbound official list
+            "Washington_St_and_Avenue52": "Avenue 52",
+            "Washington_St_and_CalleTampico": "Calle Tampico",
+            "Washington_St_and_VillageShoppingCtr": "Village Shopping Ctr",
+            "Washington_St_and_Avenue50": "Avenue 50",
+            "Washington_St_and_SagebrushAve": "Sagebrush Ave",
+            "Washington_St_and_EisenhowerDr": "Eisenhower Dr",
+            "Washington_St_and_Avenue48": "Avenue 48",
+            "Washington_St_and_Avenue47": "Avenue 47",
+            "Washington_St_and_ChannelDrive": "Channel Drive",
+            "Washington_St_and_MilesAvenue": "Miles Avenue",
             "Washington_St_and_ViaSevilla": "Via Sevilla",
             "Washington_St_and_Avenue42": "Avenue 42",
             "Washington_St_and_HarrisLane": "Harris Lane",
+            # Aliases sometimes seen in data
+            "Washington_St_and_Channel_Drive": "Channel Drive",
+            "Washington_St_and_MilesAve": "Miles Avenue",
         }
         if r in explicit:
             return explicit[r]
-        # Normalize common variants
+        # Fallback normalization for any unexpected IDs: trim corridor prefix and tidy underscores
         r2 = (r.replace("_", " ")
                 .replace("Washington St and ", "")
                 .replace("Washington_St_and_", "")
@@ -191,12 +203,13 @@ def load_volume_data():
                 .replace("Washington Street & ", ""))
         # Clean double spaces
         r2 = " ".join(r2.split())
-        # Standardize Ave → Avenue etc.
-        r2 = (r2
-              .replace("Ave ", "Avenue ")
-              .replace("Ave", "Avenue")
-              .replace("Dr ", "Drive ")
-              .replace("Ctr", "Center"))
+        # Avoid aggressive expansions that caused typos; only minor spacing fixes
+        # Insert space between 'Avenue' and trailing digits (e.g., 'Avenue47' → 'Avenue 47')
+        try:
+            import re
+            r2 = re.sub(r"(Avenue)(\d)", r"\\1 \\2", r2)
+        except Exception:
+            pass
         return r2.strip()
 
     try:

@@ -1473,6 +1473,23 @@ with tab2:
             else:
                 corridors = ["All Corridors"]
 
+            # Predefine south→north ordered labels for Kinetic Mobility intersections
+            ordered_labels = [
+                "Avenue 52",
+                "Calle Tampico",
+                "Village Shopping Ctr",
+                "Avenue 50",
+                "Sagebrush Ave",
+                "Eisenhower Dr",
+                "Avenue 48",
+                "Avenue 47",
+                "Channel Drive",
+                "Miles Avenue",
+                "Via Sevilla",
+                "Avenue 42",
+                "Harris Lane",
+            ]
+
             # --- Hydrate from URL query params (once) ---
             if not st.session_state.get("t2_qp_hydrated", False):
                 qp = st.query_params
@@ -1484,7 +1501,9 @@ with tab2:
                     # Intersection depends on corridor; construct valid list for hydration
                     corr_for_list = st.session_state.get("corridor_vol", corridors[0]) if corridors else "All Corridors"
                     corr_df = volume_df if corr_for_list == "All Corridors" else volume_df[volume_df["corridor_id"] == corr_for_list]
-                    intersections_pre = ["All Intersections"] + (sorted(corr_df["intersection_name"].dropna().unique().tolist()) if not corr_df.empty else [])
+                    avail = (corr_df["intersection_name"].dropna().unique().tolist() if not corr_df.empty else [])
+                    intersections_ordered = [lbl for lbl in ordered_labels if lbl in avail]
+                    intersections_pre = ["All Intersections"] + intersections_ordered
 
                     qp_inter = qp.get("t2_intersection")
                     if qp_inter and qp_inter in intersections_pre and "intersection_vol" not in st.session_state:
@@ -1525,10 +1544,12 @@ with tab2:
                 label_visibility="collapsed",
             )
 
-            # Build intersections list based on corridor
+            # Build intersections list based on corridor (ordered south→north)
             if not volume_df.empty and "intersection_name" in volume_df.columns:
                 corr_df = volume_df if corridor == "All Corridors" else volume_df[volume_df["corridor_id"] == corridor]
-                intersections = ["SELECT"] + (["All Intersections"] + sorted(corr_df["intersection_name"].dropna().unique().tolist()) if not corr_df.empty else ["All Intersections"]) 
+                avail = (corr_df["intersection_name"].dropna().unique().tolist() if not corr_df.empty else [])
+                intersections_ordered = [lbl for lbl in ordered_labels if lbl in avail]
+                intersections = ["SELECT"] + (["All Intersections"] + intersections_ordered if intersections_ordered else ["All Intersections"]) 
             else:
                 intersections = ["SELECT", "All Intersections"]
 
