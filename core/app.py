@@ -1777,8 +1777,8 @@ with tab2:
                                     peak_val = float(bucket_all.loc[peak_idx, "total_volume"])
                                     peak_cap = float(bucket_all.loc[peak_idx, "cap"])
                                     peak_util_pct = (peak_val / peak_cap * 100) if peak_cap > 0 else 0.0
+                                    peak_date = pd.to_datetime(bucket_all.loc[peak_idx, "local_datetime"])
 
-                                    p95_val = float(np.nanpercentile(bucket_all["total_volume"], 95)) if bucket_all["total_volume"].notna().any() else 0.0
                                     avg_bucket_val = float(bucket_all["total_volume"].mean())
                                     avg_util_pct = float(np.nanmean(util_series)) if np.isfinite(util_series).any() else 0.0
 
@@ -1795,18 +1795,24 @@ with tab2:
                                         avg_label = "Average Hourly Volume"
                                         peak_label = "🔥 Peak Hourly Volume"
                                         avg_suffix = "vph"
+                                        peak_period_str = f"{peak_date.strftime('%A')}, {peak_date.strftime('%m/%d/%Y %H:00')}"
                                     elif granularity_vol == "Daily":
                                         avg_label = "Average Daily Traffic (ADT)"
                                         peak_label = "🔥 Peak Daily Volume"
                                         avg_suffix = "vpd"
+                                        peak_period_str = f"{peak_date.strftime('%A')}, {peak_date.strftime('%m/%d/%Y')}"
                                     elif granularity_vol == "Weekly":
                                         avg_label = "Average Weekly Traffic (AWT)"
                                         peak_label = "🔥 Peak Weekly Volume"
                                         avg_suffix = "vpw"
+                                        _p = pd.Period(peak_date, freq='W')
+                                        _ws, _we = _p.start_time, _p.end_time
+                                        peak_period_str = f"{_ws.strftime('%m/%d/%Y')} – {_we.strftime('%m/%d/%Y')}"
                                     else:
                                         avg_label = "Average Monthly Traffic (AMT)"
                                         peak_label = "🔥 Peak Monthly Volume"
                                         avg_suffix = "vpm"
+                                        peak_period_str = peak_date.strftime('%B %Y')
 
                                     col1, col2, col3, col4, col5 = st.columns(5)
 
@@ -1817,7 +1823,8 @@ with tab2:
                                             "badge-fair" if peak_util_pct > 60 else
                                             "badge-good"
                                         )
-                                        st.metric(peak_label, f"{peak_val:,.0f} {unit}", delta=f"95th: {p95_val:,.0f} {unit}")
+                                        # Always display peak in vehicles and show the exact peak period in delta
+                                        st.metric(peak_label, f"{peak_val:,.0f} vehicles", delta=peak_period_str)
                                         st.markdown(
                                             f'<span class="performance-badge {badge}">{peak_util_pct:.0f}% of Capacity</span>',
                                             unsafe_allow_html=True,
