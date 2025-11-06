@@ -1561,6 +1561,14 @@ with tab2:
                 label_visibility="collapsed",
             )
 
+            # Info caption listing which of the 13 corridor intersections are currently missing (no data in selection)
+            try:
+                missing_intersections = [lbl for lbl in ordered_labels if lbl not in avail]
+                if missing_intersections:
+                    st.caption("No data available for: " + ", ".join(missing_intersections))
+            except Exception:
+                pass
+
             # Detect corridor changes to update URL and reset readiness
             prev_corridor = st.session_state.get("corridor_vol_prev")
             if prev_corridor != corridor:
