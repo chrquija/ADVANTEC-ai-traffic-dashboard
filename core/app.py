@@ -1479,7 +1479,7 @@ with tab2:
                 "Calle Tampico",
                 "Village Shopping Center",
                 "Avenue 50",
-                "Sagebrush Ave",
+                "Sagebrush Avenue",
                 "Eisenhower Dr",
                 "Avenue 48",
                 "Avenue 47",

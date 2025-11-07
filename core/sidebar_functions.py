@@ -182,7 +182,6 @@ def load_volume_data():
             "Washington_St_and_Village_Shopping_Ctr": "Village Shopping Ctr",
             # Add this line for the abbreviated version
             "Washington_St_and_Avenue50": "Avenue 50",
-            "Washington_St_and_SagebrushAve": "Sagebrush Ave",
             "Washington_St_and_Sagebrush_Avenue": "Sagebrush Ave",
             "Washington_St_and_EisenhowerDr": "Eisenhower Dr",
             "Washington_St_and_Eisenhower": "Eisenhower Dr",
