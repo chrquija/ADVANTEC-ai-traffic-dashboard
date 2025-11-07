@@ -451,7 +451,7 @@ def improved_volume_charts_for_tab2(
     granularity: str,
     cap_vph: float,
     high_vph: float,
-    top_k: int = 8
+    top_k: int = 15
 ):
     """
     Returns (fig_trend, fig_box, fig_matrix)
