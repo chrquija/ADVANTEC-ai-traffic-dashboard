@@ -1995,15 +1995,71 @@ with tab2:
 
                                 # ---------------- Charts ----------------
                                 step("Rendering charts", 80)
-                                st.subheader("📈 Vehicle Volume Visualizations")
+                                # Header with optional "Sum All" toggle (Monthly only)
+                                col_title, col_toggle = st.columns([0.85, 0.15])
+                                with col_title:
+                                    st.subheader("📈 Vehicle Volume Visualizations")
+                                sum_all_monthly = False
+                                if granularity_vol == "Monthly":
+                                    with col_toggle:
+                                        try:
+                                            sum_all_monthly = st.toggle(
+                                                "Sum All",
+                                                value=st.session_state.get("t2_sum_all", False),
+                                                key="t2_sum_all",
+                                                help="Show summed total vehicles per month as a bar chart"
+                                            )
+                                        except Exception:
+                                            # Fallback for older Streamlit versions without toggle
+                                            sum_all_monthly = st.checkbox(
+                                                "Sum All",
+                                                value=st.session_state.get("t2_sum_all", False),
+                                                key="t2_sum_all",
+                                                help="Show summed total vehicles per month as a bar chart"
+                                            )
+
                                 if 'raw' in locals() and len(filtered_volume_data) > 1:
                                     try:
+                                        # Build default charts
                                         fig_trend, fig_box, fig_matrix = improved_volume_charts_for_tab2(
                                             raw_hourly_df=raw,
                                             granularity=granularity_vol,
                                             cap_vph=THEORETICAL_LINK_CAPACITY_VPH,
                                             high_vph=HIGH_VOLUME_THRESHOLD_VPH,
                                         )
+
+                                        # If Monthly + Sum All, replace the trend with a monthly total bar chart
+                                        if granularity_vol == "Monthly" and st.session_state.get("t2_sum_all", False):
+                                            monthly = _prep_bucket(raw, "Monthly").groupby("local_datetime", as_index=False)["total_volume"].sum()
+                                            if not monthly.empty:
+                                                monthly["Month"] = pd.to_datetime(monthly["local_datetime"]).dt.strftime("%B %Y")
+                                                # Compute extra tooltip info
+                                                dt_idx = pd.to_datetime(monthly["local_datetime"])  # month period starts
+                                                try:
+                                                    days_in_month = dt_idx.dt.days_in_month
+                                                except Exception:
+                                                    # Fallback if dt accessor not available for index type
+                                                    days_in_month = dt_idx.to_series().apply(lambda d: pd.Period(d, freq='M').days_in_month).values
+                                                monthly["Days"] = days_in_month
+                                                monthly["Avg per day"] = monthly["total_volume"] / monthly["Days"].replace(0, np.nan)
+
+                                                # Build hover text
+                                                monthly["hover"] = monthly.apply(
+                                                    lambda r: f"{r['Month']}<br>Total: {int(r['total_volume']):,} vehicles" +
+                                                              (f"<br>Avg/day: {r['Avg per day']:.0f}" if pd.notnull(r['Avg per day']) else "") +
+                                                              (f"<br>Days: {int(r['Days'])}" if pd.notnull(r['Days']) else ""),
+                                                    axis=1,
+                                                )
+
+                                                fig_bar = px.bar(
+                                                    monthly, x="Month", y="total_volume",
+                                                    title="Total Vehicles by Month",
+                                                    labels={"total_volume": "Vehicles", "Month": "Month"},
+                                                )
+                                                fig_bar.update_traces(customdata=monthly[["hover"]].values, hovertemplate="%{customdata[0]}<extra></extra>")
+                                                fig_bar.update_layout(yaxis_title="Vehicles", xaxis_title="Month", margin=dict(l=10, r=10, t=40, b=10))
+                                                fig_trend = fig_bar
+
                                         if fig_trend:
                                             st.plotly_chart(fig_trend, use_container_width=True, config=PLOTLY_CONFIG)
                                         colA, colB = st.columns(2)
