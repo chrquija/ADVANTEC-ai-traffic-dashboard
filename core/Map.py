@@ -190,12 +190,18 @@ def _normalize_label(label: Optional[str]) -> Optional[str]:
 
 def _label_to_node(label: Optional[str]) -> Optional[str]:
     """
-    Resolve a display label (with variants) to a canonical corridor node.
+    Resolve an input label to a canonical corridor node.
+    Accepts both full display labels (e.g., "Washington St & Avenue 52") and
+    raw node names coming from data (e.g., "Avenue 52").
     Returns None if unknown.
     """
     if not label:
         return None
     s = _normalize_label(label)
+    # If the input already matches a known corridor node, accept it directly.
+    if s in NODES_ORDER:
+        return s
+    # Otherwise, map via display-label dictionary.
     return INTERSECTION_TO_NODE.get(s)
 
 
