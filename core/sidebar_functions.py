@@ -257,19 +257,6 @@ def load_volume_data():
         # Build friendly intersection_name
         df["intersection_name"] = df[inter_key_col].astype(str).apply(_friendly_label)
 
-        # DEBUG: Print unique intersection names to help diagnose
-        import streamlit as st
-        print("DEBUG - Raw intersection keys from CSV:")
-        raw_keys = df[inter_key_col].unique()[:20]  # First 20 unique values
-        print(raw_keys)
-        print("DEBUG - Processed intersection names:")
-        processed_names = df["intersection_name"].unique()[:20]  # First 20 processed values
-        print(processed_names)
-        
-        # Also show in Streamlit for easier viewing
-        st.write("DEBUG - Raw intersection keys from CSV:", list(raw_keys))
-        st.write("DEBUG - Processed intersection names:", list(processed_names))
-
         # Ensure numeric volume column
         vol_col = "total_volume" if "total_volume" in df.columns else ("volume" if "volume" in df.columns else None)
         if vol_col is None:
