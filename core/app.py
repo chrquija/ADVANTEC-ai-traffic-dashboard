@@ -1480,7 +1480,7 @@ with tab2:
                 "Village Shopping Center",
                 "Avenue 50",
                 "Sagebrush Avenue",
-                "Eisenhower Dr",
+                "Eisenhower Drive",
                 "Avenue 48",
                 "Avenue 47",
                 "Channel Drive",
