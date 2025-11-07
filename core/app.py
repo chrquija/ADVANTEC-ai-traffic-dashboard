@@ -1477,7 +1477,7 @@ with tab2:
             ordered_labels = [
                 "Avenue 52",
                 "Calle Tampico",
-                "Village Shopping Ctr",
+                "Village Shopping Center",
                 "Avenue 50",
                 "Sagebrush Ave",
                 "Eisenhower Dr",
