@@ -189,7 +189,6 @@ def load_volume_data():
             "Washington_St_and_ChannelDrive": "Channel Drive",
             "Washington_St_and_MilesAvenue": "Miles Avenue",
             "Washington_St_and_ViaSevilla": "Via Sevilla",
-            "Washington_St_and_Avenue42": "Avenue 42",
             "Washington_St_to_Avenue42": "Avenue 42",
             "Washington_St_and_HarrisLane": "Harris Lane",
             # Aliases sometimes seen in data
