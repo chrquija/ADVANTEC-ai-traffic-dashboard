@@ -280,6 +280,22 @@ def _derive_node_coords_from_segments() -> Dict[str, Tuple[float, float]]:
 # =========================
 # Builders
 # =========================
+# Nodes for which we currently have volume/availability in Pg.2 (13 locations)
+AVAILABLE_INTERSECTION_NODES = {
+    "Avenue 52",
+    "Calle Tampico",
+    "Village Shopping Ctr",
+    "Avenue 50",
+    "Sagebrush Ave",
+    "Eisenhower Dr",
+    "Avenue 48",
+    "Avenue 47",
+    "Channel Drive",
+    "Miles Avenue",
+    "Via Sevilla",
+    "Avenue 42",
+    "Harris Lane",
+}
 def build_corridor_map(origin: str, destination: str) -> Optional[go.Figure]:
     """
     Tab 1: Show the selected O→D corridor segment(s).
@@ -424,6 +440,9 @@ def build_intersections_overview(selected_label: Optional[str] = None) -> Option
     Tab 2/4: Show ALL intersections as dots. If 'selected_label' is provided,
     highlight the corresponding NODE (so label variants still match).
     Title reflects the selected intersection when provided.
+
+    Special handling: when selected_label is None ("All Intersections" in UI),
+    highlight only the currently available intersections (13 nodes) in red.
     """
     node_coords = _derive_node_coords_from_segments()
     if not node_coords:
@@ -438,21 +457,25 @@ def build_intersections_overview(selected_label: Optional[str] = None) -> Option
     if not node_to_label:
         return None
 
-    selected_node = _label_to_node(selected_label) if selected_label else None
+    # Determine which nodes should be highlighted (red)
+    selected_nodes: set = set()
+    if selected_label:
+        node = _label_to_node(selected_label)
+        if node:
+            selected_nodes.add(node)
+    else:
+        # "All Intersections" case → highlight the 13 available ones
+        selected_nodes = set(n for n in AVAILABLE_INTERSECTION_NODES if n in node_to_label)
 
     # Build point sets
     sel_lat, sel_lon, sel_text = [], [], []
     oth_lat, oth_lon, oth_text = [], [], []
     for node, label in node_to_label.items():
         lat, lon = node_coords[node]
-        if selected_node and node == selected_node:
-            sel_lat.append(lat);
-            sel_lon.append(lon);
-            sel_text.append(label)
+        if node in selected_nodes:
+            sel_lat.append(lat); sel_lon.append(lon); sel_text.append(label)
         else:
-            oth_lat.append(lat);
-            oth_lon.append(lon);
-            oth_text.append(label)
+            oth_lat.append(lat); oth_lon.append(lon); oth_text.append(label)
 
     if not (sel_lat or oth_lat):
         return None
