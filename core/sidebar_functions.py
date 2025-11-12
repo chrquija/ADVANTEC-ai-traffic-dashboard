@@ -47,6 +47,9 @@ def _normalize_acyclica_headers(df: pd.DataFrame) -> pd.DataFrame:
         "lasts": "Lasts",
         "minimum": "Minimum",
         "maximum": "Maximum",
+        # include segment identifier if present
+        "segmentid": "segment_id",
+        "segment_id": "segment_id",
     }
     for src, tgt in canon.items():
         if src in df.columns:
@@ -346,14 +349,19 @@ def acyclica_long_to_hourly(df_long: pd.DataFrame) -> pd.DataFrame:
     """
     Convert long → wide for KPI/plots.
     Output columns:
-      local_datetime, corridor_id, direction, average_traveltime, average_speed, average_delay (NaN), segment_name
+      local_datetime, corridor_id, direction, average_traveltime, average_speed, average_delay (NaN), segment_name, segment_id (if available)
     """
     if df_long is None or df_long.empty:
         return pd.DataFrame()
 
+    # Include segment_id in index if present to preserve O→D segment selection
+    index_cols = ["local_datetime", "corridor_id", "direction"]
+    if "segment_id" in df_long.columns:
+        index_cols.append("segment_id")
+
     piv = (
         df_long.pivot_table(
-            index=["local_datetime","corridor_id","direction"],
+            index=index_cols,
             columns="metric",
             values="Strength",
             aggfunc="mean",
@@ -368,10 +376,15 @@ def acyclica_long_to_hourly(df_long: pd.DataFrame) -> pd.DataFrame:
             piv[col] = np.nan
 
     piv["average_delay"] = np.nan  # Acyclica doesn't provide delay
-    piv["segment_name"] = piv["corridor_id"].astype(str)
+    # Prefer segment_id as segment_name if available, else corridor_id
+    if "segment_id" in piv.columns:
+        piv["segment_name"] = piv["segment_id"].astype(str)
+    else:
+        piv["segment_name"] = piv["corridor_id"].astype(str)
 
     piv["local_datetime"] = pd.to_datetime(piv["local_datetime"], errors="coerce")
-    piv = piv.dropna(subset=["local_datetime"]).sort_values(["local_datetime","direction"]).reset_index(drop=True)
+    sort_cols = ["local_datetime", "direction"] + (["segment_id"] if "segment_id" in piv.columns else [])
+    piv = piv.dropna(subset=["local_datetime"]).sort_values(sort_cols).reset_index(drop=True)
     return piv
 
 

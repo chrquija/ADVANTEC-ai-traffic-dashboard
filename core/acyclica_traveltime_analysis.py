@@ -139,7 +139,8 @@ def render_tab3_analysis():
                 origin = destination = "SELECT"
                 if corridor == "Washington Street":
                     st.markdown("## 🚦 Origin → Destination")
-                    od_options = ["SELECT", "Avenue 52", "Country Club Drive"]
+                    # Include Highway111 as a mid-corridor endpoint
+                    od_options = ["SELECT", "Avenue 52", "Highway111", "Country Club Drive"]
                     oc, dc = st.columns(2)
                     with oc:
                         origin = st.selectbox("Origin", od_options, index=0, key="acyclica_od_origin")
@@ -262,10 +263,30 @@ def render_tab3_analysis():
         if corridor != "All Corridors":
             working_df = working_df[working_df["corridor_id"] == corridor]
 
-        # Apply optional OD mapping to direction for Washington Street
+        # Apply optional O-D mapping for Washington Street. Prefer segment_id filtering when available.
         if corridor == "Washington Street" and origin != "SELECT" and destination != "SELECT" and origin != destination:
-            od_dir = "NB" if origin == "Avenue 52" and destination == "Country Club Drive" else "SB"
-            direction_filter = od_dir
+            # Map O-D pairs to specific segment_ids when they represent mid-corridor legs
+            od_to_segment = {
+                ("Avenue 52", "Highway111"): "Avenue52_to_Highway111",
+                ("Highway111", "Avenue 52"): "Highway111_to_Avenue52",
+                ("Highway111", "Country Club Drive"): "Highway111_to_CountryClubDrive",
+                ("Country Club Drive", "Highway111"): "CountryClubDrive_to_Highway111",
+            }
+            seg = od_to_segment.get((origin, destination))
+            if seg and "segment_id" in working_df.columns:
+                working_df = working_df[working_df["segment_id"].astype(str) == seg]
+                # After segment selection, infer direction loosely for labeling if still all directions
+                if direction_filter == "All Directions" and "direction" in working_df.columns and not working_df.empty:
+                    # Keep unique direction if there's only one
+                    dirs = working_df["direction"].dropna().unique().tolist()
+                    if len(dirs) == 1:
+                        direction_filter = dirs[0]
+            else:
+                # Fall back to direction-based mapping for end-to-end O-D
+                if origin == "Avenue 52" and destination == "Country Club Drive":
+                    direction_filter = "NB"
+                elif origin == "Country Club Drive" and destination == "Avenue 52":
+                    direction_filter = "SB"
 
         # Filter by direction
         if direction_filter != "All Directions" and "direction" in working_df.columns:
@@ -482,6 +503,33 @@ def render_tab3_analysis():
                             ),
                             row=1, col=1,
                         )
+
+                        # Shade missing-data gaps on the speed time-series panel (row 1)
+                        try:
+                            times = pd.to_datetime(speed_data["local_datetime"]).sort_values().reset_index(drop=True)
+                            if len(times) >= 3:
+                                deltas = times.diff().dropna()
+                                med = deltas.median()
+                                if pd.notna(med) and med > pd.Timedelta(0):
+                                    gap_threshold = med * 1.5
+                                    gap_spans = []
+                                    for i in range(1, len(times)):
+                                        dt = times[i] - times[i - 1]
+                                        if dt > gap_threshold:
+                                            gap_spans.append((times[i - 1], times[i]))
+                                    for start, end in gap_spans:
+                                        fig.add_vrect(
+                                            x0=start,
+                                            x1=end,
+                                            fillcolor="#95a5a6",
+                                            opacity=0.18,
+                                            line_width=0,
+                                            layer="below",
+                                            row=1,
+                                            col=1,
+                                        )
+                        except Exception:
+                            pass
 
                         # Distribution histogram
                         fig.add_trace(
