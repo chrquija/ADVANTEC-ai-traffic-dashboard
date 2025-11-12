@@ -135,6 +135,17 @@ def render_tab3_analysis():
 
             # Progressive disclosure: show controls only after a selection (including All Corridors)
             if corridor != "SELECT":
+                # Optional O-D filter only for Washington Street
+                origin = destination = "SELECT"
+                if corridor == "Washington Street":
+                    st.markdown("## 🚦 Origin → Destination")
+                    od_options = ["SELECT", "Avenue 52", "Country Club Drive"]
+                    oc, dc = st.columns(2)
+                    with oc:
+                        origin = st.selectbox("Origin", od_options, index=0, key="acyclica_od_origin")
+                    with dc:
+                        destination = st.selectbox("Destination", od_options, index=0, key="acyclica_od_destination")
+
                 # Date range
                 if acyclica_df.empty or "local_datetime" not in acyclica_df.columns:
                     min_date = datetime.today().date() - timedelta(days=7)
@@ -187,6 +198,8 @@ def render_tab3_analysis():
                 # Track uncommitted controls (current live sidebar values)
                 t3_current = {
                     "corridor": corridor,
+                    "origin": origin,
+                    "destination": destination,
                     "date_range": tuple(date_range) if date_range else None,
                     "granularity": granularity,
                     "direction_filter": direction_filter,
@@ -215,6 +228,8 @@ def render_tab3_analysis():
 
     t3_params = st.session_state.get("t3_params", {})
     corridor = t3_params.get("corridor", "All Corridors")
+    origin = t3_params.get("origin", "SELECT")
+    destination = t3_params.get("destination", "SELECT")
     date_range = t3_params.get("date_range")
     granularity = t3_params.get("granularity", "Hourly")
     direction_filter = t3_params.get("direction_filter", "All Directions")
@@ -242,6 +257,11 @@ def render_tab3_analysis():
         # Filter by corridor
         if corridor != "All Corridors":
             working_df = working_df[working_df["corridor_id"] == corridor]
+
+        # Apply optional OD mapping to direction for Washington Street
+        if corridor == "Washington Street" and origin != "SELECT" and destination != "SELECT" and origin != destination:
+            od_dir = "NB" if origin == "Avenue 52" and destination == "Country Club Drive" else "SB"
+            direction_filter = od_dir
 
         # Filter by direction
         if direction_filter != "All Directions" and "direction" in working_df.columns:

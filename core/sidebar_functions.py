@@ -275,23 +275,37 @@ def load_volume_data():
 # -------------------------
 # Acyclica (Long + Wide)
 # -------------------------
-ACYCLICA_URL = _fix_raw_url(
-    "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/MASTER_Acyclica_Traveltime_speed.csv"
-)
+# Support multiple Acyclica sources and combine them
+ACYCLICA_URLS = [
+    _fix_raw_url(
+        "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/MASTER_Acyclica_Traveltime_speed.csv"
+    ),
+    # New master with extended Washington Street segments (Ave 52 ↔ Country Club Dr)
+    _fix_raw_url(
+        "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/MASTER_1hr_Acyclica_Traveltime_speed_Ave52toCountryClubDrive.csv"
+    ),
+]
 
 @st.cache_data(show_spinner=False)
 def load_acyclica_data() -> pd.DataFrame:
     """
-    Load Acyclica travel time & speed in LONG format.
+    Load Acyclica travel time & speed in LONG format from one or more CSVs.
     Returns a cleaned DataFrame or raises RuntimeError on failure.
     Columns (normalized):
       local_datetime, corridor_id, direction, metric, Strength, Firsts, Lasts, Minimum, Maximum
     """
-    try:
-        df = pd.read_csv(ACYCLICA_URL)
-    except Exception as e:
+    frames: list[pd.DataFrame] = []
+    errors = []
+    for url in ACYCLICA_URLS:
+        try:
+            frames.append(pd.read_csv(url))
+        except Exception as e:
+            errors.append(str(e))
+    if not frames:
         # Raise so the caller decides where/how to display the error (main area, not sidebar)
-        raise RuntimeError(f"Error loading Acyclica data: {e}")
+        raise RuntimeError(f"Error loading Acyclica data: {' | '.join(errors) if errors else 'no sources available'}")
+
+    df = pd.concat(frames, ignore_index=True)
 
     if df is None or df.empty:
         raise RuntimeError("Acyclica CSV is empty.")
@@ -306,14 +320,20 @@ def load_acyclica_data() -> pd.DataFrame:
 
     # Types & cleanup
     df["local_datetime"] = pd.to_datetime(df["local_datetime"], errors="coerce")
-    df = df.dropna(subset=["local_datetime"])
+    df = df.dropna(subset=["local_datetime"])  # keep only valid times
     for c in ["Strength","Firsts","Lasts","Minimum","Maximum"]:
         df[c] = pd.to_numeric(df[c], errors="coerce")
 
-    # Metric and direction normalization (vectorized string ops)
-    df["metric"] = (
-        df["metric"].astype(str).str.strip().str.replace(" ", "", regex=False).str.title()
-    )  # TravelTime / Speed
+    # Metric normalization: ensure exactly {TravelTime, Speed}
+    m = df["metric"].astype(str).str.lower().str.strip()
+    m = m.str.replace("_", " ", regex=False)
+    m = m.str.replace("-", " ", regex=False)
+    m = m.str.replace("traveltime", "travel time", regex=False)
+    m = m.str.replace("travel_time", "travel time", regex=False)
+    m = m.str.replace("traveltime(min)", "travel time", regex=False)
+    df["metric"] = np.where(m.str.contains("travel") & ~m.str.contains("speed"), "TravelTime", "Speed")
+
+    # Direction normalization
     df["direction"] = df["direction"].astype(str).str.strip().str.upper()
 
     df = df.sort_values(["local_datetime","direction","metric"]).reset_index(drop=True)
