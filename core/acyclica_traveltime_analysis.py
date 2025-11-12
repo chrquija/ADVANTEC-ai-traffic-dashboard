@@ -166,12 +166,16 @@ def render_tab3_analysis():
                     key="granularity_acyclica",
                 )
 
-                # Direction filter
-                if not acyclica_df.empty and "direction" in acyclica_df.columns:
-                    direction_options = ["All Directions"] + sorted(acyclica_df["direction"].dropna().unique().tolist())
+                # Direction filter (hidden for Washington Street since O→D determines direction)
+                if corridor != "Washington Street":
+                    if not acyclica_df.empty and "direction" in acyclica_df.columns:
+                        direction_options = ["All Directions"] + sorted(acyclica_df["direction"].dropna().unique().tolist())
+                    else:
+                        direction_options = ["All Directions"]
+                    direction_filter = st.selectbox("🔄 Direction Filter", direction_options, key="direction_filter_acyclica")
                 else:
-                    direction_options = ["All Directions"]
-                direction_filter = st.selectbox("🔄 Direction Filter", direction_options, key="direction_filter_acyclica")
+                    # Keep direction implied by Origin→Destination; default to All Directions until mapped after Search
+                    direction_filter = "All Directions"
 
                 # Time period focus for hourly
                 time_filter, start_hour, end_hour = None, None, None

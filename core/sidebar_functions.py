@@ -621,17 +621,6 @@ def performance_chart(data: pd.DataFrame, metric_type: str = "delay"):
                         row=1,
                         col=1,
                     )
-                if len(gap_spans) > 0:
-                    # Subtle hint above the chart
-                    fig.add_annotation(
-                        text="Shaded bands indicate periods with no data",
-                        xref="paper",
-                        yref="paper",
-                        x=0,
-                        y=1.12,
-                        showarrow=False,
-                        font=dict(color="#7f8c8d", size=11),
-                    )
     except Exception:
         # Be resilient: if any error occurs in gap shading, continue without it
         pass
