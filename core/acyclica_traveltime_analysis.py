@@ -444,6 +444,7 @@ def render_tab3_analysis():
             # ---- Charts Section ----
             if len(filtered_data) > 1:
                 st.subheader("📈 Performance Trends")
+                st.caption("Shaded bands indicate periods with no data.")
 
                 chart_col1, chart_col2 = st.columns(2)
 

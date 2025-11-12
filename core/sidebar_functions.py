@@ -594,6 +594,48 @@ def performance_chart(data: pd.DataFrame, metric_type: str = "delay"):
         row=1, col=1,
     )
 
+    # Shade missing-data gaps on the time-series panel
+    try:
+        times = pd.to_datetime(dd["local_datetime"]).sort_values().reset_index(drop=True)
+        if len(times) >= 3:
+            deltas = times.diff().dropna()
+            # Use a robust expected interval: median delta
+            med = deltas.median()
+            if pd.notna(med) and med > pd.Timedelta(0):
+                gap_threshold = med * 1.5
+                # Iterate pairs to find large gaps
+                gap_spans = []
+                for i in range(1, len(times)):
+                    dt = times[i] - times[i - 1]
+                    if dt > gap_threshold:
+                        gap_spans.append((times[i - 1], times[i]))
+                for start, end in gap_spans:
+                    # Add a light grey band for the gap region
+                    fig.add_vrect(
+                        x0=start,
+                        x1=end,
+                        fillcolor="#95a5a6",
+                        opacity=0.18,
+                        line_width=0,
+                        layer="below",
+                        row=1,
+                        col=1,
+                    )
+                if len(gap_spans) > 0:
+                    # Subtle hint above the chart
+                    fig.add_annotation(
+                        text="Shaded bands indicate periods with no data",
+                        xref="paper",
+                        yref="paper",
+                        x=0,
+                        y=1.12,
+                        showarrow=False,
+                        font=dict(color="#7f8c8d", size=11),
+                    )
+    except Exception:
+        # Be resilient: if any error occurs in gap shading, continue without it
+        pass
+
     # Distribution histogram
     fig.add_trace(
         go.Histogram(
