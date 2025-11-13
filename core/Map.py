@@ -31,6 +31,9 @@ NODES_ORDER: List[str] = [
     "Avenue 41",
     "Harris Lane",
     "Country Club Drive",
+    # Highway 111 pair (Palm Canyon Dr area)
+    "Canyon Plaza West",
+    "Jermaine Gibson",
 ]
 
 # GeoJSON for each adjacent segment (A → B) along the corridor
@@ -78,6 +81,12 @@ SEGMENT_URLS: Dict[Tuple[str, str], str] = {
      "Harris Lane"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/SB_HarrisLane_Avenue41.geojson",
     ("Harris Lane",
      "Country Club Drive"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/SB_CountryClubDrive_HarrisLane.geojson",
+
+    # Highway 111: Canyon Plaza West ↔ Jermaine Gibson
+    ("Canyon Plaza West",
+     "Jermaine Gibson"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/Segment_EB_JermaineGibson_CanyonPlazaWest.geojson",
+    ("Jermaine Gibson",
+     "Canyon Plaza West"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/Segment_WB_CanyonPlazaWest_JermaineGibson.geojson",
 }
 
 # =========================

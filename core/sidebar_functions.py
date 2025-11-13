@@ -287,6 +287,10 @@ ACYCLICA_URLS = [
     _fix_raw_url(
         "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/MASTER_1hr_Acyclica_Traveltime_speed_Ave52toCountryClubDrive.csv"
     ),
+    # Highway 111: Canyon Plaza West ↔ Jermaine Gibson (EB/WB combined long-format)
+    _fix_raw_url(
+        "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/MASTER_EWB_1hr_PalmCanyon_CanyonPlazaWest_to_JermainGibson.csv"
+    ),
 ]
 
 @st.cache_data(show_spinner=False)
@@ -338,6 +342,19 @@ def load_acyclica_data() -> pd.DataFrame:
 
     # Direction normalization
     df["direction"] = df["direction"].astype(str).str.strip().str.upper()
+
+    # Corridor normalization: fix known variants/typos
+    # Ensure new Highway 111 data appears as "Highway 111" in dropdowns
+    df["corridor_id"] = (
+        df["corridor_id"]
+        .astype(str)
+        .str.strip()
+        .replace({
+            "HIghway111": "Highway 111",
+            "Highway111": "Highway 111",
+            "Hwy 111": "Highway 111",
+        })
+    )
 
     df = df.sort_values(["local_datetime","direction","metric"]).reset_index(drop=True)
     return df

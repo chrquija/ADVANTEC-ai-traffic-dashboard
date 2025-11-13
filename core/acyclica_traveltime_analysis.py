@@ -135,7 +135,7 @@ def render_tab3_analysis():
 
             # Progressive disclosure: show controls only after a selection (including All Corridors)
             if corridor != "SELECT":
-                # Optional O-D filter only for Washington Street
+                # Optional O-D filter for specific corridors
                 origin = destination = "SELECT"
                 if corridor == "Washington Street":
                     st.markdown("## 🚦 Origin → Destination")
@@ -146,6 +146,14 @@ def render_tab3_analysis():
                         origin = st.selectbox("Origin", od_options, index=0, key="acyclica_od_origin")
                     with dc:
                         destination = st.selectbox("Destination", od_options, index=0, key="acyclica_od_destination")
+                elif corridor == "Highway 111":
+                    st.markdown("## 🚦 Origin → Destination (Highway 111)")
+                    od_options = ["SELECT", "Canyon Plaza West", "Jermaine Gibson"]
+                    oc, dc = st.columns(2)
+                    with oc:
+                        origin = st.selectbox("Origin", od_options, index=0, key="acyclica_od_origin_h111")
+                    with dc:
+                        destination = st.selectbox("Destination", od_options, index=0, key="acyclica_od_destination_h111")
 
                 # Date range
                 if acyclica_df.empty or "local_datetime" not in acyclica_df.columns:
@@ -287,6 +295,33 @@ def render_tab3_analysis():
                     direction_filter = "NB"
                 elif origin == "Country Club Drive" and destination == "Avenue 52":
                     direction_filter = "SB"
+
+        # Highway 111 specific O-D → segment_id mapping
+        if corridor == "Highway 111" and origin != "SELECT" and destination != "SELECT" and origin != destination:
+            # Provided segment ids in file (note spelling variants)
+            eb_id = "CanyonPlazaWest_to_JermaineGibsion"  # as given
+            eb_id_alt = "CanyonPlazaWest_to_JermaineGibson"  # corrected spelling fallback
+            wb_id = "JermaineGibson_to_CanyonPlazaWest"
+
+            want_seg = None
+            if origin == "Canyon Plaza West" and destination == "Jermaine Gibson":
+                want_seg = eb_id
+            elif origin == "Jermaine Gibson" and destination == "Canyon Plaza West":
+                want_seg = wb_id
+
+            if want_seg and "segment_id" in working_df.columns:
+                # include tolerance for alternate spelling
+                if want_seg == eb_id:
+                    working_df = working_df[
+                        working_df["segment_id"].astype(str).isin([eb_id, eb_id_alt])
+                    ]
+                else:
+                    working_df = working_df[working_df["segment_id"].astype(str) == want_seg]
+                # optional: set direction filter if unique present
+                if direction_filter == "All Directions" and "direction" in working_df.columns and not working_df.empty:
+                    dirs = working_df["direction"].dropna().unique().tolist()
+                    if len(dirs) == 1:
+                        direction_filter = dirs[0]
 
         # Filter by direction
         if direction_filter != "All Directions" and "direction" in working_df.columns:
