@@ -568,6 +568,31 @@ def build_all_segments_overview() -> Optional[go.Figure]:
                 )
             )
 
+    # Add intersection dots (as in the other maps) so users can see nodes clearly
+    try:
+        node_coords = _derive_node_coords_from_segments()
+        if node_coords:
+            node_lats = [v[0] for v in node_coords.values()]
+            node_lons = [v[1] for v in node_coords.values()]
+            node_text = list(node_coords.keys())
+            # Also contribute to auto-centering if no polylines added
+            all_lats.extend(node_lats)
+            all_lons.extend(node_lons)
+            fig.add_trace(
+                go.Scattermapbox(
+                    lat=node_lats,
+                    lon=node_lons,
+                    mode="markers",
+                    marker=dict(size=11, color="#1F618D"),
+                    text=node_text,
+                    hoverinfo="text",
+                    name="Intersections",
+                )
+            )
+    except Exception:
+        # Keep the overview resilient even if node derivation fails
+        pass
+
     if not all_lats or not all_lons:
         return None
 
