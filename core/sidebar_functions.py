@@ -345,16 +345,24 @@ def load_acyclica_data() -> pd.DataFrame:
 
     # Corridor normalization: fix known variants/typos
     # Ensure new Highway 111 data appears as "Highway 111" in dropdowns
-    df["corridor_id"] = (
-        df["corridor_id"]
-        .astype(str)
-        .str.strip()
-        .replace({
+    corr = (
+        df["corridor_id"].astype(str).str.strip().replace({
+            # Common variants
             "HIghway111": "Highway 111",
             "Highway111": "Highway 111",
             "Hwy 111": "Highway 111",
+            # Additional likely variants
+            "HIghway 111": "Highway 111",
+            "highway 111": "Highway 111",
+            "Highway-111": "Highway 111",
+            "Highway_111": "Highway 111",
+            "Hwy111": "Highway 111",
         })
     )
+    # Pattern-based safety net: collapse spaces/dashes/underscores for matching
+    key = corr.str.lower().str.replace("[ _-]", "", regex=True)
+    corr = np.where(key == "highway111", "Highway 111", corr)
+    df["corridor_id"] = corr
 
     df = df.sort_values(["local_datetime","direction","metric"]).reset_index(drop=True)
     return df
