@@ -11,7 +11,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 # Add the Map import
-from Map import build_all_segments_overview, build_intersections_overview
+from Map import build_all_segments_overview, build_intersections_overview, build_corridor_map
 
 # Shared UI utils (scoped loader and tab highlight)
 try:
@@ -335,10 +335,34 @@ def render_tab3_analysis():
             st.markdown('<div id="acyclica-map-anchor"></div>', unsafe_allow_html=True)
             st.markdown("##### Corridor Map", help="Stays visible while you scroll the analysis on the left.")
 
-            # Use the existing map functions since Acyclica is on the same Washington Street corridor
+            # Prefer an O→D corridor map with green START and red END dots when O-D is selected; otherwise show overview
             try:
-                # Try to build the corridor overview map (shows all segments)
-                fig_corridor = build_all_segments_overview()
+                fig_corridor = None
+                # Attempt O-D route map when possible
+                od_ok = (
+                    corridor in ("Washington Street", "Highway 111")
+                    and origin not in (None, "SELECT")
+                    and destination not in (None, "SELECT")
+                    and origin != destination
+                )
+                if od_ok:
+                    o = origin
+                    d = destination
+                    # Map UI labels to Map.py node keys when needed
+                    def _fix_node(n: str) -> str:
+                        if n == "Highway111":
+                            return "Hwy 111"
+                        return n
+                    o = _fix_node(o)
+                    d = _fix_node(d)
+                    try:
+                        fig_corridor = build_corridor_map(o, d)
+                    except Exception:
+                        fig_corridor = None
+
+                # Fallback to the corridor overview (all segments)
+                if not fig_corridor:
+                    fig_corridor = build_all_segments_overview()
 
                 if fig_corridor:
                     try:
@@ -424,6 +448,51 @@ def render_tab3_analysis():
                 """,
                 unsafe_allow_html=True,
             )
+
+            # Route summary pill, like Pg.1 Iteris ClearGuide (screenshot)
+            def _infer_route_pill(corr: str, o: str, d: str, dir_filt: str) -> str:
+                if not o or not d or o == "SELECT" or d == "SELECT" or o == d:
+                    return ""
+                # Friendly direction text
+                friendly_dir = None
+                if corr == "Washington Street":
+                    # Use node order to infer NB/SB if possible
+                    order = [
+                        "Avenue 52","Calle Tampico","Village Shopping Ctr","Avenue 50","Sagebrush Ave","Eisenhower Dr",
+                        "Avenue 48","Avenue 47","Point Happy Simon","Hwy 111","Channel Drive","Miles Avenue","Via Sevilla",
+                        "Fred Waring Drive","Palm Royale Drive","Avenue of the States","Avenue 42","Avenue 41","Harris Lane","Country Club Drive"
+                    ]
+                    o_fix = "Hwy 111" if o == "Highway111" else o
+                    d_fix = "Hwy 111" if d == "Highway111" else d
+                    if o_fix in order and d_fix in order and order.index(o_fix) < order.index(d_fix):
+                        friendly_dir = "Northbound"
+                    elif o_fix in order and d_fix in order and order.index(o_fix) > order.index(d_fix):
+                        friendly_dir = "Southbound"
+                elif corr == "Highway 111":
+                    if o == "Canyon Plaza West" and d == "Jermaine Gibson":
+                        friendly_dir = "Eastbound"
+                    elif o == "Jermaine Gibson" and d == "Canyon Plaza West":
+                        friendly_dir = "Westbound"
+                # Fallback to filter if unique
+                if not friendly_dir and dir_filt and dir_filt != "All Directions":
+                    # Expand common abbreviations
+                    mapping = {"NB":"Northbound","SB":"Southbound","EB":"Eastbound","WB":"Westbound"}
+                    friendly_dir = mapping.get(dir_filt, dir_filt)
+                if not friendly_dir:
+                    return ""
+                return f"{o} → {d} ({friendly_dir})"
+
+            route_pill = _infer_route_pill(corridor, origin, destination, direction_filter)
+            if route_pill:
+                st.markdown(
+                    f"""
+                    <div style="background:#e8f2ff;border:1px solid #c7dcff;color:#163f7a;padding:10px 14px;border-radius:10px;
+                                display:inline-block;font-weight:700;margin:4px 0 10px;">
+                        {route_pill}
+                    </div>
+                    """,
+                    unsafe_allow_html=True,
+                )
 
             # Ensure numeric columns
             for col in ["average_traveltime", "average_speed"]:
