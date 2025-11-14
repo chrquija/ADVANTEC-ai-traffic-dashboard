@@ -1196,7 +1196,11 @@ with tab1:
                                                     "local_datetime"].dt.date
                                                 display_od_series = (
                                                     display_od_series.groupby("date_group", as_index=False)
-                                                    .agg({"average_traveltime": "mean", "average_delay": "mean"})
+                                                    .agg({
+                                                        "average_traveltime": "mean",
+                                                        "average_delay": "mean",
+                                                        "average_speed": "mean",
+                                                    })
                                                     .rename(columns={"date_group": "local_datetime"})
                                                 )
                                                 display_od_series["local_datetime"] = pd.to_datetime(
@@ -1206,7 +1210,11 @@ with tab1:
                                                     "local_datetime"].dt.to_period("W").dt.start_time
                                                 display_od_series = (
                                                     display_od_series.groupby("week_group", as_index=False)
-                                                    .agg({"average_traveltime": "mean", "average_delay": "mean"})
+                                                    .agg({
+                                                        "average_traveltime": "mean",
+                                                        "average_delay": "mean",
+                                                        "average_speed": "mean",
+                                                    })
                                                     .rename(columns={"week_group": "local_datetime"})
                                                 )
                                             elif granularity == "Monthly":
@@ -1214,7 +1222,11 @@ with tab1:
                                                     "local_datetime"].dt.to_period("M").dt.start_time
                                                 display_od_series = (
                                                     display_od_series.groupby("month_group", as_index=False)
-                                                    .agg({"average_traveltime": "mean", "average_delay": "mean"})
+                                                    .agg({
+                                                        "average_traveltime": "mean",
+                                                        "average_delay": "mean",
+                                                        "average_speed": "mean",
+                                                    })
                                                     .rename(columns={"month_group": "local_datetime"})
                                                 )
 
@@ -1224,6 +1236,10 @@ with tab1:
                                             # Format the display dataframe with units and granularity-aware timestamps
                                             def format_minutes_display(val):
                                                 return f"{val:.2f} minutes" if pd.notna(val) else "N/A"
+
+
+                                            def format_mph_display(val):
+                                                return f"{val:.1f} mph" if pd.notna(val) else "N/A"
 
 
                                             def format_timestamp_display(timestamp, granularity):
@@ -1252,11 +1268,18 @@ with tab1:
                                                 "average_traveltime"].apply(format_minutes_display)
                                             display_od_series["O-D Delay (min)"] = display_od_series[
                                                 "average_delay"].apply(format_minutes_display)
+                                            # Add O-D Speed column from available average_speed
+                                            if "average_speed" in display_od_series.columns:
+                                                display_od_series["O-D Speed (mph)"] = display_od_series[
+                                                    "average_speed"].apply(format_mph_display)
+                                            else:
+                                                # In case hourly (no aggregation) or missing speed, attempt to map from od_series
+                                                display_od_series["O-D Speed (mph)"] = np.nan
 
                                             # Select and rename columns for display
                                             final_display = display_od_series[
                                                 ["Formatted Timestamp", "O-D Travel Time (min)",
-                                                 "O-D Delay (min)"]].rename(
+                                                 "O-D Delay (min)", "O-D Speed (mph)"]].rename(
                                                 columns={"Formatted Timestamp": f"Timestamp ({granularity})"}
                                             )
 
@@ -1281,6 +1304,10 @@ with tab1:
                                                     "O-D Delay (min)": st.column_config.TextColumn(
                                                         f"O-D Delay ({granularity})",
                                                         help=f"Average delay experienced from origin to destination aggregated by {granularity.lower()}"
+                                                    ),
+                                                    "O-D Speed (mph)": st.column_config.TextColumn(
+                                                        "O-D Speed (mph)",
+                                                        help=f"Average speed from origin to destination aggregated by {granularity.lower()}"
                                                     ),
                                                 },
                                             )
