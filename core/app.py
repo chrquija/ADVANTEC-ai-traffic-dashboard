@@ -1219,77 +1219,57 @@ with tab1:
                                                 )
 
 
-                                                # For "Hourly", no additional aggregation needed
+                                            # For "Hourly", no additional aggregation needed
 
-                                                # Format the display dataframe with units and granularity-aware timestamps
-                                                def format_minutes_display(val):
-                                                    return f"{val:.2f} minutes" if pd.notna(val) else "N/A"
-
-
-                                                def format_mph_display(val):
-                                                    return f"{val:.1f} mph" if pd.notna(val) else "N/A"
+                                            # Format the display dataframe with units and granularity-aware timestamps
+                                            def format_minutes_display(val):
+                                                return f"{val:.2f} minutes" if pd.notna(val) else "N/A"
 
 
-                                                def format_timestamp_display(timestamp, granularity):
-                                                    """Format timestamp based on granularity"""
-                                                    if granularity == "Hourly":
-                                                        return timestamp.strftime("%b %d, %Y %I:%M %p")
-                                                    elif granularity == "Daily":
-                                                        return timestamp.strftime("%b %d, %Y")
-                                                    elif granularity == "Weekly":
-                                                        # Show week start date
-                                                        week_start = timestamp
-                                                        week_end = week_start + pd.Timedelta(days=6)
-                                                        return f"Week of {week_start.strftime('%b %d, %Y')} - {week_end.strftime('%b %d, %Y')}"
-                                                    elif granularity == "Monthly":
-                                                        return timestamp.strftime("%B %Y")
-                                                    else:
-                                                        return timestamp.strftime("%b %d, %Y %I:%M %p")
-
-
-                                                # Apply formatting functions
-                                                display_od_series["Formatted Timestamp"] = display_od_series[
-                                                    "local_datetime"].apply(
-                                                    lambda x: format_timestamp_display(x, granularity)
-                                                )
-                                                display_od_series["O-D Travel Time (min)"] = display_od_series[
-                                                    "average_traveltime"].apply(format_minutes_display)
-                                                display_od_series["O-D Delay (min)"] = display_od_series[
-                                                    "average_delay"].apply(format_minutes_display)
-
-                                                # Add Speed column - check if average_speed exists in the data
-                                                if "average_speed" in display_od_series.columns:
-                                                    display_od_series["Speed (mph)"] = display_od_series[
-                                                        "average_speed"].apply(format_mph_display)
-                                                    # Select and rename columns for display with speed
-                                                    final_display = display_od_series[
-                                                        ["Formatted Timestamp", "O-D Travel Time (min)",
-                                                         "O-D Delay (min)", "Speed (mph)"]].rename(
-                                                        columns={"Formatted Timestamp": f"Timestamp ({granularity})"}
-                                                    )
-                                                    speed_config = {
-                                                        "Speed (mph)": st.column_config.TextColumn(
-                                                            f"Speed ({granularity})",
-                                                            help=f"Average speed from origin to destination aggregated by {granularity.lower()}"
-                                                        )
-                                                    }
+                                            def format_timestamp_display(timestamp, granularity):
+                                                """Format timestamp based on granularity"""
+                                                if granularity == "Hourly":
+                                                    return timestamp.strftime("%b %d, %Y %I:%M %p")
+                                                elif granularity == "Daily":
+                                                    return timestamp.strftime("%b %d, %Y")
+                                                elif granularity == "Weekly":
+                                                    # Show week start date
+                                                    week_start = timestamp
+                                                    week_end = week_start + pd.Timedelta(days=6)
+                                                    return f"Week of {week_start.strftime('%b %d, %Y')} - {week_end.strftime('%b %d, %Y')}"
+                                                elif granularity == "Monthly":
+                                                    return timestamp.strftime("%B %Y")
                                                 else:
-                                                    # Select and rename columns for display without speed (fallback)
-                                                    final_display = display_od_series[
-                                                        ["Formatted Timestamp", "O-D Travel Time (min)",
-                                                         "O-D Delay (min)"]].rename(
-                                                        columns={"Formatted Timestamp": f"Timestamp ({granularity})"}
-                                                    )
-                                                    speed_config = {}
+                                                    return timestamp.strftime("%b %d, %Y %I:%M %p")
 
-                                                # Sort by travel time descending to show highest first
-                                                final_display_sorted = final_display.loc[
-                                                    display_od_series["average_traveltime"].sort_values(
-                                                        ascending=False).index
-                                                ].reset_index(drop=True)
 
-                                                # Base column config
-                                                base_config = {
+                                            # Apply formatting functions
+                                            display_od_series["Formatted Timestamp"] = display_od_series[
+                                                "local_datetime"].apply(
+                                                lambda x: format_timestamp_display(x, granularity)
+                                            )
+                                            display_od_series["O-D Travel Time (min)"] = display_od_series[
+                                                "average_traveltime"].apply(format_minutes_display)
+                                            display_od_series["O-D Delay (min)"] = display_od_series[
+                                                "average_delay"].apply(format_minutes_display)
+
+                                            # Select and rename columns for display
+                                            final_display = display_od_series[
+                                                ["Formatted Timestamp", "O-D Travel Time (min)",
+                                                 "O-D Delay (min)"]].rename(
+                                                columns={"Formatted Timestamp": f"Timestamp ({granularity})"}
+                                            )
+
+                                            # Sort by travel time descending to show highest first
+                                            final_display_sorted = final_display.loc[
+                                                display_od_series["average_traveltime"].sort_values(
+                                                    ascending=False).index
+                                            ].reset_index(drop=True)
+
+                                            st.dataframe(
+                                                final_display_sorted,
+                                                use_container_width=True,
+                                                column_config={
                                                     f"Timestamp ({granularity})": st.column_config.TextColumn(
                                                         f"Timestamp ({granularity})",
                                                         help=f"Date and time aggregated at {granularity.lower()} level"
@@ -1302,16 +1282,8 @@ with tab1:
                                                         f"O-D Delay ({granularity})",
                                                         help=f"Average delay experienced from origin to destination aggregated by {granularity.lower()}"
                                                     ),
-                                                }
-
-                                                # Merge speed config if it exists
-                                                column_config = {**base_config, **speed_config}
-
-                                                st.dataframe(
-                                                    final_display_sorted,
-                                                    use_container_width=True,
-                                                    column_config=column_config,
-                                                )
+                                                },
+                                            )
 
                                     # =========================
                                     # 🚨 Comprehensive Bottleneck Analysis
