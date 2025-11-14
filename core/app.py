@@ -1215,19 +1215,6 @@ with tab1:
                                                 )
                                                 display_od_series["local_datetime"] = pd.to_datetime(
                                                     display_od_series["local_datetime"])
-                                                # Pad to full selected daily range
-                                                try:
-                                                    start_dt = pd.to_datetime(date_range[0])
-                                                    end_dt = pd.to_datetime(date_range[1])
-                                                    full_idx = pd.date_range(start=start_dt, end=end_dt, freq="D")
-                                                    display_od_series = (
-                                                        display_od_series.set_index("local_datetime")
-                                                        .reindex(full_idx)
-                                                        .rename_axis("local_datetime")
-                                                        .reset_index()
-                                                    )
-                                                except Exception:
-                                                    pass
                                             elif granularity == "Weekly":
                                                 display_od_series["week_group"] = display_od_series[
                                                     "local_datetime"].dt.to_period("W").dt.start_time
@@ -1240,22 +1227,6 @@ with tab1:
                                                     })
                                                     .rename(columns={"week_group": "local_datetime"})
                                                 )
-                                                # Pad to full selected weekly range (use week period boundaries)
-                                                try:
-                                                    start_dt = pd.to_datetime(date_range[0])
-                                                    end_dt = pd.to_datetime(date_range[1])
-                                                    full_idx = pd.period_range(start=start_dt, end=end_dt, freq="W").start_time
-                                                    if len(full_idx) == 0:
-                                                        # Fallback to aligning to the start of week for start_dt
-                                                        full_idx = pd.date_range(start=start_dt, end=end_dt, freq="W")
-                                                    display_od_series = (
-                                                        display_od_series.set_index("local_datetime")
-                                                        .reindex(full_idx)
-                                                        .rename_axis("local_datetime")
-                                                        .reset_index()
-                                                    )
-                                                except Exception:
-                                                    pass
                                             elif granularity == "Monthly":
                                                 display_od_series["month_group"] = display_od_series[
                                                     "local_datetime"].dt.to_period("M").dt.start_time
@@ -1268,19 +1239,6 @@ with tab1:
                                                     })
                                                     .rename(columns={"month_group": "local_datetime"})
                                                 )
-                                                # Pad to full selected monthly range
-                                                try:
-                                                    start_dt = pd.to_datetime(date_range[0])
-                                                    end_dt = pd.to_datetime(date_range[1])
-                                                    full_idx = pd.period_range(start=start_dt, end=end_dt, freq="M").start_time
-                                                    display_od_series = (
-                                                        display_od_series.set_index("local_datetime")
-                                                        .reindex(full_idx)
-                                                        .rename_axis("local_datetime")
-                                                        .reset_index()
-                                                    )
-                                                except Exception:
-                                                    pass
 
 
                                             # For "Hourly", no additional aggregation needed
