@@ -1065,19 +1065,29 @@ with tab1:
                                         dnorm2 = normalize_dir(od_hourly["direction"])
                                         od_hourly = od_hourly.loc[dnorm2 == desired_dir].copy()
 
-                                    for c in ["average_traveltime", "average_delay"]:
+                                    # Ensure numeric types for aggregations
+                                    for c in ["average_traveltime", "average_delay", "average_speed"]:
                                         if c in od_hourly.columns:
                                             od_hourly[c] = pd.to_numeric(od_hourly[c], errors="coerce")
 
                                     if "segment_name" in od_hourly.columns and "local_datetime" in od_hourly.columns:
+                                        # First, average metrics per segment per timestamp
+                                        agg_lvl1 = {"average_traveltime": "mean", "average_delay": "mean"}
+                                        if "average_speed" in od_hourly.columns:
+                                            agg_lvl1["average_speed"] = "mean"
                                         od_hourly = (
                                             od_hourly.groupby(["local_datetime", "segment_name"], as_index=False)
-                                            .agg({"average_traveltime": "mean", "average_delay": "mean"})
+                                            .agg(agg_lvl1)
                                         )
 
+                                    # Then, aggregate across segments for each timestamp:
+                                    agg_lvl2 = {"average_traveltime": "sum", "average_delay": "sum"}
+                                    if "average_speed" in od_hourly.columns:
+                                        # For speed, use mean across segments for the hour
+                                        agg_lvl2["average_speed"] = "mean"
                                     od_series = (
                                         od_hourly.groupby("local_datetime", as_index=False)
-                                        .agg({"average_traveltime": "sum", "average_delay": "sum"})
+                                        .agg(agg_lvl2)
                                     )
                                     raw_data = od_series.copy()
                                 else:
