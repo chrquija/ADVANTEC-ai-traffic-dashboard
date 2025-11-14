@@ -1186,16 +1186,68 @@ with tab1:
                                         if od_mode and 'od_series' in locals() and not od_series.empty:
                                             st.subheader("🔍Which Dates/Times have the highest Travel Time and Delay?")
 
-                                            # Format the display dataframe with units
+                                            # Apply granularity aggregation to the display data
                                             display_od_series = od_series.copy()
+                                            display_od_series["local_datetime"] = pd.to_datetime(
+                                                display_od_series["local_datetime"])
+
+                                            if granularity == "Daily":
+                                                display_od_series["date_group"] = display_od_series[
+                                                    "local_datetime"].dt.date
+                                                display_od_series = (
+                                                    display_od_series.groupby("date_group", as_index=False)
+                                                    .agg({"average_traveltime": "mean", "average_delay": "mean"})
+                                                    .rename(columns={"date_group": "local_datetime"})
+                                                )
+                                                display_od_series["local_datetime"] = pd.to_datetime(
+                                                    display_od_series["local_datetime"])
+                                            elif granularity == "Weekly":
+                                                display_od_series["week_group"] = display_od_series[
+                                                    "local_datetime"].dt.to_period("W").dt.start_time
+                                                display_od_series = (
+                                                    display_od_series.groupby("week_group", as_index=False)
+                                                    .agg({"average_traveltime": "mean", "average_delay": "mean"})
+                                                    .rename(columns={"week_group": "local_datetime"})
+                                                )
+                                            elif granularity == "Monthly":
+                                                display_od_series["month_group"] = display_od_series[
+                                                    "local_datetime"].dt.to_period("M").dt.start_time
+                                                display_od_series = (
+                                                    display_od_series.groupby("month_group", as_index=False)
+                                                    .agg({"average_traveltime": "mean", "average_delay": "mean"})
+                                                    .rename(columns={"month_group": "local_datetime"})
+                                                )
 
 
-                                            # Apply formatting functions
+                                            # For "Hourly", no additional aggregation needed
+
+                                            # Format the display dataframe with units and granularity-aware timestamps
                                             def format_minutes_display(val):
                                                 return f"{val:.2f} minutes" if pd.notna(val) else "N/A"
 
 
-                                            # Format the time columns
+                                            def format_timestamp_display(timestamp, granularity):
+                                                """Format timestamp based on granularity"""
+                                                if granularity == "Hourly":
+                                                    return timestamp.strftime("%b %d, %Y %I:%M %p")
+                                                elif granularity == "Daily":
+                                                    return timestamp.strftime("%b %d, %Y")
+                                                elif granularity == "Weekly":
+                                                    # Show week start date
+                                                    week_start = timestamp
+                                                    week_end = week_start + pd.Timedelta(days=6)
+                                                    return f"Week of {week_start.strftime('%b %d, %Y')} - {week_end.strftime('%b %d, %Y')}"
+                                                elif granularity == "Monthly":
+                                                    return timestamp.strftime("%B %Y")
+                                                else:
+                                                    return timestamp.strftime("%b %d, %Y %I:%M %p")
+
+
+                                            # Apply formatting functions
+                                            display_od_series["Formatted Timestamp"] = display_od_series[
+                                                "local_datetime"].apply(
+                                                lambda x: format_timestamp_display(x, granularity)
+                                            )
                                             display_od_series["O-D Travel Time (min)"] = display_od_series[
                                                 "average_traveltime"].apply(format_minutes_display)
                                             display_od_series["O-D Delay (min)"] = display_od_series[
@@ -1203,26 +1255,32 @@ with tab1:
 
                                             # Select and rename columns for display
                                             final_display = display_od_series[
-                                                ["local_datetime", "O-D Travel Time (min)", "O-D Delay (min)"]].rename(
-                                                columns={"local_datetime": "Timestamp"}
+                                                ["Formatted Timestamp", "O-D Travel Time (min)",
+                                                 "O-D Delay (min)"]].rename(
+                                                columns={"Formatted Timestamp": f"Timestamp ({granularity})"}
                                             )
 
+                                            # Sort by travel time descending to show highest first
+                                            final_display_sorted = final_display.loc[
+                                                display_od_series["average_traveltime"].sort_values(
+                                                    ascending=False).index
+                                            ].reset_index(drop=True)
+
                                             st.dataframe(
-                                                final_display,
+                                                final_display_sorted,
                                                 use_container_width=True,
                                                 column_config={
-                                                    "Timestamp": st.column_config.DatetimeColumn(
-                                                        "Timestamp",
-                                                        format="MMM DD, YYYY HH:mm",
-                                                        help="Date and time of the measurement"
+                                                    f"Timestamp ({granularity})": st.column_config.TextColumn(
+                                                        f"Timestamp ({granularity})",
+                                                        help=f"Date and time aggregated at {granularity.lower()} level"
                                                     ),
                                                     "O-D Travel Time (min)": st.column_config.TextColumn(
-                                                        "O-D Travel Time",
-                                                        help="Total travel time from origin to destination"
+                                                        f"O-D Travel Time ({granularity})",
+                                                        help=f"Average travel time from origin to destination aggregated by {granularity.lower()}"
                                                     ),
                                                     "O-D Delay (min)": st.column_config.TextColumn(
-                                                        "O-D Delay",
-                                                        help="Total delay experienced from origin to destination"
+                                                        f"O-D Delay ({granularity})",
+                                                        help=f"Average delay experienced from origin to destination aggregated by {granularity.lower()}"
                                                     ),
                                                 },
                                             )
