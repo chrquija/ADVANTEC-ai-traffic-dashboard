@@ -146,6 +146,36 @@ def render_tab3_analysis():
                         origin = st.selectbox("Origin", od_options, index=0, key="acyclica_od_origin")
                     with dc:
                         destination = st.selectbox("Destination", od_options, index=0, key="acyclica_od_destination")
+                    # Sidebar route summary right under O-D
+                    def _route_text_sb(corr: str, o: str, d: str) -> str:
+                        if not o or not d or o == "SELECT" or d == "SELECT" or o == d:
+                            return ""
+                        # Node order for NB/SB inference
+                        order = [
+                            "Avenue 52","Calle Tampico","Village Shopping Ctr","Avenue 50","Sagebrush Ave","Eisenhower Dr",
+                            "Avenue 48","Avenue 47","Point Happy Simon","Hwy 111","Channel Drive","Miles Avenue","Via Sevilla",
+                            "Fred Waring Drive","Palm Royale Drive","Avenue of the States","Avenue 42","Avenue 41","Harris Lane","Country Club Drive"
+                        ]
+                        o_fix = "Hwy 111" if o == "Highway111" else o
+                        d_fix = "Hwy 111" if d == "Highway111" else d
+                        friendly_dir = None
+                        if o_fix in order and d_fix in order and order.index(o_fix) < order.index(d_fix):
+                            friendly_dir = "Northbound"
+                        elif o_fix in order and d_fix in order and order.index(o_fix) > order.index(d_fix):
+                            friendly_dir = "Southbound"
+                        if not friendly_dir:
+                            return ""
+                        return f"{o} → {d} ({friendly_dir})"
+
+                    _pill = _route_text_sb(corridor, origin, destination)
+                    if _pill:
+                        st.markdown(
+                            f"""
+                            <div style="background:#e8f2ff;border:1px solid #c7dcff;color:#163f7a;padding:8px 12px;border-radius:10px;
+                                        display:inline-block;font-weight:700;margin:6px 0 6px;">{_pill}</div>
+                            """,
+                            unsafe_allow_html=True,
+                        )
                 elif corridor == "Highway 111":
                     st.markdown("## 🚦 Origin → Destination (Highway 111)")
                     od_options = ["SELECT", "Canyon Plaza West", "Jermaine Gibson"]
@@ -154,6 +184,29 @@ def render_tab3_analysis():
                         origin = st.selectbox("Origin", od_options, index=0, key="acyclica_od_origin_h111")
                     with dc:
                         destination = st.selectbox("Destination", od_options, index=0, key="acyclica_od_destination_h111")
+                    # Sidebar route summary right under O-D
+                    def _route_text_sb_h111(o: str, d: str) -> str:
+                        if not o or not d or o == "SELECT" or d == "SELECT" or o == d:
+                            return ""
+                        if o == "Canyon Plaza West" and d == "Jermaine Gibson":
+                            friendly_dir = "Eastbound"
+                        elif o == "Jermaine Gibson" and d == "Canyon Plaza West":
+                            friendly_dir = "Westbound"
+                        else:
+                            friendly_dir = None
+                        if not friendly_dir:
+                            return ""
+                        return f"{o} → {d} ({friendly_dir})"
+
+                    _pill_h = _route_text_sb_h111(origin, destination)
+                    if _pill_h:
+                        st.markdown(
+                            f"""
+                            <div style="background:#e8f2ff;border:1px solid #c7dcff;color:#163f7a;padding:8px 12px;border-radius:10px;
+                                        display:inline-block;font-weight:700;margin:6px 0 6px;">{_pill_h}</div>
+                            """,
+                            unsafe_allow_html=True,
+                        )
 
                 # Date range
                 if acyclica_df.empty or "local_datetime" not in acyclica_df.columns:
