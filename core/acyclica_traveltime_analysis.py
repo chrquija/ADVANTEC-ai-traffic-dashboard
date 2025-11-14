@@ -478,38 +478,12 @@ def render_tab3_analysis():
             data_span = (date_range[1] - date_range[0]).days + 1
             time_context = f" • {time_filter}" if (granularity == "Hourly" and time_filter) else ""
 
-            st.markdown(
-                f"""
-                <div style="
-                    background: linear-gradient(135deg, #2b77e5 0%, #19c3e6 100%);
-                    border-radius:16px; padding:18px 20px; color:#fff; margin:8px 0 14px;
-                    box-shadow:0 10px 26px rgba(25,115,210,.25); text-align:left;
-                    font-family: inherit;">
-                  <div style="display:flex; align-items:center; gap:10px;">
-                    <div style="width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,.18);
-                                display:flex;align-items:center;justify-content:center;
-                                box-shadow:inset 0 0 0 1px rgba(255,255,255,.15);">🌐</div>
-                    <div style="font-size:1.9rem;font-weight:800;letter-spacing:.2px;">
-                      Acyclica Travel Time Analysis: {corridor}
-                    </div>
-                  </div>
-                  <div style="margin-top:10px;display:flex;flex-direction:column;gap:6px;">
-                    <div>📅 {date_range[0].strftime('%b %d, %Y')} to {date_range[1].strftime('%b %d, %Y')} ({data_span} days) • {granularity} Aggregation{time_context}</div>
-                    <div>✅ Analyzing {total_records:,} data points from Acyclica sensors • Direction: {direction_filter}</div>
-                  </div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
-
-            # Route summary pill, like Pg.1 Iteris ClearGuide (screenshot)
-            def _infer_route_pill(corr: str, o: str, d: str, dir_filt: str) -> str:
+            # Build compact O→D text to append inside the main title (only when a valid pair is chosen)
+            def _route_text_for_title(corr: str, o: str, d: str, dir_filt: str) -> str:
                 if not o or not d or o == "SELECT" or d == "SELECT" or o == d:
                     return ""
-                # Friendly direction text
                 friendly_dir = None
                 if corr == "Washington Street":
-                    # Use node order to infer NB/SB if possible
                     order = [
                         "Avenue 52","Calle Tampico","Village Shopping Ctr","Avenue 50","Sagebrush Ave","Eisenhower Dr",
                         "Avenue 48","Avenue 47","Point Happy Simon","Hwy 111","Channel Drive","Miles Avenue","Via Sevilla",
@@ -526,26 +500,38 @@ def render_tab3_analysis():
                         friendly_dir = "Eastbound"
                     elif o == "Jermaine Gibson" and d == "Canyon Plaza West":
                         friendly_dir = "Westbound"
-                # Fallback to filter if unique
                 if not friendly_dir and dir_filt and dir_filt != "All Directions":
-                    # Expand common abbreviations
-                    mapping = {"NB":"Northbound","SB":"Southbound","EB":"Eastbound","WB":"Westbound"}
+                    mapping = {"NB": "Northbound", "SB": "Southbound", "EB": "Eastbound", "WB": "Westbound"}
                     friendly_dir = mapping.get(dir_filt, dir_filt)
-                if not friendly_dir:
-                    return ""
-                return f"{o} → {d} ({friendly_dir})"
+                return f" • {o} → {d} ({friendly_dir})" if friendly_dir else ""
 
-            route_pill = _infer_route_pill(corridor, origin, destination, direction_filter)
-            if route_pill:
-                st.markdown(
-                    f"""
-                    <div style="background:#e8f2ff;border:1px solid #c7dcff;color:#163f7a;padding:10px 14px;border-radius:10px;
-                                display:inline-block;font-weight:700;margin:4px 0 10px;">
-                        {route_pill}
+            route_suffix = _route_text_for_title(corridor, origin, destination, direction_filter)
+
+            st.markdown(
+                f"""
+                <div style="
+                    background: linear-gradient(135deg, #2b77e5 0%, #19c3e6 100%);
+                    border-radius:16px; padding:18px 20px; color:#fff; margin:8px 0 14px;
+                    box-shadow:0 10px 26px rgba(25,115,210,.25); text-align:left;
+                    font-family: inherit;">
+                  <div style="display:flex; align-items:center; gap:10px;">
+                    <div style="width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,.18);
+                                display:flex;align-items:center;justify-content:center;
+                                box-shadow:inset 0 0 0 1px rgba(255,255,255,.15);">🌐</div>
+                    <div style="font-size:1.9rem;font-weight:800;letter-spacing:.2px;">
+                      Acyclica Travel Time Analysis: {corridor}{route_suffix}
                     </div>
-                    """,
-                    unsafe_allow_html=True,
-                )
+                  </div>
+                  <div style="margin-top:10px;display:flex;flex-direction:column;gap:6px;">
+                    <div>📅 {date_range[0].strftime('%b %d, %Y')} to {date_range[1].strftime('%b %d, %Y')} ({data_span} days) • {granularity} Aggregation{time_context}</div>
+                    <div>✅ Analyzing {total_records:,} data points from Acyclica sensors • Direction: {direction_filter}</div>
+                  </div>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+
+            # Removed separate route summary pill under the main title; it now appears inside the title.
 
             # Ensure numeric columns
             for col in ["average_traveltime", "average_speed"]:
