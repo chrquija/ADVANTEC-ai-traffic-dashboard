@@ -96,7 +96,8 @@ def render_tab3_analysis():
                     base_df if base_df is not None else pd.DataFrame(),
                     intersection_col="corridor_id",
                     intersection=corr_for_avail,
-                    max_gaps=3,
+                    # Keep the Missing Data output concise like Pg.2 expander
+                    max_gaps=1,
                     current_date=datetime.now(),
                 )
                 if avail.get("start") and avail.get("end"):
@@ -112,11 +113,18 @@ def render_tab3_analysis():
                         header_label = f"Available Data for {corridor}"
                     st.caption(header_label)
                     st.caption(f"• Date Range: {start_str} → {end_str} {size_str}")
+                    # Compact Missing Data display (match Pg.2 style)
+                    tail_gap = avail.get("tail_gap")
                     gaps = avail.get("gaps") or []
-                    if len(gaps) == 0:
+                    if tail_gap:
+                        st.caption(f"• Missing Data: {tail_gap}")
+                    elif len(gaps) == 0:
                         st.caption("• Missing Data: None")
                     else:
-                        st.caption("• Missing Data: " + "; ".join(gaps))
+                        first_gap = gaps[0]
+                        more = len(gaps) - 1
+                        suffix = f" (+{more} more)" if more > 0 else ""
+                        st.caption(f"• Missing Data: {first_gap}{suffix}")
             except Exception:
                 # Keep sidebar resilient if availability fails
                 pass
@@ -228,16 +236,8 @@ def render_tab3_analysis():
                     key="granularity_acyclica",
                 )
 
-                # Direction filter (hidden for Washington Street since O→D determines direction)
-                if corridor != "Washington Street":
-                    if not acyclica_df.empty and "direction" in acyclica_df.columns:
-                        direction_options = ["All Directions"] + sorted(acyclica_df["direction"].dropna().unique().tolist())
-                    else:
-                        direction_options = ["All Directions"]
-                    direction_filter = st.selectbox("🔄 Direction Filter", direction_options, key="direction_filter_acyclica")
-                else:
-                    # Keep direction implied by Origin→Destination; default to All Directions until mapped after Search
-                    direction_filter = "All Directions"
+                # Direction filter removed for Tab 3. Direction is implied by the selected Origin → Destination.
+                direction_filter = "All Directions"
 
                 # Time period focus for hourly
                 time_filter, start_hour, end_hour = None, None, None
@@ -507,6 +507,33 @@ def render_tab3_analysis():
 
             route_suffix = _route_text_for_title(corridor, origin, destination, direction_filter)
 
+            # Choose a display direction for the header subtext: prefer inferred direction from O→D
+            def _infer_dir(corr: str, o: str, d: str, dir_filt: str) -> str:
+                if not o or not d or o == "SELECT" or d == "SELECT" or o == d:
+                    return dir_filt
+                if corr == "Washington Street":
+                    order = [
+                        "Avenue 52","Calle Tampico","Village Shopping Ctr","Avenue 50","Sagebrush Ave","Eisenhower Dr",
+                        "Avenue 48","Avenue 47","Point Happy Simon","Hwy 111","Channel Drive","Miles Avenue","Via Sevilla",
+                        "Fred Waring Drive","Palm Royale Drive","Avenue of the States","Avenue 42","Avenue 41","Harris Lane","Country Club Drive"
+                    ]
+                    o_fix = "Hwy 111" if o == "Highway111" else o
+                    d_fix = "Hwy 111" if d == "Highway111" else d
+                    if o_fix in order and d_fix in order and order.index(o_fix) < order.index(d_fix):
+                        return "Northbound"
+                    if o_fix in order and d_fix in order and order.index(o_fix) > order.index(d_fix):
+                        return "Southbound"
+                elif corr == "Highway 111":
+                    if o == "Canyon Plaza West" and d == "Jermaine Gibson":
+                        return "Eastbound"
+                    if o == "Jermaine Gibson" and d == "Canyon Plaza West":
+                        return "Westbound"
+                # Fallback to filter value mapping
+                mapping = {"NB": "Northbound", "SB": "Southbound", "EB": "Eastbound", "WB": "Westbound"}
+                return mapping.get(dir_filt, dir_filt)
+
+            display_dir = _infer_dir(corridor, origin, destination, direction_filter)
+
             st.markdown(
                 f"""
                 <div style="
@@ -524,7 +551,7 @@ def render_tab3_analysis():
                   </div>
                   <div style="margin-top:10px;display:flex;flex-direction:column;gap:6px;">
                     <div>📅 {date_range[0].strftime('%b %d, %Y')} to {date_range[1].strftime('%b %d, %Y')} ({data_span} days) • {granularity} Aggregation{time_context}</div>
-                    <div>✅ Analyzing {total_records:,} data points from Acyclica sensors • Direction: {direction_filter}</div>
+                    <div>✅ Analyzing {total_records:,} data points from Acyclica sensors • Direction: {display_dir}</div>
                   </div>
                 </div>
                 """,
