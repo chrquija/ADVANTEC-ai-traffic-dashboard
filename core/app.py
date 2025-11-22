@@ -358,7 +358,20 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# Removed informational pill: "The ADVANTEC Web Service Platform"
+st.markdown("""
+<div style="
+    font-size: 1.05rem; font-weight: 400; color: var(--text-color);
+    background: linear-gradient(135deg, rgba(79, 172, 254, 0.1), rgba(0, 242, 254, 0.05));
+    padding: 1.5rem; border-radius: 18px; box-shadow: 0 8px 32px rgba(79,172,254,0.08);
+    margin: 1.25rem 0; line-height: 1.7; border: 1px solid rgba(79,172,254,0.2); backdrop-filter: blur(8px);
+">
+    <div style="text-align:center; margin-bottom: 0.5rem;">
+        <strong style="font-size: 1.2rem; color: #2980b9;">🌎 The ADVANTEC Web Service Platform</strong>
+    </div>
+    <p>Leverages <strong>millions of Prediction points</strong> trained on advanced Machine Learning algorithms to optimize traffic flow, reduce travel time, minimize fuel consumption, and decrease greenhouse gas emissions across the transportation network.</p>
+    <p><strong>Key Capabilities:</strong> Real-time anomaly detection • Intelligent cycle length optimization • Predictive traffic modeling • Performance analytics</p>
+</div>
+""", unsafe_allow_html=True)
 
 st.markdown("""
 <div style="background: linear-gradient(135deg, #3498db, #2980b9); color: white; padding: 1.1rem; border-radius: 15px;
@@ -558,7 +571,7 @@ def _flip_od_state():
 # =========================
 # Tabs
 # =========================
-st.markdown("## Select Dashboard")
+st.markdown("## Select Page")
 tab1, tab2, tab3, tab4, tab5 = st.tabs(["Pg.1 ITERIS CLEARGUIDE", "Pg.2 KINETIC MOBILITY", "Pg.3 ACYCLICA", "Pg.4 ITERIS VANTAGE LIVE", "Pg.5 BOSCH CLOUD ANALYTICS"])
 
 # -------------------------
