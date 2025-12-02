@@ -233,11 +233,14 @@ def require_company_login(domain: str = _ALLOWED_DOMAIN) -> bool:
                 display: flex;
                 justify-content: center;
                 align-items: center;
-                margin-top: 0.75rem;
+                /* Tighter spacing so the logo visually aligns with the sign-in card */
+                margin-top: 0.25rem;
+                margin-bottom: 0.25rem;
             }}
             .auth-logo img {{
-                width: 360px;
-                max-width: 90%;
+                /* Make the logo larger while staying responsive on small screens */
+                width: clamp(420px, 32vw, 780px);
+                max-width: 100%;
                 height: auto;
                 display: block;
             }}
@@ -249,7 +252,7 @@ def require_company_login(domain: str = _ALLOWED_DOMAIN) -> bool:
             unsafe_allow_html=True,
         )
         st.markdown(
-            "<h3 style='text-align: center; color: #666; margin-top: 12px;'>Dashboard Sign In</h3>",
+            "<h3 style='text-align: center; color: #666; margin-top: 4px;'>Dashboard Sign In</h3>",
             unsafe_allow_html=True,
         )
 
