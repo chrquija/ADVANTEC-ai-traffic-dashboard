@@ -227,47 +227,44 @@ def require_company_login(domain: str = _ALLOWED_DOMAIN) -> bool:
         # Render a single logo (remove white/dark variant)
         st.markdown(
             f"""
-                        <style>
-                        /* Ensure both images occupy identical space and are centered */
-                        .auth-logo {{
-                            display: flex;
-                            justify-content: center;
-                            align-items: center;
-                            /* Tighter spacing so the logo visually aligns with the sign-in card */
-                            margin-top: 0.25rem;
-                            margin-bottom: 0.25rem;
-                        }}
-                        .auth-logo img {{
-                            /* Make the logo larger while staying responsive on small screens */
-                            width: clamp(500px, 45vw, 900px);
-                            max-width: 100%;
-                            height: auto;
-                            display: block;
-                        }}
+            <style>
+            /* Ensure both images occupy identical space and are centered */
+            .auth-logo {{
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                /* Tighter spacing so the logo visually aligns with the sign-in card */
+                margin-top: 0.25rem;
+                margin-bottom: 0.25rem;
+            }}
+            .auth-logo img {{
+                /* Make the logo larger while staying responsive on small screens */
+                width: clamp(420px, 32vw, 780px);
+                max-width: 100%;
+                height: auto;
+                display: block;
+            }}
 
-                        /* In narrow/non-wide mode, use a fixed larger size */
-                        @media (max-width: 1200px) {{
-                            .auth-logo img {{
-                                width: clamp(450px, 80vw, 700px);
-                            }}
-                        }}
-
-                        /* In dark theme, boost logo brightness/contrast slightly for better legibility
-                           without needing a separate white-ink asset. Include a fallback for environments
-                           where Streamlit doesn't set data-theme. */
-                        html[data-theme="dark"] .auth-logo img, body[data-theme="dark"] .auth-logo img {{
-                            filter: brightness(1.15) contrast(1.12) saturate(1.05) drop-shadow(0 0 8px rgba(255,255,255,0.18));
-                        }}
-                        @media (prefers-color-scheme: dark) {{
-                            html:not([data-theme]) .auth-logo img, body:not([data-theme]) .auth-logo img {{
-                                filter: brightness(1.15) contrast(1.12) saturate(1.05) drop-shadow(0 0 8px rgba(255,255,255,0.18));
-                            }}
-                        }}
-                        </style>
-                        <div class="auth-logo">
-                            <img class="logo-light" src="{logo_light}" alt="Advantec logo" />
-                        </div>
-                        """,
+            /* In dark theme, boost logo brightness/contrast slightly for better legibility
+               without needing a separate white-ink asset. Include a fallback for environments
+               where Streamlit doesn't set data-theme. */
+            html[data-theme="dark"] .auth-logo img, body[data-theme="dark"] .auth-logo img {{
+                filter: brightness(1.15) contrast(1.12) saturate(1.05) drop-shadow(0 0 8px rgba(255,255,255,0.18));
+            }}
+            @media (prefers-color-scheme: dark) {{
+                html:not([data-theme]) .auth-logo img, body:not([data-theme]) .auth-logo img {{
+                    filter: brightness(1.15) contrast(1.12) saturate(1.05) drop-shadow(0 0 8px rgba(255,255,255,0.18));
+                }}
+            }}
+            </style>
+            <div class="auth-logo">
+                <img class="logo-light" src="{logo_light}" alt="Advantec logo" />
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            "<h3 style='text-align: center; color: #666; margin-top: 4px;'>Dashboard Sign In</h3>",
             unsafe_allow_html=True,
         )
 
