@@ -267,7 +267,6 @@ def require_company_login(domain: str = _ALLOWED_DOMAIN) -> bool:
                 except Exception as e:
                     st.error(str(e))
 
-    st.caption(f"Only emails ending with @{domain} are allowed.")
     return False
 
 
