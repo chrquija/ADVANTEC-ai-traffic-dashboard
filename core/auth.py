@@ -214,22 +214,17 @@ def require_company_login(domain: str = _ALLOWED_DOMAIN) -> bool:
         _root = Path('.')
 
     light_path = _root / "Logos" / "ACE-logo-Vector.png"
-    dark_path = _root / "Logos" / "ACE-Logo-Vector-WHITE.png"
 
     # Prefer embedding as data URIs so the browser can render images without static routing
     logo_light = _to_data_uri(light_path) or ""
-    logo_dark = _to_data_uri(dark_path) or ""
 
     # If embedding failed (e.g., files missing), fall back to relative paths as a last resort
     if not logo_light:
         logo_light = "Logos/ACE-logo-Vector.png"
-    if not logo_dark:
-        logo_dark = "Logos/ACE-Logo-Vector-WHITE.png"
 
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        # Render a theme-aware logo that swaps between light/dark versions automatically
-        # Using CSS tied to Streamlit's html[data-theme] attribute and a prefers-color-scheme fallback
+        # Render a single logo (remove white/dark variant)
         st.markdown(
             f"""
             <style>
@@ -244,27 +239,11 @@ def require_company_login(domain: str = _ALLOWED_DOMAIN) -> bool:
                 width: 360px;
                 max-width: 90%;
                 height: auto;
-                display: none; /* default hidden; rules below will show the right one */
-            }}
-            /* Streamlit typically sets data-theme on <html> or <body>. Make these rules authoritative. */
-            html[data-theme="light"] .auth-logo .logo-light, body[data-theme="light"] .auth-logo .logo-light {{ display: block !important; }}
-            html[data-theme="light"] .auth-logo .logo-dark,  body[data-theme="light"] .auth-logo .logo-dark  {{ display: none  !important; }}
-            html[data-theme="dark"]  .auth-logo .logo-light, body[data-theme="dark"]  .auth-logo .logo-light {{ display: none  !important; }}
-            html[data-theme="dark"]  .auth-logo .logo-dark,  body[data-theme="dark"]  .auth-logo .logo-dark  {{ display: block !important; }}
-
-            /* Fallback ONLY if no explicit data-theme attribute exists (older Streamlit/if custom themes disabled) */
-            @media (prefers-color-scheme: dark) {{
-                html:not([data-theme]) .auth-logo .logo-light, body:not([data-theme]) .auth-logo .logo-light {{ display: none; }}
-                html:not([data-theme]) .auth-logo .logo-dark,  body:not([data-theme]) .auth-logo .logo-dark  {{ display: block; }}
-            }}
-            @media (prefers-color-scheme: light) {{
-                html:not([data-theme]) .auth-logo .logo-light, body:not([data-theme]) .auth-logo .logo-light {{ display: block; }}
-                html:not([data-theme]) .auth-logo .logo-dark,  body:not([data-theme]) .auth-logo .logo-dark  {{ display: none;  }}
+                display: block;
             }}
             </style>
             <div class="auth-logo">
                 <img class="logo-light" src="{logo_light}" alt="Advantec logo" />
-                <img class="logo-dark"  src="{logo_dark}"  alt="Advantec logo (white)" />
             </div>
             """,
             unsafe_allow_html=True,
