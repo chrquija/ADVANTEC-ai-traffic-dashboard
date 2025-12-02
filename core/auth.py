@@ -244,6 +244,18 @@ def require_company_login(domain: str = _ALLOWED_DOMAIN) -> bool:
                 height: auto;
                 display: block;
             }}
+
+            /* In dark theme, boost logo brightness/contrast slightly for better legibility
+               without needing a separate white-ink asset. Include a fallback for environments
+               where Streamlit doesn't set data-theme. */
+            html[data-theme="dark"] .auth-logo img, body[data-theme="dark"] .auth-logo img {{
+                filter: brightness(1.15) contrast(1.12) saturate(1.05) drop-shadow(0 0 8px rgba(255,255,255,0.18));
+            }}
+            @media (prefers-color-scheme: dark) {{
+                html:not([data-theme]) .auth-logo img, body:not([data-theme]) .auth-logo img {{
+                    filter: brightness(1.15) contrast(1.12) saturate(1.05) drop-shadow(0 0 8px rgba(255,255,255,0.18));
+                }}
+            }}
             </style>
             <div class="auth-logo">
                 <img class="logo-light" src="{logo_light}" alt="Advantec logo" />
