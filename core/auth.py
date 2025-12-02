@@ -202,13 +202,10 @@ def require_company_login(domain: str = _ALLOWED_DOMAIN) -> bool:
 
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        st.image(logo_path, width=200)
+        # Bigger centered logo; removed the "Advantec Dashboard" title per request
+        st.image(logo_path, width=360)
         st.markdown(
-            "<h1 style='text-align: center; margin: 20px 0;'>Advantec Dashboard</h1>",
-            unsafe_allow_html=True,
-        )
-        st.markdown(
-            "<h3 style='text-align: center; color: #666;'>Sign In</h3>",
+            "<h3 style='text-align: center; color: #666; margin-top: 12px;'>Sign In</h3>",
             unsafe_allow_html=True,
         )
 
