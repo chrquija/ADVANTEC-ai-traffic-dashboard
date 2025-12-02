@@ -79,7 +79,7 @@ except ModuleNotFoundError:
 st.set_page_config(
     page_title="Active Transportation & Operations Management Dashboard",
     page_icon="🛣️",
-    layout="centered",  # Use centered layout so the sign-in page is not wide by default
+    layout="wide",  # Keep wide layout enabled throughout the app (including after sign-in)
     initial_sidebar_state="expanded",
 )
 
@@ -93,21 +93,7 @@ except ModuleNotFoundError:
 if not require_company_login("advantec-usa.com"):
     st.stop()
 
-# After a successful login, emulate Streamlit "wide" layout via CSS so the rest of the app remains wide.
-# This avoids calling st.set_page_config twice while keeping the sign-in screen centered.
-st.markdown(
-    """
-    <style>
-    /* make main content effectively wide once authenticated */
-    [data-testid="stAppViewContainer"] .main .block-container {
-        max-width: 95%;
-        padding-left: 2rem;
-        padding-right: 2rem;
-    }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
+# With the app configured to wide layout globally, no CSS hack is needed here.
 
 # -------- CAD-style loader (progress bar + step text) --------
 @contextlib.contextmanager
