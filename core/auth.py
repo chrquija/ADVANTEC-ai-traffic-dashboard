@@ -195,17 +195,59 @@ def require_company_login(domain: str = _ALLOWED_DOMAIN) -> bool:
         return True
 
     # Option 2: Logo Above Header (Corporate Style)
+    # Resolve both normal and white (for dark mode) logos robustly
     try:
-        logo_path = str((Path(__file__).resolve().parents[1] / "Logos" / "ACE-logo-Vector.png").as_posix())
+        _root = Path(__file__).resolve().parents[1]
+        logo_light = str((_root / "Logos" / "ACE-logo-Vector.png").as_posix())
+        logo_dark = str((_root / "Logos" / "ACE-Logo-Vector-WHITE.png").as_posix())
     except Exception:
-        logo_path = "Logos/ACE-logo-Vector.png"
+        logo_light = "Logos/ACE-logo-Vector.png"
+        logo_dark = "Logos/ACE-Logo-Vector-WHITE.png"
 
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        # Bigger centered logo; removed the "Advantec Dashboard" title per request
-        st.image(logo_path, width=360)
+        # Render a theme-aware logo that swaps between light/dark versions automatically
+        # Using CSS tied to Streamlit's html[data-theme] attribute and a prefers-color-scheme fallback
         st.markdown(
-            "<h3 style='text-align: center; color: #666; margin-top: 12px;'>Sign In</h3>",
+            f"""
+            <style>
+            /* Ensure both images occupy identical space and are centered */
+            .auth-logo {{
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                margin-top: 0.75rem;
+            }}
+            .auth-logo img {{
+                width: 360px;
+                max-width: 90%;
+                height: auto;
+                display: none; /* default hidden; rules below will show the right one */
+            }}
+            /* Streamlit sets html[data-theme="light"|"dark"] */
+            html[data-theme="light"] .auth-logo .logo-light {{ display: block; }}
+            html[data-theme="light"] .auth-logo .logo-dark  {{ display: none;  }}
+            html[data-theme="dark"]  .auth-logo .logo-light {{ display: none;  }}
+            html[data-theme="dark"]  .auth-logo .logo-dark  {{ display: block; }}
+            /* Fallback for environments that rely on system preference only */
+            @media (prefers-color-scheme: dark) {{
+                .auth-logo .logo-light {{ display: none; }}
+                .auth-logo .logo-dark  {{ display: block; }}
+            }}
+            @media (prefers-color-scheme: light) {{
+                .auth-logo .logo-light {{ display: block; }}
+                .auth-logo .logo-dark  {{ display: none;  }}
+            }}
+            </style>
+            <div class="auth-logo">
+                <img class="logo-light" src="{logo_light}" alt="Advantec logo" />
+                <img class="logo-dark"  src="{logo_dark}"  alt="Advantec logo (white)" />
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
+        st.markdown(
+            "<h3 style='text-align: center; color: #666; margin-top: 12px;'>Dashboard Sign In</h3>",
             unsafe_allow_html=True,
         )
 
