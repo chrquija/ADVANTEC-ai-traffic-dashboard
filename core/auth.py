@@ -196,12 +196,34 @@ def require_company_login(domain: str = _ALLOWED_DOMAIN) -> bool:
 
     # Option 2: Logo Above Header (Corporate Style)
     # Resolve both normal and white (for dark mode) logos robustly
+    def _to_data_uri(p: Path) -> Optional[str]:
+        try:
+            import base64
+            if not p.exists():
+                return None
+            b = p.read_bytes()
+            enc = base64.b64encode(b).decode("ascii")
+            # Assume PNG for provided assets
+            return f"data:image/png;base64,{enc}"
+        except Exception:
+            return None
+
     try:
         _root = Path(__file__).resolve().parents[1]
-        logo_light = str((_root / "Logos" / "ACE-logo-Vector.png").as_posix())
-        logo_dark = str((_root / "Logos" / "ACE-Logo-Vector-WHITE.png").as_posix())
     except Exception:
+        _root = Path('.')
+
+    light_path = _root / "Logos" / "ACE-logo-Vector.png"
+    dark_path = _root / "Logos" / "ACE-Logo-Vector-WHITE.png"
+
+    # Prefer embedding as data URIs so the browser can render images without static routing
+    logo_light = _to_data_uri(light_path) or ""
+    logo_dark = _to_data_uri(dark_path) or ""
+
+    # If embedding failed (e.g., files missing), fall back to relative paths as a last resort
+    if not logo_light:
         logo_light = "Logos/ACE-logo-Vector.png"
+    if not logo_dark:
         logo_dark = "Logos/ACE-Logo-Vector-WHITE.png"
 
     col1, col2, col3 = st.columns([1, 2, 1])
