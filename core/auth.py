@@ -198,7 +198,7 @@ def require_company_login(domain: str = _ALLOWED_DOMAIN) -> bool:
         <div style='max-width:720px;margin:40px auto 10px; padding:24px; border-radius:16px;'
              'background:linear-gradient(135deg, rgba(79,172,254,.08), rgba(0,242,254,.08));'
              'border:1px solid rgba(79,172,254,.25); box-shadow:0 8px 26px rgba(0,0,0,.08);'>
-          <h2 style='margin:0 0 8px 0;'>ADVANTEC Consulting Engineers Dashboard — Sign in</h2>
+          <h2 style='margin:0 0 8px 0;'>ADVANTEC Dashboard — Sign in</h2>
           <p style='margin:0;opacity:.85;'>Use your company email and password</p>
         </div>
     """, unsafe_allow_html=True)
