@@ -246,19 +246,20 @@ def require_company_login(domain: str = _ALLOWED_DOMAIN) -> bool:
                 height: auto;
                 display: none; /* default hidden; rules below will show the right one */
             }}
-            /* Streamlit sets html[data-theme="light"|"dark"] */
-            html[data-theme="light"] .auth-logo .logo-light {{ display: block; }}
-            html[data-theme="light"] .auth-logo .logo-dark  {{ display: none;  }}
-            html[data-theme="dark"]  .auth-logo .logo-light {{ display: none;  }}
-            html[data-theme="dark"]  .auth-logo .logo-dark  {{ display: block; }}
-            /* Fallback for environments that rely on system preference only */
+            /* Streamlit typically sets data-theme on <html> or <body>. Make these rules authoritative. */
+            html[data-theme="light"] .auth-logo .logo-light, body[data-theme="light"] .auth-logo .logo-light {{ display: block !important; }}
+            html[data-theme="light"] .auth-logo .logo-dark,  body[data-theme="light"] .auth-logo .logo-dark  {{ display: none  !important; }}
+            html[data-theme="dark"]  .auth-logo .logo-light, body[data-theme="dark"]  .auth-logo .logo-light {{ display: none  !important; }}
+            html[data-theme="dark"]  .auth-logo .logo-dark,  body[data-theme="dark"]  .auth-logo .logo-dark  {{ display: block !important; }}
+
+            /* Fallback ONLY if no explicit data-theme attribute exists (older Streamlit/if custom themes disabled) */
             @media (prefers-color-scheme: dark) {{
-                .auth-logo .logo-light {{ display: none; }}
-                .auth-logo .logo-dark  {{ display: block; }}
+                html:not([data-theme]) .auth-logo .logo-light, body:not([data-theme]) .auth-logo .logo-light {{ display: none; }}
+                html:not([data-theme]) .auth-logo .logo-dark,  body:not([data-theme]) .auth-logo .logo-dark  {{ display: block; }}
             }}
             @media (prefers-color-scheme: light) {{
-                .auth-logo .logo-light {{ display: block; }}
-                .auth-logo .logo-dark  {{ display: none;  }}
+                html:not([data-theme]) .auth-logo .logo-light, body:not([data-theme]) .auth-logo .logo-light {{ display: block; }}
+                html:not([data-theme]) .auth-logo .logo-dark,  body:not([data-theme]) .auth-logo .logo-dark  {{ display: none;  }}
             }}
             </style>
             <div class="auth-logo">
