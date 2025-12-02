@@ -202,18 +202,10 @@ def require_company_login(domain: str = _ALLOWED_DOMAIN) -> bool:
 
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        # Add a small vertical spacer so the logo block sits more toward the middle of the page
-        st.markdown("<div style='height:6vh'></div>", unsafe_allow_html=True)
-
-        # Center the logo precisely above the Sign In text
+        # Bigger centered logo; removed the "Advantec Dashboard" title per request
+        st.image(logo_path, width=360)
         st.markdown(
-            f"<div style='display:flex;justify-content:center;align-items:center;'>"
-            f"<img src='{logo_path}' alt='ADVANTEC' style='width:360px;max-width:90%;height:auto;'/>"
-            f"</div>",
-            unsafe_allow_html=True,
-        )
-        st.markdown(
-            "<h3 style='text-align: center; color: #666; margin-top: 4px; margin-bottom: 0;'>Sign In</h3>",
+            "<h3 style='text-align: center; color: #666; margin-top: 12px;'>Sign In</h3>",
             unsafe_allow_html=True,
         )
 
