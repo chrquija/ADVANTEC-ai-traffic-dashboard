@@ -25,3 +25,10 @@ Thumbs.db
 
 # Streamlit
 .streamlit/secrets.toml
+
+# User authentication data
+core/users.json
+
+# Additional security
+*.env
+.env*

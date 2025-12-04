@@ -1,0 +1,22 @@
+{
+  "users": {
+    "cquijano@advantec-usa.com": {
+      "email": "cquijano@advantec-usa.com",
+      "password": "b39dfae31d19225dd3706f5f9b14734455304e91b2a38e4691cbe9996b9f9504",
+      "salt": "de68b4dc030f93ab72d02bcc70ffcfde",
+      "reset_code": "53295",
+      "reset_expiry": 1764903514,
+      "created": 1764723105,
+      "updated": 1764723105
+    },
+    "belenes@advantec-usa.com": {
+      "email": "belenes@advantec-usa.com",
+      "password": "684c278f80c5ffc82caf2932de256ea00646fa922b1e85cac791d4d713e10086",
+      "salt": "181d8dc8e9de3976e0bff1e0d6aed4d0",
+      "reset_code": null,
+      "reset_expiry": null,
+      "created": 1764876097,
+      "updated": 1764876097
+    }
+  }
+}
