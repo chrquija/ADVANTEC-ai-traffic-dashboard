@@ -56,6 +56,15 @@ def _load_store() -> Dict[str, Any]:
                 return json.load(f)
     except Exception:
         pass
+
+    # Fallback: Load from secrets (useful for Cloud where files are ephemeral)
+    # Allows you to paste the content of users.json into a secret named 'users_db_json'
+    if hasattr(st, "secrets") and "users_db_json" in st.secrets:
+        try:
+            return json.loads(st.secrets["users_db_json"])
+        except Exception:
+            pass
+
     return {"users": {}}
 
 
