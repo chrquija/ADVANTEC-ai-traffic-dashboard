@@ -3,6 +3,8 @@ from typing import Optional, Dict, Any
 import json
 import time
 import hashlib
+import hmac
+import base64
 import secrets
 from pathlib import Path
 from datetime import datetime, timedelta
@@ -10,6 +12,14 @@ from datetime import datetime, timedelta
 _ALLOWED_DOMAIN = "advantec-usa.com"
 _STORE_FILE = Path(__file__).resolve().parent / "users.json"
 _RESET_TTL_MIN = 15
+_AUTH_COOKIE_NAME = "adv_auth"
+_AUTH_TOKEN_TTL_SEC = 7 * 24 * 3600  # 7 days
+
+# Optional cookie manager dependency
+try:
+    from streamlit_cookies_manager import CookieManager  # type: ignore
+except Exception:
+    CookieManager = None  # fallback if dependency missing
 
 # ---------- Basic helpers ----------
 
@@ -38,13 +48,68 @@ def is_authenticated(domain: str = _ALLOWED_DOMAIN) -> bool:
 
 
 def logout():
+    """Clear session auth state and remove the auth cookie."""
     for k in ("authenticated", "auth_email"):
         if k in st.session_state:
             del st.session_state[k]
+    # Attempt to clear cookie (best-effort)
+    try:
+        if CookieManager is not None:
+            cookies = CookieManager()
+            if cookies.ready():
+                # Set to empty string to invalidate; CookieManager handles deletion on empty
+                cookies[_AUTH_COOKIE_NAME] = ""
+                cookies.save()
+    except Exception:
+        pass
     try:
         st.rerun()
     except Exception:
         pass
+
+
+# ---------- Auth token helpers (cookie-based) ----------
+
+def _get_auth_secret() -> str:
+    try:
+        if hasattr(st, "secrets") and "auth_secret" in st.secrets:
+            return str(st.secrets["auth_secret"]) or "dev-secret-change-me"
+    except Exception:
+        pass
+    return "dev-secret-change-me"
+
+
+def _sign(payload: str) -> str:
+    key = _get_auth_secret().encode("utf-8")
+    mac = hmac.new(key, payload.encode("utf-8"), hashlib.sha256).digest()
+    return base64.urlsafe_b64encode(mac).decode("ascii").rstrip("=")
+
+
+def _issue_auth_token(email: str) -> str:
+    email_n = _normalize_email(email)
+    ts = int(time.time())
+    payload = f"{email_n}|{ts}"
+    sig = _sign(payload)
+    return f"{email_n}|{ts}|{sig}"
+
+
+def _validate_auth_token(token: str) -> Optional[str]:
+    try:
+        parts = token.split("|")
+        if len(parts) != 3:
+            return None
+        email, ts_s, sig = parts
+        email = _normalize_email(email)
+        ts = int(ts_s)
+        # TTL check
+        if time.time() - ts > _AUTH_TOKEN_TTL_SEC:
+            return None
+        expected = _sign(f"{email}|{ts}")
+        if not hmac.compare_digest(expected, sig):
+            return None
+        return email
+    except Exception:
+        return None
 
 
 # ---------- User store (JSON) ----------
@@ -203,6 +268,25 @@ def require_company_login(domain: str = _ALLOWED_DOMAIN) -> bool:
     if is_authenticated(domain):
         return True
 
+    # Try cookie-based hydration before showing UI (only when not already authenticated)
+    try:
+        if CookieManager is not None:
+            cookies = CookieManager()
+            # Ensure the cookie manager has loaded cookies; on first run it may not be ready
+            if not cookies.ready():
+                # Let Streamlit load cookies then rerun
+                st.stop()
+            token = cookies.get(_AUTH_COOKIE_NAME)
+            if token:
+                email = _validate_auth_token(token)
+                if email and validate_company_email(email, domain):
+                    st.session_state["authenticated"] = True
+                    st.session_state["auth_email"] = _normalize_email(email)
+                    return True
+    except Exception:
+        # Non-fatal: fall through to UI
+        pass
+
     # Option 2: Logo Above Header (Corporate Style)
     # Resolve both normal and white (for dark mode) logos robustly
     def _to_data_uri(p: Path) -> Optional[str]:
@@ -296,6 +380,20 @@ def require_company_login(domain: str = _ALLOWED_DOMAIN) -> bool:
                     if _verify_password(password, user.get("salt", ""), user.get("password", "")):
                         st.session_state["authenticated"] = True
                         st.session_state["auth_email"] = _normalize_email(email)
+                        # Set auth cookie so refresh keeps user signed in
+                        try:
+                            if CookieManager is not None:
+                                cookies = CookieManager()
+                                if cookies.ready():
+                                    token = _issue_auth_token(email)
+                                    # Prefer persistent cookie with max_age if available
+                                    try:
+                                        cookies.set(_AUTH_COOKIE_NAME, token, max_age=_AUTH_TOKEN_TTL_SEC)
+                                    except Exception:
+                                        cookies[_AUTH_COOKIE_NAME] = token
+                                    cookies.save()
+                        except Exception:
+                            pass
                         try:
                             st.rerun()
                         except Exception:

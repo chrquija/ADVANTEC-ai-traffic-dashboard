@@ -275,17 +275,39 @@ def render_tab3_analysis():
                 }
                 st.session_state["t3_current"] = t3_current
 
-                # Search button (matching other tabs)
-                if st.button("🔍 **Search**", key="search_tab3", type="primary", use_container_width=True):
+                # Generate button (matching other tabs)
+                if st.button("🔍 **Generate**", key="search_tab3", type="primary", use_container_width=True):
                     st.session_state["t3_ready"] = True
                     st.session_state["t3_params"] = t3_current
                     set_active_search_tab("t3")
                     st.session_state["last_active_tab"] = "t3"
+                    # Persist committed search to URL
+                    try:
+                        ds, de = None, None
+                        if t3_current.get("date_range"):
+                            ds = t3_current["date_range"][0].isoformat()
+                            de = t3_current["date_range"][1].isoformat()
+                        st.query_params.update(
+                            t3_ready="1",
+                            t3_corridor=corridor,
+                            t3_origin=origin or "",
+                            t3_destination=destination or "",
+                            t3_date_start=ds or "",
+                            t3_date_end=de or "",
+                            t3_granularity=granularity,
+                            t3_direction=direction_filter,
+                            t3_time_filter=t3_current.get("time_filter") or "",
+                            t3_start_hour=str(t3_current.get("start_hour") or ""),
+                            t3_end_hour=str(t3_current.get("end_hour") or ""),
+                            last_tab="t3",
+                        )
+                    except Exception:
+                        pass
             else:
                 # Reset current minimal state when placeholder is selected
                 st.session_state["t3_current"] = {"corridor": corridor}
 
-    # -------- Main content area (only render after Search) --------
+    # -------- Main content area (only render after Generate) --------
     t3_ready = st.session_state.get("t3_ready", False)
 
     if not t3_ready:
@@ -306,7 +328,7 @@ def render_tab3_analysis():
     # Compare committed vs current sidebar values to detect pending changes
     t3_pending = t3_ready and (t3_params != st.session_state.get("t3_current", {}))
     if t3_pending:
-        st.warning("⚙️ Press **Search** to refresh.")
+        st.warning("⚙️ Press **Generate** to refresh.")
 
     if not date_range or len(date_range) != 2:
         st.warning("⚠️ Please select both start and end dates to proceed.")

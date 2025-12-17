@@ -256,7 +256,7 @@ Choose a **single specific day**.
 **Step 3. Granularity → Direction**  
 Select **Northbound** or **Southbound**.
 
-**Step 4. Hit Search**  
+**Step 4. Hit Generate**  
 The calculator below will use your selections.
             """
         )

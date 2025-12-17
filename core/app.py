@@ -70,6 +70,119 @@ try:
 except ModuleNotFoundError:
     from core.ui_utils import cad_loader as scoped_cad_loader, set_active_search_tab, is_active_tab
 
+# -----------------------------
+# URL state hydration utilities
+# -----------------------------
+from datetime import date as _date_type
+
+def _str_to_date(s: str | None) -> _date_type | None:
+    try:
+        return _date_type.fromisoformat(s) if s else None
+    except Exception:
+        return None
+
+# Hydrate session_state from URL query params on first load
+if "url_hydrated" not in st.session_state:
+    try:
+        qp = st.query_params
+
+        # Tab 1 (Performance & Prediction)
+        if qp.get("t1_ready") == "1":
+            t1_params = {
+                "od_mode": qp.get("t1_od") == "1",
+                "origin": qp.get("t1_origin") or None,
+                "destination": qp.get("t1_destination") or None,
+                "date_range": (
+                    _str_to_date(qp.get("t1_date_start")),
+                    _str_to_date(qp.get("t1_date_end")),
+                ) if qp.get("t1_date_start") and qp.get("t1_date_end") else None,
+                "granularity": qp.get("t1_granularity") or "Hourly",
+                "time_filter": qp.get("t1_time_filter") or None,
+                "start_hour": int(qp.get("t1_start_hour")) if qp.get("t1_start_hour") else None,
+                "end_hour": int(qp.get("t1_end_hour")) if qp.get("t1_end_hour") else None,
+            }
+            st.session_state["t1_params"] = t1_params
+            st.session_state["t1_ready"] = True
+
+        # Tab 2 (Volume)
+        if qp.get("t2_ready") == "1":
+            t2_params = {
+                "corridor": qp.get("t2_corridor") or "All Corridors",
+                "intersection": qp.get("t2_intersection") or "All Intersections",
+                "date_range_vol": (
+                    _str_to_date(qp.get("t2_date_start")),
+                    _str_to_date(qp.get("t2_date_end")),
+                ) if qp.get("t2_date_start") and qp.get("t2_date_end") else None,
+                "granularity_vol": qp.get("t2_granularity") or "Hourly",
+                "direction_filter": qp.get("t2_direction") or "All Directions",
+            }
+            st.session_state["t2_params"] = t2_params
+            st.session_state["t2_ready"] = True
+
+        # Tab 3 (Acyclica)
+        if qp.get("t3_ready") == "1":
+            t3_params = {
+                "corridor": qp.get("t3_corridor") or "All Corridors",
+                "origin": qp.get("t3_origin") or "SELECT",
+                "destination": qp.get("t3_destination") or "SELECT",
+                "date_range": (
+                    _str_to_date(qp.get("t3_date_start")),
+                    _str_to_date(qp.get("t3_date_end")),
+                ) if qp.get("t3_date_start") and qp.get("t3_date_end") else None,
+                "granularity": qp.get("t3_granularity") or "Hourly",
+                "direction_filter": qp.get("t3_direction") or "All Directions",
+                "time_filter": qp.get("t3_time_filter") or None,
+                "start_hour": int(qp.get("t3_start_hour")) if qp.get("t3_start_hour") else None,
+                "end_hour": int(qp.get("t3_end_hour")) if qp.get("t3_end_hour") else None,
+            }
+            st.session_state["t3_params"] = t3_params
+            st.session_state["t3_ready"] = True
+
+        # Tab 4 (VantageLive)
+        if qp.get("t4_ready") == "1":
+            t4_params = {
+                "mode": qp.get("t4_mode") or "Vehicles",
+                "intersection": qp.get("t4_intersection") or "All Intersections",
+                "date_range": (
+                    _str_to_date(qp.get("t4_date_start")),
+                    _str_to_date(qp.get("t4_date_end")),
+                ) if qp.get("t4_date_start") and qp.get("t4_date_end") else None,
+                "granularity": qp.get("t4_granularity") or "Daily",
+                "direction_filter": qp.get("t4_direction") or "All Directions",
+                "turn_filter": qp.get("t4_turn") or "All Turns",
+                "chart_type": qp.get("t4_chart") or "Trend (Line)",
+            }
+            st.session_state["vantage_params"] = t4_params
+            st.session_state["vantage_ready"] = True
+
+        # Tab 5 (Bosch)
+        if qp.get("t5_ready") == "1":
+            # modes could be comma-joined
+            modes_s = qp.get("t5_modes") or ""
+            modes = tuple([m for m in modes_s.split(",") if m]) if modes_s else ()
+            t5_params = {
+                "corridor": qp.get("t5_corridor") or "SELECT",
+                "date_range": (
+                    _str_to_date(qp.get("t5_date_start")),
+                    _str_to_date(qp.get("t5_date_end")),
+                ) if qp.get("t5_date_start") and qp.get("t5_date_end") else None,
+                "granularity": qp.get("t5_granularity") or "Hourly",
+                "mode_filter": modes,
+            }
+            st.session_state["bosch_params"] = t5_params
+            st.session_state["bosch_ready"] = True
+
+        # Active tab to open
+        last_tab = qp.get("last_tab")
+        if last_tab:
+            st.session_state["last_active_tab"] = last_tab
+
+    except Exception:
+        # Fail-safe: do nothing on hydration errors
+        pass
+    finally:
+        st.session_state["url_hydrated"] = True
+
 
 
 
@@ -839,16 +952,37 @@ with tab1:
                 }
                 st.session_state["t1_current"] = t1_current
 
-                if st.button("🔍 **Search**", key="search_tab1", type="primary", use_container_width=True):
+                if st.button("🔍 **Generate**", key="search_tab1", type="primary", use_container_width=True):
                     st.session_state["t1_params"] = t1_current
                     st.session_state["t1_ready"] = True
                     set_active_search_tab("t1")
                     st.session_state["last_active_tab"] = "t1"
+                    # Persist committed search to URL
+                    # --- SAVE TO URL (The new logic) ---
+                    try:
+                        ds = t1_current["date_range"][0].isoformat() if t1_current.get("date_range") else ""
+                        de = t1_current["date_range"][1].isoformat() if t1_current.get("date_range") else ""
+
+                        st.query_params.update(
+                            t1_ready="1",
+                            t1_od="1" if t1_current.get("od_mode") else "0",
+                            t1_origin=t1_current.get("origin") or "",
+                            t1_destination=t1_current.get("destination") or "",
+                            t1_date_start=ds or "",
+                            t1_date_end=de or "",
+                            t1_granularity=t1_current.get("granularity") or "Hourly",
+                            t1_time_filter=t1_current.get("time_filter") or "",
+                            t1_start_hour=str(t1_current.get("start_hour") or ""),
+                            t1_end_hour=str(t1_current.get("end_hour") or ""),
+                            last_tab="t1",
+                        )
+                    except Exception:
+                        pass
             else:
                 # Reset current to minimal to avoid stale diffs
                 st.session_state["t1_current"] = {"origin": origin, "destination": destination, "od_mode": od_mode}
 
-    # -------- Main content area (render only when "Search" committed) --------
+    # -------- Main content area (render only when "Generate" committed) --------
     t1_ready = st.session_state.get("t1_ready", False)
     t1_params = st.session_state.get("t1_params", {})
     t1_pending = t1_ready and _freeze_params(t1_params) != _freeze_params(st.session_state.get("t1_current", {}))
@@ -857,7 +991,7 @@ with tab1:
         st.info("Choose your Route and Date Range in the settings to the left.")
     else:
         if t1_pending:
-            st.warning(" Press **Search** to refresh.")
+            st.warning(" Press **Generate** to refresh.")
 
         # ... existing code continues unchanged from here ...
 
@@ -1795,7 +1929,7 @@ with tab2:
                 }
                 st.session_state["t2_current"] = t2_current
 
-                if st.button("🔍 **Search**", key="search_tab2", type="primary", use_container_width=True):
+                if st.button("🔍 **Generate**", key="search_tab2", type="primary", use_container_width=True):
                     st.session_state["t2_params"] = t2_current
                     st.session_state["t2_ready"] = True
                     set_active_search_tab("t2")
@@ -1814,6 +1948,7 @@ with tab2:
                             t2_date_end=de or "",
                             t2_granularity=granularity_vol,
                             t2_direction=direction_filter,
+                            last_tab="t2",
                         )
                     except Exception:
                         pass
@@ -1833,7 +1968,7 @@ with tab2:
                     pass
 
 
-    # -------- Main content area (render only when "Search" committed) --------
+    # -------- Main content area (render only when "Generate" committed) --------
     t2_ready = st.session_state.get("t2_ready", False)
     t2_params = st.session_state.get("t2_params", {})
     t2_pending = t2_ready and _freeze_params(t2_params) != _freeze_params(st.session_state.get("t2_current", {}))
@@ -1842,7 +1977,7 @@ with tab2:
         st.info("Choose your Intersection and Date Range in the settings to the left.")
     else:
         if t2_pending:
-            st.warning("⚙️ Press **Search** to refresh.")
+            st.warning("⚙️ Press **Generate** to refresh.")
 
         try:
             base_df = volume_df.copy() if not volume_df.empty else pd.DataFrame()

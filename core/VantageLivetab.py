@@ -740,11 +740,31 @@ def render_vantage_tab():
                 }
                 st.session_state["vantage_current"] = vantage_current
 
-                if st.button("🔍 **Search**", key="search_vantage", type="primary", use_container_width=True):
+                if st.button("🔍 **Generate**", key="search_vantage", type="primary", use_container_width=True):
                     st.session_state["vantage_params"] = vantage_current
                     st.session_state["vantage_ready"] = True
                     set_active_search_tab("t4")
                     st.session_state["last_active_tab"] = "t4"
+                    # Persist committed search to URL
+                    try:
+                        ds, de = None, None
+                        if vantage_current.get("date_range"):
+                            ds = vantage_current["date_range"][0].isoformat()
+                            de = vantage_current["date_range"][1].isoformat()
+                        st.query_params.update(
+                            t4_ready="1",
+                            t4_mode=mode,
+                            t4_intersection=intersection,
+                            t4_date_start=ds or "",
+                            t4_date_end=de or "",
+                            t4_granularity=granularity,
+                            t4_direction=direction_filter,
+                            t4_turn=turn_filter,
+                            t4_chart=chart_type,
+                            last_tab="t4",
+                        )
+                    except Exception:
+                        pass
 
     # -------- Main content area --------
     if not st.session_state.get("vantage_ready", False):
@@ -765,7 +785,7 @@ def render_vantage_tab():
         params != st.session_state.get("vantage_current", {})
     )
     if t4_pending:
-        st.warning("⚙️ Press **Search** to refresh.")
+        st.warning("⚙️ Press **Generate** to refresh.")
 
     if not date_range or len(date_range) != 2:
         st.warning("⚠️ Please select both start and end dates to proceed.")

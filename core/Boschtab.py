@@ -433,11 +433,29 @@ def render_bosch_tab():
             st.session_state["bosch_current"] = bosch_current
 
             if corridor != "SELECT":
-                if st.button("🔍 **Search**", key="search_bosch", type="primary", use_container_width=True):
+                if st.button("🔍 **Generate**", key="search_bosch", type="primary", use_container_width=True):
                     st.session_state["bosch_params"] = bosch_current
                     st.session_state["bosch_ready"] = True
                     set_active_search_tab("t5")
                     st.session_state["last_active_tab"] = "t5"
+                    # Persist committed search to URL
+                    try:
+                        ds, de = None, None
+                        if bosch_current.get("date_range"):
+                            ds = bosch_current["date_range"][0].isoformat()
+                            de = bosch_current["date_range"][1].isoformat()
+                        modes = ",".join(bosch_current.get("mode_filter", ())) if bosch_current.get("mode_filter") else ""
+                        st.query_params.update(
+                            t5_ready="1",
+                            t5_corridor=corridor,
+                            t5_date_start=ds or "",
+                            t5_date_end=de or "",
+                            t5_granularity=granularity,
+                            t5_modes=modes,
+                            last_tab="t5",
+                        )
+                    except Exception:
+                        pass
             else:
                 # Reset when placeholder is selected to mirror other tabs' behavior
                 st.session_state["bosch_current"] = {
@@ -448,6 +466,13 @@ def render_bosch_tab():
                     del st.session_state["bosch_ready"]
                 if st.session_state.get("bosch_params"):
                     del st.session_state["bosch_params"]
+                # Clear URL params for Bosch when resetting to placeholder
+                try:
+                    for k in ("t5_ready", "t5_corridor", "t5_date_start", "t5_date_end", "t5_granularity", "t5_modes"):
+                        if k in st.query_params:
+                            del st.query_params[k]
+                except Exception:
+                    pass
 
     # -------- Main content area --------
     if not st.session_state.get("bosch_ready", False):
@@ -465,7 +490,7 @@ def render_bosch_tab():
         params != st.session_state.get("bosch_current", {})
     )
     if t5_pending:
-        st.warning("⚙️ Press **Search** to refresh.")
+        st.warning("⚙️ Press **Generate** to refresh.")
 
     if not date_range or len(date_range) != 2:
         st.warning("⚠️ Please select both start and end dates to proceed.")
