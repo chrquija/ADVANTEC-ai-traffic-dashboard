@@ -357,7 +357,7 @@ def require_company_login(domain: str = _ALLOWED_DOMAIN) -> bool:
             unsafe_allow_html=True,
         )
         st.markdown(
-            "<h3 style='text-align: center; color: #666; margin-top: 4px;'>Dashboard Sign In</h3>",
+            "<h3 style='text-align: center; color: #666; margin-top: 4px;'>Database Sign In</h3>",
             unsafe_allow_html=True,
         )
 
@@ -448,12 +448,64 @@ def render_auth_sidebar_footer():
     """
     if not is_authenticated():
         return
+
+    # Fetch current user details
+    email = st.session_state.get("auth_email")
+    user_data = get_user(email) or {}
+
+    # Extract info with fallbacks
+    # If "name" is missing, try to format the email (e.g. jdorado -> John Dorado)
+    raw_name = user_data.get("name")
+    if not raw_name and email:
+        raw_name = email.split("@")[0].replace(".", " ").title()
+    
+    display_name = raw_name or "Team Member"
+    display_role = user_data.get("role", "ADVANTEC")
+
     with st.sidebar:
         st.markdown(
-            f"<div style='padding:10px;border:1px solid rgba(79,172,254,.25);"
-            f"border-radius:8px;background:rgba(79,172,254,.06);margin-top:12px;'>"
-            f"<strong>Signed in:</strong><br><code>{st.session_state.get('auth_email')}</code>"
-            f"</div>",
+            f"""
+            <div style="
+                background: linear-gradient(135deg, #0f2f52 0%, #1e3c72 100%);
+                padding: 15px;
+                border-radius: 10px; /* Matches Streamlit's native rounding */
+                margin-top: 20px;
+                margin-bottom: 10px;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+                border: 1px solid rgba(255,255,255,0.15);
+                color: white;
+                overflow: hidden; /* Ensures corners stay rounded with the gradient */
+            ">
+                <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                    <div style="
+                        background: rgba(255,255,255,0.15); 
+                        border-radius: 50%; 
+                        width: 32px; height: 32px; 
+                        display: flex; align-items: center; justify-content: center; 
+                        margin-right: 10px;
+                        font-size: 16px;
+                    ">
+                        👤
+                    </div>
+                    <div style="line-height: 1.2;">
+                        <div style="font-weight: 600; font-size: 0.9rem; color: #ffffff;">{display_name}</div>
+                        <div style="font-size: 0.75rem; color: #a5d8ff; font-weight: 400;">{display_role}</div>
+                    </div>
+                </div>
+                <div style="
+                    font-size: 0.7rem; 
+                    color: rgba(255,255,255,0.6); 
+                    font-family: monospace; 
+                    margin-top: 6px;
+                    padding-top: 6px;
+                    border-top: 1px solid rgba(255,255,255,0.1);
+                ">
+                    {email}
+                </div>
+            </div>
+            <!-- This invisible div acts as a spacer to push the button down -->
+            <div style="height: 20px;"></div>
+            """,
             unsafe_allow_html=True,
         )
         if st.button("Sign out", key="auth_signout_footer"):

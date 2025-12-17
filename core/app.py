@@ -465,7 +465,7 @@ _init_state()
 st.markdown("""
 <div class="main-container">
     <h1 style="text-align:center; margin:0; font-size:2.5rem; font-weight:800;">
-        🛣️ Active Transportation & Operations Management Dashboard
+        🛣️ Active Transportation & Operations Management Database
     </h1>
     <p style="text-align:center; margin-top:1rem; font-size:1.1rem; opacity:0.9;">
         Powered By Data. Driven By You. 
@@ -480,22 +480,114 @@ st.markdown("""
     padding: 1.5rem; border-radius: 18px; box-shadow: 0 8px 32px rgba(79,172,254,0.08);
     margin: 1.25rem 0; line-height: 1.7; border: 1px solid rgba(79,172,254,0.2); backdrop-filter: blur(8px);
 ">
-    <div style="text-align:center; margin-bottom: 0.5rem;">
-        <strong style="font-size: 1.2rem; color: #2980b9;">🌎 The ADVANTEC Web Service Platform</strong>
+    <div style="text-align:center; margin-bottom: 0.8rem;">
+            <strong style="font-size: 1.2rem; color: #2980b9;">🌎 The ADVANTEC Web Service Platform</strong>
+        </div>
+        <p>Synthesizes intelligence from <strong>Iteris ClearGuide, Kinetic Mobility, Acyclica, VantageLive, and Bosch Cloud Analytics</strong>.</p>
+        <p>Leveraging millions of data points trained on advanced <strong>Machine Learning algorithms</strong>, this platform optimizes traffic flow, reduces travel time, minimizes fuel consumption, and decreases greenhouse gas emissions across the transportation network.</p>
+        <p style="margin-top: 0.8rem; font-size: 0.95rem; opacity: 0.8;"><strong>Key Technologies:</strong> Real-time anomaly detection • Intelligent cycle length optimization • Predictive traffic modeling • Performance analytics • Dashboard Generator</p>
     </div>
-    <p>Leverages <strong>millions of Prediction points</strong> trained on advanced Machine Learning algorithms to optimize traffic flow, reduce travel time, minimize fuel consumption, and decrease greenhouse gas emissions across the transportation network.</p>
-    <p><strong>Key Capabilities:</strong> Real-time anomaly detection • Intelligent cycle length optimization • Predictive traffic modeling • Performance analytics</p>
-</div>
-""", unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
-st.markdown("""
-<div style="background: linear-gradient(135deg, #3498db, #2980b9); color: white; padding: 1.1rem; border-radius: 15px;
-    margin: 1rem 0; text-align: center; box-shadow: 0 6px 20px rgba(52, 152, 219, 0.25);">
-    <h3 style="margin:0; font-weight:600;">🔍 Research Questions</h3>
-    <p style="margin: 0.45rem 0 0; font-size: 1.0rem;">What are the main bottlenecks on Washington Street that most increase travel times?</p>
-    <p style="margin: 0.45rem 0 0; font-size: 1.0rem;">Which direction on Washington Street causes the most congestion?</p>
-</div>
-""", unsafe_allow_html=True)
+# --- Professional "Research Questions" expander (custom-styled, blue-gradient theme) ---
+# Scoped CSS for the next expander only
+st.markdown(
+    """
+    <style>
+      /* Wrap-scoped styles: apply only inside .exp-pro container */
+      .exp-pro [data-testid="stExpander"] > details {
+        border: 1px solid rgba(41,128,185,.35);
+        border-radius: 14px;
+        overflow: hidden;
+        box-shadow: 0 8px 26px rgba(41,128,185,.18);
+        background: linear-gradient(135deg, rgba(79,172,254,0.08), rgba(0,242,254,0.06));
+      }
+      .exp-pro [data-testid="stExpander"] summary {
+        list-style: none;
+        padding: 14px 16px;
+        font-weight: 700;
+        color: #0b2538;
+        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        border-bottom: 1px solid rgba(255,255,255,.25);
+      }
+      .exp-pro [data-testid="stExpander"] summary::-webkit-details-marker { display: none; }
+      .exp-pro [data-testid="stExpander"] summary:hover {
+        filter: brightness(0.98);
+      }
+      .exp-pro [data-testid="stExpander"] > details > div {
+        padding: 1rem 1.25rem 1.25rem 1.25rem;
+        background: linear-gradient(180deg, rgba(255,255,255,.85), rgba(255,255,255,.95));
+      }
+      @media (prefers-color-scheme: dark) {
+        .exp-pro [data-testid="stExpander"] > details {
+          border-color: rgba(79,172,254,.45);
+          background: linear-gradient(135deg, rgba(79,172,254,0.12), rgba(0,242,254,0.10));
+        }
+        .exp-pro [data-testid="stExpander"] summary {
+          color: #e6f2ff;
+          border-bottom-color: rgba(255,255,255,.18);
+        }
+        .exp-pro [data-testid="stExpander"] > details > div {
+          background: linear-gradient(180deg, rgba(10,20,35,.85), rgba(10,20,35,.90));
+        }
+      }
+    </style>
+    <div class="exp-pro">
+    """,
+    unsafe_allow_html=True,
+)
+
+with st.expander("Top 10 Research Questions This Dashboard Answers", expanded=False):
+    st.markdown("Use these questions to guide your analysis across the specific tabs.")
+
+    q_col1, q_col2 = st.columns(2, gap="medium")
+
+    with q_col1:
+        st.markdown("#### Operations & Signal Timing")
+        st.markdown("""
+            1. **Is the current cycle length sufficient for the actual volume?**  
+               *Go to: Tab 2 (Kinetic) → Cycle Length Recommendations*
+
+            2. **Which intersections are operating near capacity (>1,800 vph)?**  
+               *Go to: Tab 2 (Kinetic) → Peak Capacity Utilization*
+
+            3. **Do we need distinct signal plans for AM vs. PM peak?**  
+               *Go to: Tab 2 (Kinetic) → Hourly Avg Volume Heatmap*
+            """)
+
+        st.markdown("#### Capital Improvement & Prioritization")
+        st.markdown("""
+            4. **Which intersections have the highest 'Risk Score' for failure?**  
+               *Go to: Tab 2 (Kinetic) → Risk Analysis Table*
+
+            5. **Where are the most severe bottlenecks?**  
+               *Go to: Tab 1 (Iteris) → Bottleneck Analysis*
+            """)
+
+    with q_col2:
+        st.markdown("#### System Performance")
+        st.markdown("""
+            6. **How much 'Buffer Time' is required for reliability?**  
+               *Go to: Tab 1 (Iteris) → Buffer Time KPI*
+
+            7. **Which direction (NB vs. SB) is the primary constraint?**  
+               *Go to: Tab 3 (Acyclica) → Corridor Performance Analysis*
+
+            8. **Are we seeing non-recurrent congestion (incidents)?**  
+               *Go to: Tab 3 (Acyclica) → Incident Detection*
+            """)
+
+        st.markdown("#### Trends & Forecasting")
+        st.markdown("""
+            9. **What will traffic look like 60 minutes from now?**  
+               *Go to: Tab 3 (Acyclica) → Peak Hour Prediction*
+
+            10. **Did a special event break normal traffic patterns?**  
+                *Go to: Tab 3 (Acyclica) → Event Impact Analysis*
+            """)
+
+# close the scoped wrapper div for the styled expander
+st.markdown("</div>", unsafe_allow_html=True)
 
 # =========================
 # --------- NEW TAB 2 HELPERS (aggregation-aware) ----------
