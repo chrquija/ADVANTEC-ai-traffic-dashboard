@@ -577,17 +577,35 @@ with st.expander("Top 10 Research Questions This Dashboard Answers", expanded=Fa
                *Go to: Tab 3 (Acyclica) → Incident Detection*
             """)
 
-        st.markdown("#### Trends & Forecasting")
+        st.markdown("#### Data QA/QC")
         st.markdown("""
-            9. **What will traffic look like 60 minutes from now?**  
-               *Go to: Tab 3 (Acyclica) → Peak Hour Prediction*
+            9. **Do we have full coverage for the selected date ranges (days/hours), or are there gaps large enough to bias conclusions?**  
+               *No, we do not have full coverage. Whenever you select a corridor, the system runs a compute_data_availability check and lists any interruptions in the dataset under the "Missing Data" Caption in the sidebar.*
+               *Visual "Shaded Bands" on charts can also detect time intervals where data is missing.*
 
-            10. **Did a special event break normal traffic patterns?**  
-                *Go to: Tab 3 (Acyclica) → Event Impact Analysis*
-            """)
+            10. **Is there an Microsoft Excel Matrix detailing CVAG Phase 1 data availability by intersection?**  
+                 *Download/View: [CVAG Phase 1 Data Matrix](https://advantecusa.sharepoint.com/:x:/s/IRVINEOFFICE/IQCr0Fw9pZbhSpNLLAUTn8FoAdqTg-lppit5kGB1jbbH_4g?e=Fycame&nav=MTVfezVDNTJGMzg2LUY2OTctNEQ3OS1BQUZGLUUyNDc4QTM5RDJBNn0)*
+                """)
 
-# close the scoped wrapper div for the styled expander
+# Close the scoped wrapper div for the styled Research Questions expander
 st.markdown("</div>", unsafe_allow_html=True)
+
+# 📘 Project Deliverables & Resources (Separate Expander)
+with st.expander("Resources & Deliverables", expanded=False):
+    st.markdown("Access the official project documentation and presentation materials.")
+    r_col1, r_col2 = st.columns(2, gap="medium")
+    with r_col1:
+        st.link_button(
+            "📊 View Microsoft PowerPoint Presentation",
+            "https://advantecusa-my.sharepoint.com/:b:/g/personal/cquijano_advantec-usa_com/IQBrgXkvXkbXRqxjtO9NKhtWARWfPQpBrL5Zi-btVldXCMQ?e=DYZHOg",
+            use_container_width=True
+        )
+    with r_col2:
+        st.link_button(
+            "📄 View Full Project Report (PDF)",
+            "https://advantecusa-my.sharepoint.com/:b:/g/personal/cquijano_advantec-usa_com/IQC1wK1jTP6yRoQ2Ui3pwQ4hARv8aWBNiqxeDY6YA8gdUZU?e=QLmSYi",
+            use_container_width=True
+        )
 
 # =========================
 # --------- NEW TAB 2 HELPERS (aggregation-aware) ----------

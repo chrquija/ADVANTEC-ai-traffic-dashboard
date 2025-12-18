@@ -227,6 +227,35 @@ def render_tab3_analysis():
                             unsafe_allow_html=True,
                         )
 
+                    # Corridor + O→D specific availability preview to prevent empty results confusion
+                    try:
+                        if origin not in (None, "SELECT") and destination not in (None, "SELECT") and origin != destination:
+                            od_df = acyclica_df.copy()
+                            od_df = od_df[(od_df.get("corridor_id") == "Highway 111")]
+                            if "segment_id" in od_df.columns:
+                                seg_series = od_df["segment_id"].astype(str)
+                                seg_lower = seg_series.str.lower()
+                                if {"Parkview Drive", "Cook Street"} <= {origin, destination}:
+                                    mask = seg_lower.str.contains("parkview") & seg_lower.str.contains("cook")
+                                    od_df = od_df[mask]
+                                elif {"Canyon Plaza West", "Jermaine Gibson"} <= {origin, destination}:
+                                    ids = [
+                                        "CanyonPlazaWest_to_JermaineGibsion",
+                                        "CanyonPlazaWest_to_JermaineGibson",
+                                        "JermaineGibson_to_CanyonPlazaWest",
+                                    ]
+                                    od_df = od_df[seg_series.isin(ids)]
+                            # Compute available date span
+                            if not od_df.empty and "local_datetime" in od_df.columns:
+                                _min = pd.to_datetime(od_df["local_datetime"], errors="coerce").min()
+                                _max = pd.to_datetime(od_df["local_datetime"], errors="coerce").max()
+                                if pd.notnull(_min) and pd.notnull(_max):
+                                    st.caption(
+                                        f"Available Data for this O→D: { _min.strftime('%b %d, %Y %I:%M %p') } → { _max.strftime('%b %d, %Y %I:%M %p') }"
+                                    )
+                    except Exception:
+                        pass
+
                 # Date range
                 if acyclica_df.empty or "local_datetime" not in acyclica_df.columns:
                     min_date = datetime.today().date() - timedelta(days=7)
@@ -431,7 +460,36 @@ def render_tab3_analysis():
 
         # Guard: if no data after filters, exit gracefully to avoid rendering errors
         if working_df is None or len(working_df) == 0:
-            st.warning("⚠️ No Acyclica data found for the selected corridor and O→D. Try adjusting the date range or O-D pair.")
+            # Attempt to hint available date span at the O→D level within this corridor
+            hint = ""
+            try:
+                # Build an O→D-level availability hint using the base corridor filter
+                base_df = acyclica_df.copy()
+                base_df = base_df[(base_df.get("corridor_id") == corridor)] if corridor != "All Corridors" else base_df
+                if origin not in (None, "SELECT") and destination not in (None, "SELECT") and origin != destination and "segment_id" in base_df.columns:
+                    seg_series = base_df["segment_id"].astype(str)
+                    seg_lower = seg_series.str.lower()
+                    if corridor == "Highway 111":
+                        if {"Parkview Drive", "Cook Street"} <= {origin, destination}:
+                            mask = seg_lower.str.contains("parkview") & seg_lower.str.contains("cook")
+                            base_df = base_df[mask]
+                        elif {"Canyon Plaza West", "Jermaine Gibson"} <= {origin, destination}:
+                            ids = [
+                                "CanyonPlazaWest_to_JermaineGibsion",
+                                "CanyonPlazaWest_to_JermaineGibson",
+                                "JermaineGibson_to_CanyonPlazaWest",
+                            ]
+                            base_df = base_df[seg_series.isin(ids)]
+                if not base_df.empty and "local_datetime" in base_df.columns:
+                    dt_min = pd.to_datetime(base_df["local_datetime"], errors="coerce").min()
+                    dt_max = pd.to_datetime(base_df["local_datetime"], errors="coerce").max()
+                    if pd.notnull(dt_min) and pd.notnull(dt_max):
+                        hint = f"\n• Available data for this selection: {dt_min.strftime('%b %d, %Y')} → {dt_max.strftime('%b %d, %Y')}"
+            except Exception:
+                pass
+            st.warning(
+                "⚠️ No Acyclica data found for the selected corridor and O→D. Try adjusting the date range or O-D pair." + hint
+            )
             return
 
         # ---------- Layout: wide content + sticky right rail (matching Tabs 1 & 2) ----------
@@ -524,6 +582,17 @@ def render_tab3_analysis():
 
             if filtered_data.empty:
                 step("No data for selected filters", 100)
+                # Provide a more actionable message including O→D availability if we have it
+                try:
+                    dt_min = pd.to_datetime(working_df["local_datetime"], errors="coerce").min() if "local_datetime" in working_df else None
+                    dt_max = pd.to_datetime(working_df["local_datetime"], errors="coerce").max() if "local_datetime" in working_df else None
+                    if pd.notnull(dt_min) and pd.notnull(dt_max):
+                        st.warning(
+                            f"⚠️ No data for the selected date/time filters. Available range for this O→D is {dt_min.strftime('%b %d, %Y')} → {dt_max.strftime('%b %d, %Y')}."
+                        )
+                        return
+                except Exception:
+                    pass
                 st.warning("⚠️ No data available for the selected filters.")
                 return
 
@@ -554,6 +623,11 @@ def render_tab3_analysis():
                         friendly_dir = "Eastbound"
                     elif o == "Jermaine Gibson" and d == "Canyon Plaza West":
                         friendly_dir = "Westbound"
+                    # New segment mappings: Parkview Drive ↔ Cook Street
+                    elif o == "Parkview Drive" and d == "Cook Street":
+                        friendly_dir = "Eastbound"
+                    elif o == "Cook Street" and d == "Parkview Drive":
+                        friendly_dir = "Westbound"
                 if not friendly_dir and dir_filt and dir_filt != "All Directions":
                     mapping = {"NB": "Northbound", "SB": "Southbound", "EB": "Eastbound", "WB": "Westbound"}
                     friendly_dir = mapping.get(dir_filt, dir_filt)
@@ -581,6 +655,11 @@ def render_tab3_analysis():
                     if o == "Canyon Plaza West" and d == "Jermaine Gibson":
                         return "Eastbound"
                     if o == "Jermaine Gibson" and d == "Canyon Plaza West":
+                        return "Westbound"
+                    # New segment mappings: Parkview Drive ↔ Cook Street
+                    if o == "Parkview Drive" and d == "Cook Street":
+                        return "Eastbound"
+                    if o == "Cook Street" and d == "Parkview Drive":
                         return "Westbound"
                 # Fallback to filter value mapping
                 mapping = {"NB": "Northbound", "SB": "Southbound", "EB": "Eastbound", "WB": "Westbound"}
