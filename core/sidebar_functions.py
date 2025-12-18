@@ -291,6 +291,10 @@ ACYCLICA_URLS = [
     _fix_raw_url(
         "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/MASTER_EWB_1hr_PalmCanyon_CanyonPlazaWest_to_JermainGibson.csv"
     ),
+    # Highway 111: Cook Street ↔ Parkview Drive (EB/WB)
+    _fix_raw_url(
+        "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/Highway_111_DATA/ACYCLICA/MASTER_EWB_1hr_Hwy111_CookStreet_to_Parkview.csv"
+    ),
 ]
 
 @st.cache_data(show_spinner=False)

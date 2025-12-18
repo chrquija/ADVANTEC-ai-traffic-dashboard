@@ -465,7 +465,7 @@ _init_state()
 st.markdown("""
 <div class="main-container">
     <h1 style="text-align:center; margin:0; font-size:2.5rem; font-weight:800;">
-        🛣️ Active Transportation & Operations Management Database
+        🛣️ Active Transportation & Operations Management Dashboard
     </h1>
     <p style="text-align:center; margin-top:1rem; font-size:1.1rem; opacity:0.9;">
         Powered By Data. Driven By You. 
@@ -481,7 +481,7 @@ st.markdown("""
     margin: 1.25rem 0; line-height: 1.7; border: 1px solid rgba(79,172,254,0.2); backdrop-filter: blur(8px);
 ">
     <div style="text-align:center; margin-bottom: 0.8rem;">
-            <strong style="font-size: 1.2rem; color: #2980b9;">🌎 The ADVANTEC Web Service Platform</strong>
+            <strong style="font-size: 1.2rem; color: #2980b9;">🌎 The ADVANTEC Analytics Platform</strong>
         </div>
         <p>Synthesizes intelligence from <strong>Iteris ClearGuide, Kinetic Mobility, Acyclica, VantageLive, and Bosch Cloud Analytics</strong>.</p>
         <p>Leveraging millions of data points trained on advanced <strong>Machine Learning algorithms</strong>, this platform optimizes traffic flow, reduces travel time, minimizes fuel consumption, and decreases greenhouse gas emissions across the transportation network.</p>

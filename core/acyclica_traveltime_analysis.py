@@ -186,7 +186,14 @@ def render_tab3_analysis():
                         )
                 elif corridor == "Highway 111":
                     st.markdown("## 🚦 Origin → Destination (Highway 111)")
-                    od_options = ["SELECT", "Canyon Plaza West", "Jermaine Gibson"]
+                    # Extend Highway 111 endpoints with Parkview Drive and Cook Street
+                    od_options = [
+                        "SELECT",
+                        "Canyon Plaza West",
+                        "Jermaine Gibson",
+                        "Parkview Drive",
+                        "Cook Street",
+                    ]
                     oc, dc = st.columns(2)
                     with oc:
                         origin = st.selectbox("Origin", od_options, index=0, key="acyclica_od_origin_h111")
@@ -199,6 +206,10 @@ def render_tab3_analysis():
                         if o == "Canyon Plaza West" and d == "Jermaine Gibson":
                             friendly_dir = "Eastbound"
                         elif o == "Jermaine Gibson" and d == "Canyon Plaza West":
+                            friendly_dir = "Westbound"
+                        elif o == "Parkview Drive" and d == "Cook Street":
+                            friendly_dir = "Eastbound"
+                        elif o == "Cook Street" and d == "Parkview Drive":
                             friendly_dir = "Westbound"
                         else:
                             friendly_dir = None
@@ -371,32 +382,48 @@ def render_tab3_analysis():
                 elif origin == "Country Club Drive" and destination == "Avenue 52":
                     direction_filter = "SB"
 
-        # Highway 111 specific O-D → segment_id mapping
+        # Highway 111 specific O-D → segment filtering (segment_id tolerant + direction)
         if corridor == "Highway 111" and origin != "SELECT" and destination != "SELECT" and origin != destination:
-            # Provided segment ids in file (note spelling variants)
-            eb_id = "CanyonPlazaWest_to_JermaineGibsion"  # as given
+            # Known segments (Canyon Plaza West ↔ Jermaine Gibson)
+            eb_id = "CanyonPlazaWest_to_JermaineGibsion"  # as given in source
             eb_id_alt = "CanyonPlazaWest_to_JermaineGibson"  # corrected spelling fallback
             wb_id = "JermaineGibson_to_CanyonPlazaWest"
 
-            want_seg = None
-            if origin == "Canyon Plaza West" and destination == "Jermaine Gibson":
-                want_seg = eb_id
-            elif origin == "Jermaine Gibson" and destination == "Canyon Plaza West":
-                want_seg = wb_id
+            want_dir = None
+            applied_seg_filter = False
 
-            if want_seg and "segment_id" in working_df.columns:
-                # include tolerance for alternate spelling
-                if want_seg == eb_id:
-                    working_df = working_df[
-                        working_df["segment_id"].astype(str).isin([eb_id, eb_id_alt])
-                    ]
-                else:
-                    working_df = working_df[working_df["segment_id"].astype(str) == want_seg]
-                # optional: set direction filter if unique present
-                if direction_filter == "All Directions" and "direction" in working_df.columns and not working_df.empty:
-                    dirs = working_df["direction"].dropna().unique().tolist()
-                    if len(dirs) == 1:
-                        direction_filter = dirs[0]
+            if "segment_id" in working_df.columns:
+                seg_series = working_df["segment_id"].astype(str)
+                seg_lower = seg_series.str.lower()
+
+                # Canyon Plaza West ↔ Jermaine Gibson
+                if origin == "Canyon Plaza West" and destination == "Jermaine Gibson":
+                    mask = seg_series.isin([eb_id, eb_id_alt])
+                    working_df = working_df[mask]
+                    want_dir = "Eastbound"
+                    applied_seg_filter = True
+                elif origin == "Jermaine Gibson" and destination == "Canyon Plaza West":
+                    mask = seg_series.astype(str) == wb_id
+                    working_df = working_df[mask]
+                    want_dir = "Westbound"
+                    applied_seg_filter = True
+
+                # Parkview Drive ↔ Cook Street (heuristic contains match)
+                elif origin == "Parkview Drive" and destination == "Cook Street":
+                    mask = seg_lower.str.contains("parkview") & seg_lower.str.contains("cook")
+                    working_df = working_df[mask]
+                    want_dir = "Eastbound"
+                    applied_seg_filter = True
+                elif origin == "Cook Street" and destination == "Parkview Drive":
+                    mask = seg_lower.str.contains("parkview") & seg_lower.str.contains("cook")
+                    working_df = working_df[mask]
+                    want_dir = "Westbound"
+                    applied_seg_filter = True
+
+            # Apply direction refinement if available
+            if (applied_seg_filter or origin in ("Parkview Drive", "Cook Street")) and "direction" in working_df.columns:
+                if want_dir:
+                    working_df = working_df[working_df["direction"] == want_dir]
 
         # Filter by direction
         if direction_filter != "All Directions" and "direction" in working_df.columns:
