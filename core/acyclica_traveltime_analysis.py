@@ -400,24 +400,24 @@ def render_tab3_analysis():
                 if origin == "Canyon Plaza West" and destination == "Jermaine Gibson":
                     mask = seg_series.isin([eb_id, eb_id_alt])
                     working_df = working_df[mask]
-                    want_dir = "Eastbound"
+                    want_dir = "EASTBOUND"
                     applied_seg_filter = True
                 elif origin == "Jermaine Gibson" and destination == "Canyon Plaza West":
                     mask = seg_series.astype(str) == wb_id
                     working_df = working_df[mask]
-                    want_dir = "Westbound"
+                    want_dir = "WESTBOUND"
                     applied_seg_filter = True
 
                 # Parkview Drive ↔ Cook Street (heuristic contains match)
                 elif origin == "Parkview Drive" and destination == "Cook Street":
                     mask = seg_lower.str.contains("parkview") & seg_lower.str.contains("cook")
                     working_df = working_df[mask]
-                    want_dir = "Eastbound"
+                    want_dir = "EASTBOUND"
                     applied_seg_filter = True
                 elif origin == "Cook Street" and destination == "Parkview Drive":
                     mask = seg_lower.str.contains("parkview") & seg_lower.str.contains("cook")
                     working_df = working_df[mask]
-                    want_dir = "Westbound"
+                    want_dir = "WESTBOUND"
                     applied_seg_filter = True
 
             # Apply direction refinement if available
@@ -428,6 +428,11 @@ def render_tab3_analysis():
         # Filter by direction
         if direction_filter != "All Directions" and "direction" in working_df.columns:
             working_df = working_df[working_df["direction"] == direction_filter]
+
+        # Guard: if no data after filters, exit gracefully to avoid rendering errors
+        if working_df is None or len(working_df) == 0:
+            st.warning("⚠️ No Acyclica data found for the selected corridor and O→D. Try adjusting the date range or O-D pair.")
+            return
 
         # ---------- Layout: wide content + sticky right rail (matching Tabs 1 & 2) ----------
         main_col_t3, right_col_t3 = st.columns([7, 3.5], gap="large")

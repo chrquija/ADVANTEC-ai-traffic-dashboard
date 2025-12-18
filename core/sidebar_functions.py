@@ -345,7 +345,19 @@ def load_acyclica_data() -> pd.DataFrame:
     df["metric"] = np.where(m.str.contains("travel") & ~m.str.contains("speed"), "TravelTime", "Speed")
 
     # Direction normalization
-    df["direction"] = df["direction"].astype(str).str.strip().str.upper()
+    dir_raw = df["direction"].astype(str).str.strip().str.upper()
+    # Map common variants to canonical set
+    def _norm_dir(x: str) -> str:
+        if x in {"E", "EB", "EAST", "EASTBOUND", "E/B", "EAST-BOUND"}:
+            return "EASTBOUND"
+        if x in {"W", "WB", "WEST", "WESTBOUND", "W/B", "WEST-BOUND"}:
+            return "WESTBOUND"
+        if x in {"N", "NB", "NORTH", "NORTHBOUND", "N/B", "NORTH-BOUND"}:
+            return "NB"
+        if x in {"S", "SB", "SOUTH", "SOUTHBOUND", "S/B", "SOUTH-BOUND"}:
+            return "SB"
+        return x
+    df["direction"] = dir_raw.map(_norm_dir)
 
     # Corridor normalization: fix known variants/typos
     # Ensure new Highway 111 data appears as "Highway 111" in dropdowns
