@@ -483,9 +483,9 @@ st.markdown("""
     <div style="text-align:center; margin-bottom: 0.8rem;">
             <strong style="font-size: 1.2rem; color: #2980b9;">🌎 The ADVANTEC Analytics Platform</strong>
         </div>
-        <p>Synthesizes intelligence from <strong>Iteris ClearGuide, Kinetic Mobility, Acyclica, VantageLive, and Bosch Cloud Analytics</strong>.</p>
+        <p>Synthesizes intelligence from <strong>Iteris ClearGuide, Q-Free Kinetic Mobility, FLIR Acyclica, Iteris VantageLive, and Bosch Cloud Analytics</strong>.</p>
         <p>Leveraging millions of data points trained on advanced <strong>Machine Learning algorithms</strong>, this platform optimizes traffic flow, reduces travel time, minimizes fuel consumption, and decreases greenhouse gas emissions across the transportation network.</p>
-        <p style="margin-top: 0.8rem; font-size: 0.95rem; opacity: 0.8;"><strong>Key Technologies:</strong> Real-time anomaly detection • Intelligent cycle length optimization • Predictive traffic modeling • Performance analytics • Dashboard Generator</p>
+        <p style="margin-top: 0.8rem; font-size: 0.95rem; opacity: 0.8;"><strong>Key Technologies:</strong> Real-time Anomaly Detection • Intelligent Cycle Length Optimization • Predictive Traffic Modeling • Performance Analytics • Dashboard Generator</p>
     </div>
     """, unsafe_allow_html=True)
 

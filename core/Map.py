@@ -34,6 +34,11 @@ NODES_ORDER: List[str] = [
     # Highway 111 pair (Palm Canyon Dr area)
     "Canyon Plaza West",
     "Jermaine Gibson",
+    # Highway 111 (Palm Desert area)
+    "Parkview Drive",
+    "Cook Street",
+    "Washington Street",
+    "Monroe Street",
 ]
 
 # GeoJSON for each adjacent segment (A → B) along the corridor
@@ -86,7 +91,25 @@ SEGMENT_URLS: Dict[Tuple[str, str], str] = {
     ("Canyon Plaza West",
      "Jermaine Gibson"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/Segment_EB_JermaineGibson_CanyonPlazaWest.geojson",
     ("Jermaine Gibson",
-     "Canyon Plaza West"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/Segment_WB_CanyonPlazaWest_JermaineGibson.geojson",
+    "Canyon Plaza West"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/Segment_WB_CanyonPlazaWest_JermaineGibson.geojson",
+
+    # Highway 111: Parkview Drive ↔ Cook Street
+    ("Cook Street",
+     "Parkview Drive"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/Hwy111_CookStreet_ParkviewDrive.geojson",
+    ("Parkview Drive",
+     "Cook Street"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/Hwy111_ParkviewDrive_CookStreet.geojson",
+
+    # Highway 111: Cook Street ↔ Washington Street
+    ("Cook Street",
+     "Washington Street"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/Hwy111_CookSt_to_WashingtonSt.geojson",
+    ("Washington Street",
+     "Cook Street"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/Hwy111_WashingtonSt_to_CookSt.geojson",
+
+    # Highway 111: Washington Street ↔ Monroe Street
+    ("Washington Street",
+     "Monroe Street"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/Hwy111EB_WashingtonSt_MonroeSt.geojson",
+    ("Monroe Street",
+     "Washington Street"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/Hwy111WB_MonroeSt_WashingtonStreet.geojson",
 }
 
 # =========================
@@ -117,6 +140,14 @@ INTERSECTION_TO_NODE: Dict[str, str] = {
     "Washington St & Avenue 41": "Avenue 41",
     "Washington St & Harris Lane": "Harris Lane",
     "Washington St & Country Club Drive": "Country Club Drive",
+
+    # Highway 111 intersections (Palm Desert area)
+    "Hwy 111 & Parkview Drive": "Parkview Drive",
+    "Highway 111 & Parkview Drive": "Parkview Drive",
+    "Hwy 111 & Cook Street": "Cook Street",
+    "Highway 111 & Cook Street": "Cook Street",
+    "Hwy 111 & Washington Street": "Washington Street",
+    "Highway 111 & Washington Street": "Washington Street",
 
     # Common variants / aliases (existing)
     "Washington St & Avenue 52": "Avenue 52",

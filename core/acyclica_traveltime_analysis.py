@@ -44,6 +44,93 @@ except ModuleNotFoundError:
     )
 
 # ------------------------------------------------------------------
+# Highway 111 O→D helpers (Centralized)
+# ------------------------------------------------------------------
+def h111_valid_dests(o: str) -> list:
+    if o == "Canyon Plaza West":
+        return ["Jermaine Gibson"]
+    if o == "Jermaine Gibson":
+        return ["Canyon Plaza West"]
+    if o == "Parkview Drive":
+        return ["Cook Street"]
+    if o == "Cook Street":
+        return ["Parkview Drive", "Washington Street"]
+    if o == "Washington Street":
+        return ["Cook Street", "Monroe Street"]
+    if o == "Monroe Street":
+        return ["Washington Street"]
+    # When origin is SELECT or unknown, allow all endpoints for discovery
+    return [
+        "Canyon Plaza West",
+        "Jermaine Gibson",
+        "Parkview Drive",
+        "Cook Street",
+        "Washington Street",
+        "Monroe Street",
+    ]
+
+def h111_resolve(o: str, d: str):
+    # returns dict with: valid(bool), ui_dir(str|None), df_dir(str|None), pair(str)
+    ui_dir = None
+    df_dir = None
+    valid = False
+    pair = None
+    if o == "Canyon Plaza West" and d == "Jermaine Gibson":
+        ui_dir = "Eastbound"; df_dir = "EASTBOUND"; valid = True; pair = "CPW_JG"
+    elif o == "Jermaine Gibson" and d == "Canyon Plaza West":
+        ui_dir = "Westbound"; df_dir = "WESTBOUND"; valid = True; pair = "CPW_JG"
+    elif o == "Parkview Drive" and d == "Cook Street":
+        ui_dir = "Eastbound"; df_dir = "EASTBOUND"; valid = True; pair = "PV_CK"
+    elif o == "Cook Street" and d == "Parkview Drive":
+        ui_dir = "Westbound"; df_dir = "WESTBOUND"; valid = True; pair = "PV_CK"
+    elif o == "Cook Street" and d == "Washington Street":
+        ui_dir = "Eastbound"; df_dir = "EASTBOUND"; valid = True; pair = "CK_WS"
+    elif o == "Washington Street" and d == "Cook Street":
+        ui_dir = "Westbound"; df_dir = "WESTBOUND"; valid = True; pair = "CK_WS"
+    elif o == "Washington Street" and d == "Monroe Street":
+        ui_dir = "Eastbound"; df_dir = "EASTBOUND"; valid = True; pair = "WS_MS"
+    elif o == "Monroe Street" and d == "Washington Street":
+        ui_dir = "Westbound"; df_dir = "WESTBOUND"; valid = True; pair = "WS_MS"
+    return {"valid": valid, "ui_dir": ui_dir, "df_dir": df_dir, "pair": pair}
+
+def h111_apply_filter(df: pd.DataFrame, o: str, d: str) -> pd.DataFrame:
+    res = h111_resolve(o, d)
+    if not res["valid"]:
+        return df.iloc[0:0]
+    if "segment_id" not in df.columns:
+        return df
+    seg_series = df["segment_id"].astype(str)
+    seg_lower = seg_series.str.lower()
+    if res["pair"] == "CPW_JG":
+        ids = [
+            "CanyonPlazaWest_to_JermaineGibsion",
+            "CanyonPlazaWest_to_JermaineGibson",
+            "JermaineGibson_to_CanyonPlazaWest",
+        ]
+        df = df[seg_series.isin(ids)]
+    elif res["pair"] == "PV_CK":
+        df = df[seg_lower.str.contains("parkview") & seg_lower.str.contains("cook")]
+    elif res["pair"] == "CK_WS":
+        exact_ids = ["CookStreet_to_WashingtonStreet", "WashingtonStreet_to_CookStreet"]
+        present_exact = set(seg_series.unique()).intersection(exact_ids)
+        if present_exact:
+            df = df[seg_series.isin(list(present_exact))]
+        else:
+            df = df[seg_lower.str.contains("cook") & seg_lower.str.contains("washington")]
+    elif res["pair"] == "WS_MS":
+        exact_ids = ["WashingtonStreet_to_MonroeStreet", "MonroeStreet_to_WashingtonStreet"]
+        present_exact = set(seg_series.unique()).intersection(exact_ids)
+        if present_exact:
+            df = df[seg_series.isin(list(present_exact))]
+        else:
+            df = df[seg_lower.str.contains("washington") & seg_lower.str.contains("monroe")]
+    
+    # Direction refinement (uppercase in DF)
+    if "direction" in df.columns and res["df_dir"]:
+        df = df[df["direction"] == res["df_dir"]]
+    return df
+
+# ------------------------------------------------------------------
 # Tab 3: Acyclica Travel Time Analysis (UI + logic only)
 # ------------------------------------------------------------------
 
@@ -185,40 +272,53 @@ def render_tab3_analysis():
                             unsafe_allow_html=True,
                         )
                 elif corridor == "Highway 111":
-                    st.markdown("## 🚦 Origin → Destination (Highway 111)")
-                    # Extend Highway 111 endpoints with Parkview Drive and Cook Street
-                    od_options = [
-                        "SELECT",
+                    # -------------------------
+                    # Highway 111 O→D resolver (single source of truth)
+                    # -------------------------
+                    od_endpoints = [
                         "Canyon Plaza West",
                         "Jermaine Gibson",
                         "Parkview Drive",
                         "Cook Street",
+                        "Washington Street",
+                        "Monroe Street",
                     ]
+
+                    # Ensure session keys exist
+                    if "acyclica_od_origin_h111" not in st.session_state:
+                        st.session_state["acyclica_od_origin_h111"] = "SELECT"
+                    if "acyclica_od_destination_h111" not in st.session_state:
+                        st.session_state["acyclica_od_destination_h111"] = "SELECT"
+
                     oc, dc = st.columns(2)
                     with oc:
-                        origin = st.selectbox("Origin", od_options, index=0, key="acyclica_od_origin_h111")
-                    with dc:
-                        destination = st.selectbox("Destination", od_options, index=0, key="acyclica_od_destination_h111")
-                    # Sidebar route summary right under O-D
-                    def _route_text_sb_h111(o: str, d: str) -> str:
-                        if not o or not d or o == "SELECT" or d == "SELECT" or o == d:
-                            return ""
-                        if o == "Canyon Plaza West" and d == "Jermaine Gibson":
-                            friendly_dir = "Eastbound"
-                        elif o == "Jermaine Gibson" and d == "Canyon Plaza West":
-                            friendly_dir = "Westbound"
-                        elif o == "Parkview Drive" and d == "Cook Street":
-                            friendly_dir = "Eastbound"
-                        elif o == "Cook Street" and d == "Parkview Drive":
-                            friendly_dir = "Westbound"
-                        else:
-                            friendly_dir = None
-                        if not friendly_dir:
-                            return ""
-                        return f"{o} → {d} ({friendly_dir})"
+                        origin = st.selectbox(
+                            "Origin",
+                            ["SELECT"] + od_endpoints,
+                            index=(0 if st.session_state.get("acyclica_od_origin_h111", "SELECT") == "SELECT" else (["SELECT"] + od_endpoints).index(st.session_state.get("acyclica_od_origin_h111"))),
+                            key="acyclica_od_origin_h111",
+                        )
 
-                    _pill_h = _route_text_sb_h111(origin, destination)
-                    if _pill_h:
+                    # Constrain destination based on origin
+                    valid_dests = h111_valid_dests(origin)
+                    dest_options = ["SELECT"] + valid_dests
+                    # Auto-reset destination if invalid
+                    cur_dest = st.session_state.get("acyclica_od_destination_h111", "SELECT")
+                    if cur_dest not in dest_options:
+                        st.session_state["acyclica_od_destination_h111"] = "SELECT"
+                        cur_dest = "SELECT"
+                    with dc:
+                        destination = st.selectbox(
+                            "Destination",
+                            dest_options,
+                            index=dest_options.index(cur_dest) if cur_dest in dest_options else 0,
+                            key="acyclica_od_destination_h111",
+                        )
+
+                    # Sidebar route summary right under O-D (uses resolver)
+                    res = h111_resolve(origin, destination)
+                    if res.get("valid") and res.get("ui_dir"):
+                        _pill_h = f"{origin} → {destination} ({res['ui_dir']})"
                         st.markdown(
                             f"""
                             <div style="background:#e8f2ff;border:1px solid #c7dcff;color:#163f7a;padding:8px 12px;border-radius:10px;
@@ -227,25 +327,12 @@ def render_tab3_analysis():
                             unsafe_allow_html=True,
                         )
 
-                    # Corridor + O→D specific availability preview to prevent empty results confusion
+                    # Corridor + O→D specific availability preview (uses resolver filtering)
                     try:
-                        if origin not in (None, "SELECT") and destination not in (None, "SELECT") and origin != destination:
+                        if res.get("valid"):
                             od_df = acyclica_df.copy()
                             od_df = od_df[(od_df.get("corridor_id") == "Highway 111")]
-                            if "segment_id" in od_df.columns:
-                                seg_series = od_df["segment_id"].astype(str)
-                                seg_lower = seg_series.str.lower()
-                                if {"Parkview Drive", "Cook Street"} <= {origin, destination}:
-                                    mask = seg_lower.str.contains("parkview") & seg_lower.str.contains("cook")
-                                    od_df = od_df[mask]
-                                elif {"Canyon Plaza West", "Jermaine Gibson"} <= {origin, destination}:
-                                    ids = [
-                                        "CanyonPlazaWest_to_JermaineGibsion",
-                                        "CanyonPlazaWest_to_JermaineGibson",
-                                        "JermaineGibson_to_CanyonPlazaWest",
-                                    ]
-                                    od_df = od_df[seg_series.isin(ids)]
-                            # Compute available date span
+                            od_df = h111_apply_filter(od_df, origin, destination)
                             if not od_df.empty and "local_datetime" in od_df.columns:
                                 _min = pd.to_datetime(od_df["local_datetime"], errors="coerce").min()
                                 _max = pd.to_datetime(od_df["local_datetime"], errors="coerce").max()
@@ -253,6 +340,11 @@ def render_tab3_analysis():
                                     st.caption(
                                         f"Available Data for this O→D: { _min.strftime('%b %d, %Y %I:%M %p') } → { _max.strftime('%b %d, %Y %I:%M %p') }"
                                     )
+                                # For Cook ↔ Washington, also reveal detected exact segment_id(s) if present
+                                if {origin, destination} == {"Cook Street", "Washington Street"} and "segment_id" in od_df.columns:
+                                    ids_found = sorted(set(od_df["segment_id"].dropna().astype(str).unique().tolist()))
+                                    if ids_found:
+                                        st.caption("Detected segment_id(s) used: " + ", ".join(ids_found))
                     except Exception:
                         pass
 
@@ -411,48 +503,9 @@ def render_tab3_analysis():
                 elif origin == "Country Club Drive" and destination == "Avenue 52":
                     direction_filter = "SB"
 
-        # Highway 111 specific O-D → segment filtering (segment_id tolerant + direction)
+        # Highway 111 specific O→D filtering
         if corridor == "Highway 111" and origin != "SELECT" and destination != "SELECT" and origin != destination:
-            # Known segments (Canyon Plaza West ↔ Jermaine Gibson)
-            eb_id = "CanyonPlazaWest_to_JermaineGibsion"  # as given in source
-            eb_id_alt = "CanyonPlazaWest_to_JermaineGibson"  # corrected spelling fallback
-            wb_id = "JermaineGibson_to_CanyonPlazaWest"
-
-            want_dir = None
-            applied_seg_filter = False
-
-            if "segment_id" in working_df.columns:
-                seg_series = working_df["segment_id"].astype(str)
-                seg_lower = seg_series.str.lower()
-
-                # Canyon Plaza West ↔ Jermaine Gibson
-                if origin == "Canyon Plaza West" and destination == "Jermaine Gibson":
-                    mask = seg_series.isin([eb_id, eb_id_alt])
-                    working_df = working_df[mask]
-                    want_dir = "EASTBOUND"
-                    applied_seg_filter = True
-                elif origin == "Jermaine Gibson" and destination == "Canyon Plaza West":
-                    mask = seg_series.astype(str) == wb_id
-                    working_df = working_df[mask]
-                    want_dir = "WESTBOUND"
-                    applied_seg_filter = True
-
-                # Parkview Drive ↔ Cook Street (heuristic contains match)
-                elif origin == "Parkview Drive" and destination == "Cook Street":
-                    mask = seg_lower.str.contains("parkview") & seg_lower.str.contains("cook")
-                    working_df = working_df[mask]
-                    want_dir = "EASTBOUND"
-                    applied_seg_filter = True
-                elif origin == "Cook Street" and destination == "Parkview Drive":
-                    mask = seg_lower.str.contains("parkview") & seg_lower.str.contains("cook")
-                    working_df = working_df[mask]
-                    want_dir = "WESTBOUND"
-                    applied_seg_filter = True
-
-            # Apply direction refinement if available
-            if (applied_seg_filter or origin in ("Parkview Drive", "Cook Street")) and "direction" in working_df.columns:
-                if want_dir:
-                    working_df = working_df[working_df["direction"] == want_dir]
+            working_df = h111_apply_filter(working_df, origin, destination)
 
         # Filter by direction
         if direction_filter != "All Directions" and "direction" in working_df.columns:
@@ -466,20 +519,9 @@ def render_tab3_analysis():
                 # Build an O→D-level availability hint using the base corridor filter
                 base_df = acyclica_df.copy()
                 base_df = base_df[(base_df.get("corridor_id") == corridor)] if corridor != "All Corridors" else base_df
-                if origin not in (None, "SELECT") and destination not in (None, "SELECT") and origin != destination and "segment_id" in base_df.columns:
-                    seg_series = base_df["segment_id"].astype(str)
-                    seg_lower = seg_series.str.lower()
-                    if corridor == "Highway 111":
-                        if {"Parkview Drive", "Cook Street"} <= {origin, destination}:
-                            mask = seg_lower.str.contains("parkview") & seg_lower.str.contains("cook")
-                            base_df = base_df[mask]
-                        elif {"Canyon Plaza West", "Jermaine Gibson"} <= {origin, destination}:
-                            ids = [
-                                "CanyonPlazaWest_to_JermaineGibsion",
-                                "CanyonPlazaWest_to_JermaineGibson",
-                                "JermaineGibson_to_CanyonPlazaWest",
-                            ]
-                            base_df = base_df[seg_series.isin(ids)]
+                if corridor == "Highway 111" and origin != "SELECT" and destination != "SELECT" and origin != destination:
+                    base_df = h111_apply_filter(base_df, origin, destination)
+
                 if not base_df.empty and "local_datetime" in base_df.columns:
                     dt_min = pd.to_datetime(base_df["local_datetime"], errors="coerce").min()
                     dt_max = pd.to_datetime(base_df["local_datetime"], errors="coerce").max()
@@ -628,6 +670,16 @@ def render_tab3_analysis():
                         friendly_dir = "Eastbound"
                     elif o == "Cook Street" and d == "Parkview Drive":
                         friendly_dir = "Westbound"
+                    # Newly added segment: Cook Street ↔ Washington Street
+                    elif o == "Cook Street" and d == "Washington Street":
+                        friendly_dir = "Eastbound"
+                    elif o == "Washington Street" and d == "Cook Street":
+                        friendly_dir = "Westbound"
+                    # Newly added segment: Washington Street ↔ Monroe Street
+                    elif o == "Washington Street" and d == "Monroe Street":
+                        friendly_dir = "Eastbound"
+                    elif o == "Monroe Street" and d == "Washington Street":
+                        friendly_dir = "Westbound"
                 if not friendly_dir and dir_filt and dir_filt != "All Directions":
                     mapping = {"NB": "Northbound", "SB": "Southbound", "EB": "Eastbound", "WB": "Westbound"}
                     friendly_dir = mapping.get(dir_filt, dir_filt)
@@ -660,6 +712,16 @@ def render_tab3_analysis():
                     if o == "Parkview Drive" and d == "Cook Street":
                         return "Eastbound"
                     if o == "Cook Street" and d == "Parkview Drive":
+                        return "Westbound"
+                    # Newly added segment: Cook Street ↔ Washington Street
+                    if o == "Cook Street" and d == "Washington Street":
+                        return "Eastbound"
+                    if o == "Washington Street" and d == "Cook Street":
+                        return "Westbound"
+                    # Newly added segment: Washington Street ↔ Monroe Street
+                    if o == "Washington Street" and d == "Monroe Street":
+                        return "Eastbound"
+                    if o == "Monroe Street" and d == "Washington Street":
                         return "Westbound"
                 # Fallback to filter value mapping
                 mapping = {"NB": "Northbound", "SB": "Southbound", "EB": "Eastbound", "WB": "Westbound"}

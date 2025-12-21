@@ -295,6 +295,14 @@ ACYCLICA_URLS = [
     _fix_raw_url(
         "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/Highway_111_DATA/ACYCLICA/MASTER_EWB_1hr_Hwy111_CookStreet_to_Parkview.csv"
     ),
+    # Highway 111: Cook Street ↔ Washington Street (EB/WB)
+    _fix_raw_url(
+        "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/Highway_111_DATA/ACYCLICA/MASTER_EWB_1hr_hwy111_CookStreet_to_WashingtonStreet.csv"
+    ),
+    # Highway 111: Washington Street ↔ Monroe Street (EB/WB)
+    _fix_raw_url(
+        "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/Highway_111_DATA/ACYCLICA/MASTER_EWB_1hr_Hwy111_WashingtonStreet_to_MonroeStreet.csv"
+    ),
 ]
 
 @st.cache_data(show_spinner=False)
@@ -359,6 +367,10 @@ def load_acyclica_data() -> pd.DataFrame:
         return x
     df["direction"] = dir_raw.map(_norm_dir)
 
+    # Segment ID normalization (strip spaces if column exists)
+    if "segment_id" in df.columns:
+        df["segment_id"] = df["segment_id"].astype(str).str.strip()
+
     # Corridor normalization: fix known variants/typos
     # Ensure new Highway 111 data appears as "Highway 111" in dropdowns
     corr = (
@@ -395,9 +407,13 @@ def acyclica_long_to_hourly(df_long: pd.DataFrame) -> pd.DataFrame:
     if df_long is None or df_long.empty:
         return pd.DataFrame()
 
-    # Include segment_id in index if present to preserve O→D segment selection
+    # Include segment_id in index if present to preserve O→D segment selection.
+    # Note: pivot_table/groupby drops rows with NaN in index.
+    # Fill NaN segment_id with a placeholder to avoid dropping older master data.
     index_cols = ["local_datetime", "corridor_id", "direction"]
     if "segment_id" in df_long.columns:
+        df_long = df_long.copy()
+        df_long["segment_id"] = df_long["segment_id"].fillna("no_segment_id")
         index_cols.append("segment_id")
 
     piv = (
@@ -417,9 +433,14 @@ def acyclica_long_to_hourly(df_long: pd.DataFrame) -> pd.DataFrame:
             piv[col] = np.nan
 
     piv["average_delay"] = np.nan  # Acyclica doesn't provide delay
-    # Prefer segment_id as segment_name if available, else corridor_id
+    # Prefer segment_id as segment_name if available, else corridor_id.
+    # If segment_id is our placeholder, fallback to corridor_id.
     if "segment_id" in piv.columns:
-        piv["segment_name"] = piv["segment_id"].astype(str)
+        piv["segment_name"] = np.where(
+            piv["segment_id"] == "no_segment_id",
+            piv["corridor_id"].astype(str),
+            piv["segment_id"].astype(str)
+        )
     else:
         piv["segment_name"] = piv["corridor_id"].astype(str)
 
