@@ -1,0 +1,1 @@
+{"type": "FeatureCollection", "features": [{"type": "Feature", "properties": {"customer_route_number": 151, "name": "#122-123: NB I-10 Interchange -> Varner Rd ", "description": null, "shared": true}, "geometry": {"type": "LineString", "coordinates": [[-116.30162, 33.75994], [-116.30137, 33.76052], [-116.301, 33.7614], [-116.3009, 33.76165]]}}]}

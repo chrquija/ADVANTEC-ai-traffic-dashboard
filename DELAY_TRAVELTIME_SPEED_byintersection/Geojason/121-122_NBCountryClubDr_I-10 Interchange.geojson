@@ -1,0 +1,1 @@
+{"type": "FeatureCollection", "features": [{"type": "Feature", "properties": {"customer_route_number": 149, "name": "#121-122: NB Country Club Dr -> I-10 Interchange", "description": null, "shared": true}, "geometry": {"type": "LineString", "coordinates": [[-116.30268, 33.75777], [-116.30243, 33.75824], [-116.30229, 33.75851], [-116.30181, 33.75947], [-116.30162, 33.75994]]}}]}
