@@ -4,6 +4,7 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 import time
+import io
 
 # Plotly for chart helpers
 import plotly.express as px
@@ -15,9 +16,9 @@ from Map import build_all_segments_overview, build_intersections_overview, build
 
 # Shared UI utils (scoped loader and tab highlight)
 try:
-    from ui_utils import cad_loader as scoped_cad_loader, set_active_search_tab, is_active_tab
+    from ui_utils import cad_loader as scoped_cad_loader, set_active_search_tab, is_active_tab, get_dynamic_xaxis_params
 except ModuleNotFoundError:
-    from core.ui_utils import cad_loader as scoped_cad_loader, set_active_search_tab, is_active_tab
+    from core.ui_utils import cad_loader as scoped_cad_loader, set_active_search_tab, is_active_tab, get_dynamic_xaxis_params
 
 # Availability utility
 try:
@@ -33,6 +34,7 @@ try:
         process_traffic_data,
         performance_chart,
         render_badge,
+        compute_missing_strength_gaps,
     )
 except ModuleNotFoundError:
     from core.sidebar_functions import (
@@ -41,6 +43,7 @@ except ModuleNotFoundError:
         process_traffic_data,
         performance_chart,
         render_badge,
+        compute_missing_strength_gaps,
     )
 
 # ------------------------------------------------------------------
@@ -58,7 +61,9 @@ def h111_valid_dests(o: str) -> list:
     if o == "Washington Street":
         return ["Cook Street", "Monroe Street"]
     if o == "Monroe Street":
-        return ["Washington Street"]
+        return ["Washington Street", "Indio Blvd"]
+    if o == "Indio Blvd":
+        return ["Monroe Street"]
     # When origin is SELECT or unknown, allow all endpoints for discovery
     return [
         "Canyon Plaza West",
@@ -67,6 +72,7 @@ def h111_valid_dests(o: str) -> list:
         "Cook Street",
         "Washington Street",
         "Monroe Street",
+        "Indio Blvd",
     ]
 
 def h111_resolve(o: str, d: str):
@@ -91,6 +97,10 @@ def h111_resolve(o: str, d: str):
         ui_dir = "Eastbound"; df_dir = "EASTBOUND"; valid = True; pair = "WS_MS"
     elif o == "Monroe Street" and d == "Washington Street":
         ui_dir = "Westbound"; df_dir = "WESTBOUND"; valid = True; pair = "WS_MS"
+    elif o == "Monroe Street" and d == "Indio Blvd":
+        ui_dir = "Westbound"; df_dir = "WESTBOUND"; valid = True; pair = "MS_IB"
+    elif o == "Indio Blvd" and d == "Monroe Street":
+        ui_dir = "Eastbound"; df_dir = "EASTBOUND"; valid = True; pair = "MS_IB"
     return {"valid": valid, "ui_dir": ui_dir, "df_dir": df_dir, "pair": pair}
 
 def h111_apply_filter(df: pd.DataFrame, o: str, d: str) -> pd.DataFrame:
@@ -124,6 +134,13 @@ def h111_apply_filter(df: pd.DataFrame, o: str, d: str) -> pd.DataFrame:
             df = df[seg_series.isin(list(present_exact))]
         else:
             df = df[seg_lower.str.contains("washington") & seg_lower.str.contains("monroe")]
+    elif res["pair"] == "MS_IB":
+        exact_ids = ["MonroeStreet_to_IndioBlvd", "IndioBlvd_to_MonroeStreet"]
+        present_exact = set(seg_series.unique()).intersection(exact_ids)
+        if present_exact:
+            df = df[seg_series.isin(list(present_exact))]
+        else:
+            df = df[seg_lower.str.contains("monroe") & seg_lower.str.contains("indio")]
     
     # Direction refinement (uppercase in DF)
     if "direction" in df.columns and res["df_dir"]:
@@ -235,7 +252,7 @@ def render_tab3_analysis():
                 if corridor == "Washington Street":
                     st.markdown("## 🚦 Origin → Destination")
                     # Include Highway111 as a mid-corridor endpoint
-                    od_options = ["SELECT", "Avenue 52", "Highway111", "Country Club Drive"]
+                    od_options = ["SELECT", "Avenue 52", "Highway111", "Avenue 41", "Harris Lane", "Country Club Drive", "I-10 Interchange", "Varner Rd", "Market Pl", "Del Webb"]
                     oc, dc = st.columns(2)
                     with oc:
                         origin = st.selectbox("Origin", od_options, index=0, key="acyclica_od_origin")
@@ -249,7 +266,8 @@ def render_tab3_analysis():
                         order = [
                             "Avenue 52","Calle Tampico","Village Shopping Ctr","Avenue 50","Sagebrush Ave","Eisenhower Dr",
                             "Avenue 48","Avenue 47","Point Happy Simon","Hwy 111","Channel Drive","Miles Avenue","Via Sevilla",
-                            "Fred Waring Drive","Palm Royale Drive","Avenue of the States","Avenue 42","Avenue 41","Harris Lane","Country Club Drive"
+                            "Fred Waring Drive","Palm Royale Drive","Avenue of the States","Avenue 42","Avenue 41","Harris Lane","Country Club Drive",
+                            "I-10 Interchange", "Varner Rd", "Market Pl", "Del Webb"
                         ]
                         o_fix = "Hwy 111" if o == "Highway111" else o
                         d_fix = "Hwy 111" if d == "Highway111" else d
@@ -282,6 +300,7 @@ def render_tab3_analysis():
                         "Cook Street",
                         "Washington Street",
                         "Monroe Street",
+                        "Indio Blvd",
                     ]
 
                     # Ensure session keys exist
@@ -542,6 +561,7 @@ def render_tab3_analysis():
             st.markdown('<div id="acyclica-map-anchor"></div>', unsafe_allow_html=True)
             st.markdown("##### Corridor Map", help="Stays visible while you scroll the analysis on the left.")
 
+            satellite_t3 = st.toggle("🛰️ Satellite View", key="satellite_t3", value=False)
             # Prefer an O→D corridor map with green START and red END dots when O-D is selected; otherwise show overview
             try:
                 fig_corridor = None
@@ -563,35 +583,35 @@ def render_tab3_analysis():
                     o = _fix_node(o)
                     d = _fix_node(d)
                     try:
-                        fig_corridor = build_corridor_map(o, d)
+                        fig_corridor = build_corridor_map(o, d, satellite=satellite_t3)
                     except Exception:
                         fig_corridor = None
 
                 # Fallback to the corridor overview (all segments)
                 if not fig_corridor:
-                    fig_corridor = build_all_segments_overview()
+                    fig_corridor = build_all_segments_overview(satellite=satellite_t3)
 
                 if fig_corridor:
                     try:
                         # Match the map height used in other tabs
-                        fig_corridor.update_layout(height=900, margin=dict(l=0, r=0, t=32, b=0))
+                        fig_corridor.update_layout(height=1100, margin=dict(l=0, r=0, t=32, b=0))
                     except Exception:
                         pass
 
                     st.markdown('<div class="cvag-map-card">', unsafe_allow_html=True)
-                    st.plotly_chart(fig_corridor, use_container_width=True, config={"displaylogo": False})
+                    st.plotly_chart(fig_corridor, use_container_width=True, config={"displaylogo": False, "displayModeBar": True})
                     st.caption(f"**Acyclica Corridor:** {corridor}")
                     st.markdown("</div>", unsafe_allow_html=True)
                 else:
                     # Fallback: try the intersections overview
-                    fig_intersections = build_intersections_overview()
+                    fig_intersections = build_intersections_overview(corridor=corridor, satellite=satellite_t3)
                     if fig_intersections:
                         try:
-                            fig_intersections.update_layout(height=900, margin=dict(l=0, r=0, t=32, b=0))
+                            fig_intersections.update_layout(height=1100, margin=dict(l=0, r=0, t=32, b=0))
                         except Exception:
                             pass
                         st.markdown('<div class="cvag-map-card">', unsafe_allow_html=True)
-                        st.plotly_chart(fig_intersections, use_container_width=True, config={"displaylogo": False})
+                        st.plotly_chart(fig_intersections, use_container_width=True, config={"displaylogo": False, "displayModeBar": True})
                         st.caption(f"**Acyclica Corridor:** {corridor}")
                         st.markdown("</div>", unsafe_allow_html=True)
                     else:
@@ -642,50 +662,9 @@ def render_tab3_analysis():
             total_records = len(filtered_data)
             data_span = (date_range[1] - date_range[0]).days + 1
             time_context = f" • {time_filter}" if (granularity == "Hourly" and time_filter) else ""
-
-            # Build compact O→D text to append inside the main title (only when a valid pair is chosen)
-            def _route_text_for_title(corr: str, o: str, d: str, dir_filt: str) -> str:
-                if not o or not d or o == "SELECT" or d == "SELECT" or o == d:
-                    return ""
-                friendly_dir = None
-                if corr == "Washington Street":
-                    order = [
-                        "Avenue 52","Calle Tampico","Village Shopping Ctr","Avenue 50","Sagebrush Ave","Eisenhower Dr",
-                        "Avenue 48","Avenue 47","Point Happy Simon","Hwy 111","Channel Drive","Miles Avenue","Via Sevilla",
-                        "Fred Waring Drive","Palm Royale Drive","Avenue of the States","Avenue 42","Avenue 41","Harris Lane","Country Club Drive"
-                    ]
-                    o_fix = "Hwy 111" if o == "Highway111" else o
-                    d_fix = "Hwy 111" if d == "Highway111" else d
-                    if o_fix in order and d_fix in order and order.index(o_fix) < order.index(d_fix):
-                        friendly_dir = "Northbound"
-                    elif o_fix in order and d_fix in order and order.index(o_fix) > order.index(d_fix):
-                        friendly_dir = "Southbound"
-                elif corr == "Highway 111":
-                    if o == "Canyon Plaza West" and d == "Jermaine Gibson":
-                        friendly_dir = "Eastbound"
-                    elif o == "Jermaine Gibson" and d == "Canyon Plaza West":
-                        friendly_dir = "Westbound"
-                    # New segment mappings: Parkview Drive ↔ Cook Street
-                    elif o == "Parkview Drive" and d == "Cook Street":
-                        friendly_dir = "Eastbound"
-                    elif o == "Cook Street" and d == "Parkview Drive":
-                        friendly_dir = "Westbound"
-                    # Newly added segment: Cook Street ↔ Washington Street
-                    elif o == "Cook Street" and d == "Washington Street":
-                        friendly_dir = "Eastbound"
-                    elif o == "Washington Street" and d == "Cook Street":
-                        friendly_dir = "Westbound"
-                    # Newly added segment: Washington Street ↔ Monroe Street
-                    elif o == "Washington Street" and d == "Monroe Street":
-                        friendly_dir = "Eastbound"
-                    elif o == "Monroe Street" and d == "Washington Street":
-                        friendly_dir = "Westbound"
-                if not friendly_dir and dir_filt and dir_filt != "All Directions":
-                    mapping = {"NB": "Northbound", "SB": "Southbound", "EB": "Eastbound", "WB": "Westbound"}
-                    friendly_dir = mapping.get(dir_filt, dir_filt)
-                return f" • {o} → {d} ({friendly_dir})" if friendly_dir else ""
-
-            route_suffix = _route_text_for_title(corridor, origin, destination, direction_filter)
+            
+            # Map UI direction labels
+            dir_display = "Northbound" if direction_filter == "NB" else "Southbound" if direction_filter == "SB" else direction_filter
 
             # Choose a display direction for the header subtext: prefer inferred direction from O→D
             def _infer_dir(corr: str, o: str, d: str, dir_filt: str) -> str:
@@ -695,7 +674,8 @@ def render_tab3_analysis():
                     order = [
                         "Avenue 52","Calle Tampico","Village Shopping Ctr","Avenue 50","Sagebrush Ave","Eisenhower Dr",
                         "Avenue 48","Avenue 47","Point Happy Simon","Hwy 111","Channel Drive","Miles Avenue","Via Sevilla",
-                        "Fred Waring Drive","Palm Royale Drive","Avenue of the States","Avenue 42","Avenue 41","Harris Lane","Country Club Drive"
+                        "Fred Waring Drive","Palm Royale Drive","Avenue of the States","Avenue 42","Avenue 41","Harris Lane","Country Club Drive",
+                        "I-10 Interchange", "Varner Rd", "Market Pl", "Del Webb"
                     ]
                     o_fix = "Hwy 111" if o == "Highway111" else o
                     d_fix = "Hwy 111" if d == "Highway111" else d
@@ -737,16 +717,28 @@ def render_tab3_analysis():
                     box-shadow:0 10px 26px rgba(25,115,210,.25); text-align:left;
                     font-family: inherit;">
                   <div style="display:flex; align-items:center; gap:10px;">
-                    <div style="width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,.18);
-                                display:flex;align-items:center;justify-content:center;
-                                box-shadow:inset 0 0 0 1px rgba(255,255,255,.15);">🌐</div>
-                    <div style="font-size:1.9rem;font-weight:800;letter-spacing:.2px;">
-                      Acyclica Travel Time Analysis: {corridor}{route_suffix}
+                    <div>
+                        <div style="font-size:1.7rem; font-weight:800; letter-spacing:-0.01em; margin-bottom:2px;">
+                          <span style="color: #ffffff;">2025 BNP PARIBUS OPEN INDIAN WELLS DASHBOARD</span><span style="color: rgba(255,255,255,0.7);">: FLIR ACYCLICA TRAVEL TIME ANALYSIS</span>
+                        </div>
+                        <div style="font-size:1.1rem;font-weight:600;opacity:0.9; display:flex; flex-wrap:wrap; gap:15px; margin-top:4px; align-items:center;">
+                          <div style="background:rgba(255,255,255,0.15); padding:4px 12px; border-radius:8px; font-size:1.2rem; border:1px solid rgba(255,255,255,0.3); font-weight:700;">
+                            📅 {date_range[0].strftime('%b %d, %Y')} to {date_range[1].strftime('%b %d, %Y')} <span style="font-weight:400; opacity:0.8;">({data_span} days)</span>
+                          </div>
+                          <div style="background:rgba(255,255,255,0.15); padding:4px 12px; border-radius:8px; font-size:1.2rem; border:1px solid rgba(255,255,255,0.3);">
+                            <span style="opacity:0.9; font-weight:400;">Corridor Segment:</span> <span style="font-weight:800;">{corridor}{f" ({origin} → {destination})" if (origin != "SELECT" and destination != "SELECT") else ""}</span> <span style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:4px; margin-left:8px; font-size:0.9rem; font-weight:700; color:#fff;">{display_dir}</span>
+                          </div>
+                        </div>
+                        <div style="font-size:0.95rem; opacity:0.85; display:flex; flex-wrap:wrap; gap:15px; margin-top:10px; align-items:center;">
+                          <div style="display:flex; align-items:center; gap:15px;">
+                            <div><span style="opacity:0.8; font-weight:400;">Region:</span> Coachella Valley</div>
+                            <div style="border-left: 1px solid rgba(255,255,255,0.3); padding-left: 15px;"><span style="opacity:0.8; font-weight:400;">City:</span> Indian Wells / La Quinta</div>
+                            <div style="border-left: 1px solid rgba(255,255,255,0.3); padding-left: 15px;"><span style="opacity:0.8; font-weight:400;">Corridor:</span> {corridor}</div>
+                            <div style="border-left: 1px solid rgba(255,255,255,0.3); padding-left: 15px;">📊 {granularity} Aggregation{time_context}</div>
+                            <div style="border-left: 1px solid rgba(255,255,255,0.3); padding-left: 15px;">✅ {total_records:,} data points</div>
+                          </div>
+                        </div>
                     </div>
-                  </div>
-                  <div style="margin-top:10px;display:flex;flex-direction:column;gap:6px;">
-                    <div>📅 {date_range[0].strftime('%b %d, %Y')} to {date_range[1].strftime('%b %d, %Y')} ({data_span} days) • {granularity} Aggregation{time_context}</div>
-                    <div>✅ Analyzing {total_records:,} data points from Acyclica sensors • Direction: {display_dir}</div>
                   </div>
                 </div>
                 """,
@@ -788,6 +780,25 @@ def render_tab3_analysis():
                 buffer_score = max(0, 100 - (buffer_minutes * 10)) if buffer_minutes >= 0 else 50
                 speed_score = min(100, max(0, (avg_speed / 35) * 100)) if avg_speed > 0 else 50
 
+                # Calculate LOS based on Average Speed
+                if avg_speed > 35: los_letter = "A"
+                elif avg_speed >= 28: los_letter = "B"
+                elif avg_speed >= 22: los_letter = "C"
+                elif avg_speed >= 17: los_letter = "D"
+                elif avg_speed >= 13: los_letter = "E"
+                elif avg_speed > 0: los_letter = "F"
+                else: los_letter = "N/A"
+
+                # Calculate Worst-case LOS based on Planning Time
+                worst_speed_val = avg_speed * (avg_tt / p95_tt) if p95_tt > 0 else 0.0
+                if worst_speed_val > 35: los_letter_worst = "A"
+                elif worst_speed_val >= 28: los_letter_worst = "B"
+                elif worst_speed_val >= 22: los_letter_worst = "C"
+                elif worst_speed_val >= 17: los_letter_worst = "D"
+                elif worst_speed_val >= 13: los_letter_worst = "E"
+                elif worst_speed_val > 0: los_letter_worst = "F"
+                else: los_letter_worst = "N/A"
+
                 # Display metrics in the same order as Tab 1
                 col1, col2, col3, col4, col5 = st.columns(5)
 
@@ -803,17 +814,19 @@ def render_tab3_analysis():
                     st.metric(
                         "⏱️ Average Travel Time",
                         f"{avg_tt:.1f} min",
-                        help="Average travel time across the selected period and filters"
+                        help="Average travel time across the selected period. Used to estimate corridor Level of Service (LOS) per HCM 6th Edition (TRB, 2016) urban arterial standards based on average travel speed. LOS A = over 35 mph (free flow), LOS B = 28 to 35 mph (minor delay), LOS C = 22 to 28 mph (stable flow), LOS D = 17 to 22 mph (approaching capacity), LOS E = 13 to 17 mph (unstable flow), LOS F = under 13 mph (breakdown). Source: Highway Capacity Manual, 6th Edition, Transportation Research Board. https://www.trb.org/Main/Blurbs/175169.aspx"
                     )
                     st.markdown(render_badge(tt_score), unsafe_allow_html=True)
+                    st.caption(f"Estimated Corridor LOS: {los_letter}")
 
                 with col3:
                     st.metric(
                         "📈 Planning Time (95th Percentile)",
                         f"{p95_tt:.1f} min",
-                        help="95th percentile travel time - plan for this to arrive on time 95% of the time"
+                        help="95th percentile travel time — only 5% of trips are slower than this. Used to estimate worst-case corridor Level of Service (LOS) per HCM 6th Edition (TRB, 2016). This represents the reliability ceiling: LOS A = over 35 mph, LOS B = 28 to 35 mph, LOS C = 22 to 28 mph, LOS D = 17 to 22 mph, LOS E = 13 to 17 mph, LOS F = under 13 mph. If this LOS is significantly worse than the Average Travel Time LOS, the corridor suffers from unreliable, variable conditions. Source: Highway Capacity Manual, 6th Edition, TRB. https://www.trb.org/Main/Blurbs/175169.aspx"
                     )
                     st.markdown(render_badge(planning_score), unsafe_allow_html=True)
+                    st.caption(f"Worst-case Corridor LOS: {los_letter_worst}")
 
                 with col4:
                     st.metric(
@@ -840,9 +853,9 @@ def render_tab3_analysis():
 
                 with chart_col1:
                     # Travel Time Chart
-                    tt_chart = performance_chart(filtered_data, "travel")
+                    tt_chart = performance_chart(filtered_data, "travel", direction_label=dir_display)
                     if tt_chart:
-                        st.plotly_chart(tt_chart, use_container_width=True, config={"displaylogo": False})
+                        st.plotly_chart(tt_chart, use_container_width=True, config={"displaylogo": False, "displayModeBar": True})
 
                 with chart_col2:
                     # Speed Chart
@@ -850,9 +863,18 @@ def render_tab3_analysis():
                         speed_data = filtered_data.dropna(subset=["local_datetime", "average_speed"]).sort_values(
                             "local_datetime")
 
+                        # Distribution stats for annotation and vertical lines
+                        s_speed = speed_data["average_speed"]
+                        mean_speed = float(s_speed.mean()) if not s_speed.empty else 0.0
+                        p5 = float(s_speed.quantile(0.05)) if not s_speed.empty else 0.0
+                        p25 = float(s_speed.quantile(0.25)) if not s_speed.empty else 0.0
+                        p75 = float(s_speed.quantile(0.75)) if not s_speed.empty else 0.0
+                        p95 = float(s_speed.quantile(0.95)) if not s_speed.empty else 0.0
+                        dist_annotation = f"Most hours: {p25:.1f}–{p75:.1f} mph. Worst 5%: below {p5:.1f} mph."
+
                         fig = make_subplots(
                             rows=2, cols=1,
-                            subplot_titles=("Speed Time Series Analysis", "Speed Distribution Analysis"),
+                            subplot_titles=(f"{dir_display} Speed Time Series Analysis".strip(), f"Speed Distribution Analysis. {dist_annotation}"),
                             vertical_spacing=0.28,
                         )
 
@@ -865,6 +887,7 @@ def render_tab3_analysis():
                                 name="Speed Trend",
                                 line=dict(color="#2ecc71", width=2),
                                 marker=dict(size=4),
+                                hovertemplate="%{x|%b %d, %Y %I:%M %p}\n🚗 Avg Speed: %{y:.1f} mph  ",
                             ),
                             row=1, col=1,
                         )
@@ -904,9 +927,14 @@ def render_tab3_analysis():
                                 name="Speed Distribution",
                                 marker_color="#2ecc71",
                                 opacity=0.75,
+                                hovertemplate="%{y} hours had a speed between %{x} mph  <extra></extra>",
                             ),
                             row=2, col=1,
                         )
+
+                        # Add vertical reference lines for mean and 5th percentile
+                        fig.add_vline(x=mean_speed, line_dash="dash", line_color="black", annotation_text="Avg", annotation_position="top right", row=2, col=1)
+                        fig.add_vline(x=p5, line_dash="dot", line_color="#333", annotation_text="Worst 5%", annotation_position="top right", row=2, col=1)
 
                         fig.update_layout(
                             height=600,
@@ -916,12 +944,31 @@ def render_tab3_analysis():
                             plot_bgcolor="rgba(0,0,0,0)",
                             paper_bgcolor="rgba(0,0,0,0)",
                         )
-                        fig.update_xaxes(title_text="Date/Time", row=1, col=1)
-                        fig.update_yaxes(title_text="Average Speed (mph)", row=1, col=1)
-                        fig.update_xaxes(title_text="Average Speed (mph)", row=2, col=1)
-                        fig.update_yaxes(title_text="Frequency (Number of Hours)", row=2, col=1)
+                        # Custom X-axis logic for better labels on long ranges
+                        if not speed_data.empty:
+                            start_date = speed_data["local_datetime"].min()
+                            end_date = speed_data["local_datetime"].max()
+                            params = get_dynamic_xaxis_params(start_date, end_date)
+                            fig.update_xaxes(
+                                title=dict(text="Date/Time", font=dict(size=16, weight="bold")),
+                                tickfont=dict(size=14),
+                                dtick=params["dtick"],
+                                tickformat=params["tickformat"],
+                                row=1, col=1
+                            )
+                        else:
+                            fig.update_xaxes(
+                                title=dict(text="Date/Time", font=dict(size=16, weight="bold")),
+                                tickfont=dict(size=14),
+                                dtick=21600000,
+                                tickformat="%b %d\n%I:%M %p",
+                                row=1, col=1
+                            )
+                        fig.update_yaxes(title=dict(text="Average Speed (mph)", font=dict(size=16, weight="bold")), tickfont=dict(size=14), row=1, col=1)
+                        fig.update_xaxes(title=dict(text="Average Speed (mph)", font=dict(size=16, weight="bold")), tickfont=dict(size=14), row=2, col=1)
+                        fig.update_yaxes(title=dict(text="Frequency (Number of Hours)", font=dict(size=16, weight="bold")), tickfont=dict(size=14), row=2, col=1)
 
-                        st.plotly_chart(fig, use_container_width=True, config={"displaylogo": False})
+                        st.plotly_chart(fig, use_container_width=True, config={"displaylogo": False, "displayModeBar": True})
 
             # ---- Data Table ----
             st.subheader("🔍 Which Dates/Times have the highest Travel Time?")
@@ -955,6 +1002,54 @@ def render_tab3_analysis():
                     data=filtered_data.to_csv(index=False).encode("utf-8"),
                     file_name="acyclica_filtered.csv",
                     mime="text/csv",
+                )
+
+                # --- NEW: Missing Data Button ---
+                # Use current sidebar params for file naming and gap calculation
+                t3_p = st.session_state.get("t3_params", {})
+                corr_name = t3_p.get("corridor", "all").replace(" ", "_")
+                gran = t3_p.get("granularity", "Hourly")
+                d_start = date_range[0].strftime("%Y%m%d")
+                d_end = date_range[1].strftime("%Y%m%d")
+
+                missing_df = compute_missing_strength_gaps(
+                    filtered_data,
+                    pd.to_datetime(date_range[0]),
+                    pd.to_datetime(date_range[1]) + pd.Timedelta(hours=23),
+                    gran
+                )
+
+                # --- NEW: Styled Excel Download ---
+                output = io.BytesIO()
+                with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                    missing_df.to_excel(writer, index=False, sheet_name='Missing Data Gaps')
+                    workbook = writer.book
+                    worksheet = writer.sheets['Missing Data Gaps']
+
+                    # Define formats
+                    header_format = workbook.add_format({
+                        'bold': True,
+                        'text_wrap': True,
+                        'valign': 'vcenter',
+                        'fg_color': '#E3F2FD',  # Light Blue
+                        'border': 1
+                    })
+
+                    # Apply header format
+                    for col_num, value in enumerate(missing_df.columns.values):
+                        worksheet.write(0, col_num, value, header_format)
+
+                    # Auto-adjust column widths
+                    for i, col in enumerate(missing_df.columns):
+                        column_len = max(missing_df[col].astype(str).str.len().max(), len(col)) + 2
+                        worksheet.set_column(i, i, column_len)
+
+                st.download_button(
+                    "⬇️ Missing Data (XLSX)",
+                    data=output.getvalue(),
+                    file_name=f"missing_data_{corr_name}_{d_start}_{d_end}_{gran}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    help="Reports contiguous gaps where Strength data is missing or null in a styled Excel format."
                 )
 
             # ---- Performance Analysis by Corridor/Direction ----

@@ -20,9 +20,9 @@ from Map import build_intersections_overview
 
 # Shared UI utils (scoped loader and tab highlight)
 try:
-    from ui_utils import cad_loader as scoped_cad_loader, set_active_search_tab, is_active_tab
+    from ui_utils import cad_loader as scoped_cad_loader, set_active_search_tab, is_active_tab, get_dynamic_xaxis_params
 except ModuleNotFoundError:
-    from core.ui_utils import cad_loader as scoped_cad_loader, set_active_search_tab, is_active_tab
+    from core.ui_utils import cad_loader as scoped_cad_loader, set_active_search_tab, is_active_tab, get_dynamic_xaxis_params
 
 # =========================
 # Constants
@@ -54,14 +54,14 @@ CANONICAL_INTERSECTIONS = [
 
 # Map label aliases to match the map’s internal labels
 MAP_LABEL_ALIASES = {
-    "Washington and Avenue 52": "Washington St & Avenue52",
+    "Washington and Avenue 52": "Washington St & Avenue 52",
     "Washington and Calle Tampico": "Washington St & Calle Tampico",
-    "Washington and Village Shopping Center": "Washington St & Village Shop Ctr",
-    "Washington and Avenue 50": "Washington St & Avenue50",
-    "Washington and Sagebrush Avenue": "Washington St & Sagebrush Ave",
-    "Washington and Eisenhower Drive": "Washington St & Eisenhower Dr",
-    "Washington and Avenue 48": "Washington St & Avenue48",
-    "Washington and Avenue 47": "Washington St & Avenue47",
+    "Washington and Village Shopping Center": "Washington St & Village Shopping Center",
+    "Washington and Avenue 50": "Washington St & Avenue 50",
+    "Washington and Sagebrush Avenue": "Washington St & Sagebrush Avenue",
+    "Washington and Eisenhower Drive": "Washington St & Eisenhower Drive",
+    "Washington and Avenue 48": "Washington St & Avenue 48",
+    "Washington and Avenue 47": "Washington St & Avenue 47",
     "Washington and Point Happy Way": "Washington St & Point Happy Way",
 }
 
@@ -103,6 +103,8 @@ INTERSECTION_ALIASES = {
     "Washington Street and Avenue 47": "Washington and Avenue 47",
     "Washington St & Avenue47": "Washington and Avenue 47",
     "Washington St & Ave 47": "Washington and Avenue 47",
+    "Washington Avenue and Avenue 47": "Washington and Avenue 47",
+    "Washington Avenue and Ave 47": "Washington and Avenue 47",
 
     "Washington Street & Point Happy Way": "Washington and Point Happy Way",
     "Washington Street and Point Happy Way": "Washington and Point Happy Way",
@@ -111,17 +113,18 @@ INTERSECTION_ALIASES = {
 
 # Aggregation metadata
 AGG_META = {
-    "Hourly": {"unit": "vph", "bucket": "H", "label": "hour", "fixed_hours": 1},
-    "Daily": {"unit": "vpd", "bucket": "D", "label": "day", "fixed_hours": 24},
-    "Weekly": {"unit": "vpw", "bucket": "W", "label": "week", "fixed_hours": 24 * 7},
-    "Monthly": {"unit": "vpm", "bucket": "M", "label": "month", "fixed_hours": None},
+    "Hourly": {"unit": "vehicles", "bucket": "H", "label": "hour", "fixed_hours": 1},
+    "Daily": {"unit": "vehicles", "bucket": "D", "label": "day", "fixed_hours": 24},
+    "Weekly": {"unit": "vehicles", "bucket": "W", "label": "week", "fixed_hours": 24 * 7},
+    "Monthly": {"unit": "vehicles", "bucket": "M", "label": "month", "fixed_hours": None},
 }
 
 PLOTLY_CONFIG = {
     "displaylogo": False,
+    "displayModeBar": True,
     "modeBarButtonsToRemove": ["lasso2d", "select2d", "toggleSpikelines"]
 }
-MAP_HEIGHT = 900
+MAP_HEIGHT = 1100
 
 # ---------- Small helpers ----------
 def kpi_title(label: str, help_text: str):
@@ -161,6 +164,8 @@ def _canonicalize_intersection(name: str) -> str:
     return ""
 
 def _map_label_for(name: str) -> str:
+    # Use the mapping if it exists, otherwise return the name as is.
+    # This ensures "Washington and Avenue 48" maps to "Washington St & Avenue48"
     return MAP_LABEL_ALIASES.get(name, name)
 
 def _mode_caps(mode_label: str):
@@ -275,9 +280,24 @@ def _prep_bucket(df: pd.DataFrame, granularity: str) -> pd.DataFrame:
     return agg
 
 def _cap_series_for_x(x_df: pd.DataFrame, cap_vph: float, high_vph: float) -> pd.DataFrame:
-    xs = x_df[["local_datetime", "bucket_hours"]].drop_duplicates().sort_values("local_datetime")
-    xs["capacity"] = xs["bucket_hours"] * float(cap_vph)
-    xs["high"] = xs["bucket_hours"] * float(high_vph)
+    """Build capacity/threshold series aligned to unique time buckets only.
+    Robust against duplicated rows from multiple directions/approaches.
+    """
+    if x_df.empty:
+        return pd.DataFrame(columns=["local_datetime", "bucket_hours", "capacity", "high"]) 
+
+    xs = (
+        x_df[["local_datetime", "bucket_hours"]]
+        .copy()
+        .sort_values("local_datetime")
+    )
+    try:
+        xs = xs.groupby("local_datetime", as_index=False)["bucket_hours"].first()
+    except Exception:
+        xs = xs.drop_duplicates(subset=["local_datetime", "bucket_hours"]) 
+
+    xs["capacity"] = xs["bucket_hours"].astype(float) * float(cap_vph)
+    xs["high"] = xs["bucket_hours"].astype(float) * float(high_vph)
     return xs
 
 # =========================
@@ -491,6 +511,8 @@ def create_volume_charts(
     cap_vph: float,
     high_vph: float,
     mode_label: str = "Vehicles",
+    direction_label: str = "",
+    intersections: str = "",
     top_k: int = 10
 ):
     if raw_df.empty:
@@ -514,15 +536,16 @@ def create_volume_charts(
 
     fig_trend = go.Figure()
     mode = "lines" if granularity == "Hourly" else "lines+markers"
-    xfmt = "%Y-%m-%d %H:%M" if granularity == "Hourly" else "%Y-%m-%d"
+    xfmt = "%Y-%m-%d %I:%M %p" if granularity == "Hourly" else "%Y-%m-%d"
 
     for name, g in plot_df.groupby("intersection_name"):
         fig_trend.add_trace(
             go.Scatter(
                 x=g["local_datetime"],
                 y=g["volume"],
-                mode=mode,
+                mode="lines+markers",
                 name=name,
+                marker=dict(size=6),
                 hovertemplate=f"<b>%{{fullData.name}}</b><br>%{{x|{xfmt}}}<br>{mode_label}: %{{y:,.0f}} {unit}<extra></extra>",
             )
         )
@@ -544,12 +567,28 @@ def create_volume_charts(
             hovertemplate=f"%{{x|{xfmt}}}<br>Threshold: %{{y:,.0f}} {unit}<extra></extra>",
         )
     )
+    # X-axis configuration
+    xaxis_config = dict(
+        title=dict(text="Date/Time", font=dict(size=16, weight="bold")),
+        tickfont=dict(size=14),
+    )
+    if granularity == "Hourly" and not xs.empty:
+        start_date = xs["local_datetime"].min()
+        end_date = xs["local_datetime"].max()
+        params = get_dynamic_xaxis_params(start_date, end_date)
+        xaxis_config["dtick"] = params["dtick"]
+        xaxis_config["tickformat"] = params["tickformat"]
+
+    chart_title = f"{direction_label} {mode_label} Volume Trends - {granularity}".strip()
+    if intersections:
+        chart_title += f"<br><span style='font-size:14px; color:#666;'>{intersections}</span>"
+
     fig_trend.update_layout(
-        title=f"{mode_label} Volume Trends - {granularity}",
-        xaxis_title="Date/Time",
-        yaxis_title=f"{mode_label} Volume ({unit})",
+        title=dict(text=chart_title, x=0, xanchor="left"),
+        xaxis=xaxis_config,
+        yaxis=dict(title=dict(text="Vehicle Volume Counts", font=dict(size=16, weight="bold")), tickfont=dict(size=14)),
         legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0),
-        margin=dict(l=10, r=10, t=40, b=10),
+        margin=dict(l=10, r=10, t=80, b=10),
         template="plotly_white",
     )
 
@@ -570,21 +609,31 @@ def create_volume_charts(
     mat = (
         plot_df.groupby("intersection_name", as_index=False)["volume"]
         .mean()
-        .rename(columns={"volume": f"Avg {label} Volume"})
+        .rename(columns={"volume": f"{label.capitalize()} Volume"})
     )
-    mat["Rank"] = mat[f"Avg {label} Volume"].rank(ascending=False, method="dense").astype(int)
+    mat["Rank"] = mat[f"{label.capitalize()} Volume"].rank(ascending=False, method="dense").astype(int)
     mat = mat.sort_values("Rank")
     fig_matrix = px.bar(
-        mat, y="intersection_name", x=f"Avg {label} Volume",
-        orientation="h", text=f"Avg {label} Volume",
-        title=f"Average {label.capitalize()} {mode_label} Volume by Intersection"
+        mat, y="intersection_name", x=f"{label.capitalize()} Volume",
+        orientation="h", text=f"{label.capitalize()} Volume",
+        title=f"{label.capitalize()} {mode_label} Volume by Intersection"
     )
-    fig_matrix.update_traces(texttemplate="%{text:,.0f}", textposition="outside", cliponaxis=False)
+    fig_matrix.update_traces(
+        texttemplate="<b>%{text:,.0f}</b>", 
+        textposition="outside", 
+        cliponaxis=False,
+        textfont=dict(size=13, color="black")
+    )
     fig_matrix.update_layout(
-        xaxis_title=f"Average {label} volume ({unit})",
+        xaxis_title=f"{label.capitalize()} volume ({unit})",
         yaxis_title="",
+        yaxis=dict(tickfont=dict(size=14)),
         margin=dict(l=10, r=10, t=40, b=10),
         template="plotly_white",
+        height=max(500, 150 + 60 * len(keep)),
+        bargap=0.15,
+        bargroupgap=0.05,
+        uniformtext=dict(minsize=12, mode='show')
     )
     return fig_trend, fig_box, fig_matrix
 
@@ -843,9 +892,131 @@ def render_vantage_tab():
         with right_col:
             st.markdown('<div id="vantage-map-anchor"></div>', unsafe_allow_html=True)
             st.markdown("##### Corridor Map", help="Stays visible while you scroll the analysis on the left.")
+
+            satellite_t4 = st.toggle("🛰️ Satellite View", key="satellite_t4", value=False)
             try:
+                # 1. Generate Tooltip Map for all intersections
+                tooltip_map = {}
+                from Map import INTERSECTION_TO_NODE, get_node_coordinates
+                node_coords = get_node_coordinates()
+
+                # Calculate ADTs for ALL intersections in the full vehicles_df for the date range
+                # to ensure "blue dots" show data regardless of corridor/direction filters.
+                full_range_veh = vehicles_df[
+                    (vehicles_df["local_datetime"].dt.date >= date_range[0]) &
+                    (vehicles_df["local_datetime"].dt.date <= date_range[1])
+                ].copy()
+
+                if not full_range_veh.empty:
+                    # Calculate ADT as the average of daily totals for each intersection
+                    # This matches the KPI logic (Average Daily Traffic)
+                    full_range_veh["date_only"] = full_range_veh["local_datetime"].dt.date
+                    daily_totals = full_range_veh.groupby(["intersection_name", "date_only"])["volume"].sum()
+                    adt_data = daily_totals.groupby("intersection_name").mean()
+                else:
+                    adt_data = pd.Series()
+
+                # Build tooltips for each known intersection in the map
+                # Mapping for Cathedral City intersections
+                cath_city_data = {
+                    "Canyon Plaza Drive": {"no": "24", "phase": "1", "cycle": "140 sec"},
+                    "Perez Road": {"no": "25", "phase": "1", "cycle": "140 sec"},
+                    "Auto Park Drive": {"no": "26", "phase": "1", "cycle": "140 sec"},
+                    "Bankside Drive": {"no": "27", "phase": "1", "cycle": "140 sec"},
+                    "Cathedral Canyon Drive": {"no": "28", "phase": "1", "cycle": "140 sec"},
+                    "Buddy Rogers Avenue": {"no": "29", "phase": "1", "cycle": "140 sec"},
+                    "Van Fleet Street": {"no": "30", "phase": "1", "cycle": "140 sec"},
+                    "Date Palm Drive": {"no": "32", "phase": "1", "cycle": "140 sec"},
+                    "Sun Gate Way": {"no": "33", "phase": "1", "cycle": "140 sec"},
+                    "Officer Jermain Gibson": {"no": "34", "phase": "1", "cycle": "140 sec"},
+                }
+
+                # Mapping for Washington St corridor
+                washington_st_data = {
+                    "Washington St & Avenue 52": {"no": "102", "agency": "La Quinta", "cycle": "140 sec"},
+                    "Washington St & Calle Tampico": {"no": "103", "agency": "La Quinta", "cycle": "140 sec"},
+                    "Washington St & Village Shopping Center": {"no": "104", "agency": "La Quinta", "cycle": "140 sec"},
+                    "Washington St & Avenue 50": {"no": "105", "agency": "La Quinta", "cycle": "140 sec"},
+                    "Washington St & Sagebrush Avenue": {"no": "106", "agency": "La Quinta", "cycle": "140 sec"},
+                    "Washington St & Eisenhower Drive": {"no": "107", "agency": "La Quinta", "cycle": "140 sec"},
+                    "Washington St & Avenue 48": {"no": "108", "agency": "La Quinta", "cycle": "140 sec"},
+                    "Washington St & Avenue 47": {"no": "109", "agency": "La Quinta", "cycle": "140 sec"},
+                    "Washington St & Point Happy Simon": {"no": "110", "agency": "La Quinta", "cycle": "150 sec"},
+                    "Washington St & Hwy 111": {"no": "111", "agency": "La Quinta", "cycle": "150 sec"},
+                    "Washington St & Channel Drive": {"no": "112", "agency": "La Quinta", "cycle": "150 sec"},
+                    "Washington St & Miles Avenue": {"no": "113", "agency": "La Quinta", "cycle": "150 sec"},
+                    "Washington St & Via Sevilla": {"no": "114", "agency": "La Quinta", "cycle": "150 sec"},
+                    "Washington St & Fred Waring Drive": {"no": "115", "agency": "Palm Desert", "cycle": "150 sec"},
+                    "Washington St & Palm Royale Drive": {"no": "116", "agency": "Palm Desert", "cycle": "150 sec"},
+                    "Washington St & Avenue of the States": {"no": "117", "agency": "Palm Desert", "cycle": "150 sec"},
+                    "Washington St & Avenue 42": {"no": "118", "agency": "Palm Desert", "cycle": "150 sec"},
+                    "Washington St & Avenue 41": {"no": "119", "agency": "Palm Desert", "cycle": "150 sec"},
+                    "Washington St & Country Club Drive": {"no": "120", "agency": "Palm Desert", "cycle": "150 sec"},
+                }
+
+                # Add aliases to ensure mapping works regardless of normalization
+                washington_st_data.update({
+                    "Washington St & Avenue50": washington_st_data["Washington St & Avenue 50"],
+                    "Washington St & Ave48": washington_st_data["Washington St & Avenue 48"],
+                    "Washington St & Ave47": washington_st_data["Washington St & Avenue 47"],
+                    "Washington St & Eisenhower": washington_st_data["Washington St & Eisenhower Drive"],
+                    "Washington St & Village Shop Ctr": washington_st_data["Washington St & Village Shopping Center"],
+                    "Washington St & Sagebrush Ave": washington_st_data["Washington St & Sagebrush Avenue"],
+                })
+
+                for disp_label, node_id in INTERSECTION_TO_NODE.items():
+                    # Find the canonical name for this display label to match with adt_data
+                    canonical_name = _canonicalize_intersection(disp_label)
+                    
+                    coords = node_coords.get(node_id)
+                    gps_str = f"{coords[0]:.5f}, {coords[1]:.5f}" if coords else "Unknown"
+                    
+                    # Try fetching ADT using canonical name, or display label as fallback
+                    adt_val = adt_data.get(canonical_name, adt_data.get(disp_label, 0))
+
+                    # Default values
+                    protocol = "Iteris Vantage API Detector"
+                    agency = "CVAG"
+                    cvag_phase = "N/A"
+                    intersection_no = "N/A"
+                    cycle_length = "N/A"
+
+                    # Apply Cathedral City updates
+                    if disp_label in cath_city_data:
+                        data = cath_city_data[disp_label]
+                        agency = "Cathedral City"
+                        cvag_phase = data["phase"]
+                        intersection_no = data["no"]
+                        cycle_length = data["cycle"]
+
+                    # Apply Washington St updates
+                    if disp_label in washington_st_data:
+                        data = washington_st_data[disp_label]
+                        agency = data.get("agency", agency)
+                        intersection_no = data["no"]
+                        cycle_length = data["cycle"]
+                        if disp_label == "Washington St & Avenue 52":
+                            cvag_phase = "1"
+
+                    tt_html = f"""
+                    <b>{disp_label}</b><br>
+                    GPS Location: {gps_str}<br>
+                    Protocol: {protocol}<br>
+                    Agency: {agency}<br>
+                    CVAG Phase: {cvag_phase}<br>
+                    Intersection No.: {intersection_no}<br>
+                    Cycle Length: {cycle_length}<br>
+                    ADT: {adt_val:,.0f}
+                    """
+                    tooltip_map[disp_label] = tt_html
+
                 selected_map_label = None if intersection == "All Intersections" else _map_label_for(intersection)
-                fig_map = build_intersections_overview(selected_label=selected_map_label)
+                fig_map = build_intersections_overview(
+                    selected_label=selected_map_label,
+                    corridor="Washington Street",
+                    tooltip_map=tooltip_map,
+                    satellite=satellite_t4
+                )
             except Exception:
                 fig_map = None
             if fig_map:
@@ -994,29 +1165,29 @@ def render_vantage_tab():
                 risk_pct = (high_periods / total_periods * 100) if total_periods > 0 else 0.0
 
                 if granularity == "Hourly":
-                    avg_label = f"Average Hourly {mode_label}"
+                    avg_label = f"Hourly {mode_label}"
                     peak_label = f"🔥 Peak Hourly {mode_label}"
-                    avg_suffix = "vph"
+                    avg_suffix = "vehicles"
                     display_threshold = HIGH_VPH
-                    threshold_help = f"High-Volume Threshold: > {display_threshold:,} vph."
+                    threshold_help = f"High-Volume Threshold: > {display_threshold:,} vehicles."
                 elif granularity == "Daily":
-                    avg_label = f"Average Daily {mode_label}"
+                    avg_label = f"Daily {mode_label}"
                     peak_label = f"🔥 Peak Daily {mode_label}"
-                    avg_suffix = "vpd"
+                    avg_suffix = "vehicles"
                     display_threshold = HIGH_VPH * 24
-                    threshold_help = f"High-Volume Threshold (daily): > {display_threshold:,} vpd (scaled from {HIGH_VPH:,} vph × 24h)."
+                    threshold_help = f"High-Volume Threshold (daily): > {display_threshold:,} vehicles (scaled from {HIGH_VPH:,} vehicles × 24h)."
                 elif granularity == "Weekly":
-                    avg_label = f"Average Weekly {mode_label}"
+                    avg_label = f"Weekly {mode_label}"
                     peak_label = f"🔥 Peak Weekly {mode_label}"
-                    avg_suffix = "vpw"
+                    avg_suffix = "vehicles"
                     display_threshold = HIGH_VPH * 24 * 7
-                    threshold_help = f"High-Volume Threshold (weekly): > {display_threshold:,} vpw (scaled from {HIGH_VPH:,} vph × 168h)."
+                    threshold_help = f"High-Volume Threshold (weekly): > {display_threshold:,} vehicles (scaled from {HIGH_VPH:,} vehicles × 168h)."
                 else:
-                    avg_label = f"Average Monthly {mode_label}"
+                    avg_label = f"Monthly {mode_label}"
                     peak_label = f"🔥 Peak Monthly {mode_label}"
-                    avg_suffix = "vpm"
+                    avg_suffix = "vehicles"
                     display_threshold = HIGH_VPH * 24 * 30
-                    threshold_help = f"High-Volume Threshold (monthly): > ~{display_threshold:,} vpm (scaled from {HIGH_VPH:,} vph × hours in month)."
+                    threshold_help = f"High-Volume Threshold (monthly): > ~{display_threshold:,} vehicles (scaled from {HIGH_VPH:,} vehicles × hours in month)."
 
                 col1, col2, col3, col4, col5 = st.columns(5)
 
@@ -1215,12 +1386,23 @@ def render_vantage_tab():
                     try:
                         cap_key = "Vehicles" if mode_label == "All Modes" else mode_label
                         CAP_VPH, HIGH_VPH = _mode_caps(cap_key)
+                        dir_label_arg = "" if direction_filter == "All Directions" else direction_filter
+
+                        # Determine primary street for the caption
+                        primary_street = "Washington Street" # VantageLive is Washington St only
+                        if intersection == "All Intersections":
+                            int_label_arg = "Washington Street Corridor"
+                        else:
+                            int_label_arg = f"{primary_street} & {intersection}"
+
                         fig_trend, fig_box, fig_matrix = create_volume_charts(
                             raw_df=raw,
                             granularity=granularity,
                             cap_vph=CAP_VPH,
                             high_vph=HIGH_VPH,
                             mode_label=mode_label,
+                            direction_label=dir_label_arg,
+                            intersections=int_label_arg,
                         )
                         if fig_trend:
                             st.plotly_chart(

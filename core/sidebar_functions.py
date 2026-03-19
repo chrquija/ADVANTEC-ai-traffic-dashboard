@@ -9,6 +9,15 @@ import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
+# Shared UI utils (scoped loader and tab highlight)
+try:
+    from ui_utils import get_dynamic_xaxis_params
+except ImportError:
+    try:
+        from core.ui_utils import get_dynamic_xaxis_params
+    except ImportError:
+        get_dynamic_xaxis_params = None
+
 
 # ------------------------------------------------------------------
 # Helpers
@@ -94,11 +103,23 @@ def load_traffic_data():
         "Palm Royale Drive → Avenue of the States": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/15_16_LONG_NSB_PalmRoyaleDrive_to_AvenueoftheStates.csv",
         "Avenue of the States → Avenue 42": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/16_17_LONG_NSB_AvenueoftheStates_to_Avenue42.csv",
         "Avenue 42 → Avenue 41": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/17_18_LONG_NSB_Avenue42_to_Avenue41.csv",
-        "Avenue 41 → Country Club Drive": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/18_20_LONG_NB_Avenue41_to_Countryclubdrive.csv",
+        # New Northbound Segments
+        "Avenue 41 → Harris Lane": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/119_120_1hr_LONG_NB_Avenue41_to_HarrisLn.csv",
+        "Harris Lane → Country Club Drive": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/120_121_1hr_LONG_NB_HarrisLn_to_CountryClubDrive.csv",
+        "Country Club Drive → I-10 Interchange": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/121_122_1hr_LONG_NB_CountryClubDrive_to_I10interchange.csv",
+        "I-10 Interchange → Varner Rd": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/122_123_1hr_LONG_NB_I10interchange_to_VarnerRd.csv",
+        "Varner Rd → Market Pl": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/123_124_1hr_LONG_NB_VarnerRd_to_MarketPl.csv",
+        "Market Pl → Del Webb": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/124_125_1hr_LONG_NB_MarketPl_to_DelWebb.csv",
 
-        # Southbound only segments
-        "Harris Lane → Avenue 41 (SB)": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/19_18_LONG_SB_Harrislane_avenue41.csv",
-        "Country Club Drive → Harris Lane (SB)": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/20_19_LONG_SB_CountryClubDrive_to_HarrisLane.csv",
+        # New Southbound Segments
+        "I-10 Interchange → Country Club Drive": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/122_121_1hr_LONG_SB_I10interchange_to_CountryClubDrive.csv",
+        "Varner Rd → I-10 Interchange": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/123_122_1hr_LONG_SB_VarnerRd_to_I10interchange.csv",
+        "Market Pl → Varner Rd": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/124_123_1hr_LONG_SB_MarketPl_to_VarnerRd.csv",
+        "Del Webb → Market Pl": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/125_124_1hr_LONG_SB_DelWebb_to_MarketPl.csv",
+
+        # Existing Southbound segments (kept as requested)
+        "Harris Lane → Avenue 41": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/19_18_LONG_SB_Harrislane_avenue41.csv",
+        "Country Club Drive → Harris Lane": "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/LONGFORMAT/20_19_LONG_SB_CountryClubDrive_to_HarrisLane.csv",
     }
 
     usecols = [
@@ -156,9 +177,18 @@ def load_volume_data():
     Uses new file with added corridor_id and EB/WB directions.
     Ensures presence of: local_datetime, corridor_id, intersection_name, direction, total_volume.
     """
-    volume_url = _fix_raw_url(
-        "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/VOLUME/KMOB_LONG/FULL_AvailableVolumeCounts_WashingtonCorridor.csv"
-    )
+    # Support multiple volume sources: Washington Street, Highway 111, E Palm Canyon Dr
+    volume_urls = [
+        _fix_raw_url(
+            "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/VOLUME/KMOB_LONG/FULL_AvailableVolumeCounts_WashingtonCorridor.csv"
+        ),
+        _fix_raw_url(
+            "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/VOLUME/KMOB_LONG/ALL_KMOB_Hwy111.csv"
+        ),
+        _fix_raw_url(
+            "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/VOLUME/KMOB_LONG/ALL_1hr_EPalmCanyonDr_Oct24ToNovember25.csv"
+        ),
+    ]
 
     def _norm_dir(s: pd.Series) -> pd.Series:
         s = s.astype(str).str.strip().str.upper()
@@ -167,8 +197,9 @@ def load_volume_data():
             "S": "SB", "SB": "SB", "SOUTH": "SB", "SOUTHBOUND": "SB",
             "E": "EB", "EB": "EB", "EAST": "EB", "EASTBOUND": "EB",
             "W": "WB", "WB": "WB", "WEST": "WB", "WESTBOUND": "WB",
+            "WEST-BOUND": "WB", "EAST-BOUND": "EB", "NORTH-BOUND": "NB", "SOUTH-BOUND": "SB",
         }
-        return s.map(map_dir).fillna(s)
+        return s.map(map_dir)
 
     def _friendly_label(raw: str) -> str:
         if not isinstance(raw, str):
@@ -193,6 +224,8 @@ def load_volume_data():
             "Washington_St_and_ViaSevilla": "Via Sevilla",
             "Washington_St_to_Avenue42": "Avenue 42",
             "Washington_St_and_HarrisLane": "Harris Lane",
+            "Washington_St_and_VarnerRoad": "Varner Road",
+            "Washington_St_and_CountryClubDrive": "Country Club Drive",
             # Aliases sometimes seen in data
             "Washington_St_and_Channel_Drive": "Channel Drive",
             "Washington_St_and_MilesAve": "Miles Avenue",
@@ -219,7 +252,22 @@ def load_volume_data():
         return r2.strip()
 
     try:
-        df = pd.read_csv(volume_url)
+        frames = []
+        for url in volume_urls:
+            try:
+                temp_df = pd.read_csv(url)
+                # Assign specific corridor name for E Palm Canyon Dr dataset to avoid conflict with Hwy111 (Indio)
+                if "EPalmCanyonDr" in url:
+                    temp_df["corridor_id"] = "Highway 111 - E Palm Canyon Drive"
+                frames.append(temp_df)
+            except Exception as e:
+                st.warning(f"Could not load volume data from {url}: {e}")
+        
+        if not frames:
+            raise RuntimeError("No volume data could be loaded from any source.")
+        
+        df = pd.concat(frames, ignore_index=True)
+        
         # Ensure datetime
         if "local_datetime" in df.columns:
             df["local_datetime"] = pd.to_datetime(df["local_datetime"], errors="coerce")
@@ -233,11 +281,21 @@ def load_volume_data():
         # Corridor id (string)
         if "corridor_id" not in df.columns:
             df["corridor_id"] = "Washington_Street"
-        df["corridor_id"] = df["corridor_id"].astype("string")
+        
+        # Normalize corridor_id naming to "Highway 111" and "Washington Street"
+        df["corridor_id"] = df["corridor_id"].astype(str).str.strip().replace({
+            "Highway111": "Highway 111",
+            "Highway_111": "Highway 111",
+            "Washington_Street": "Washington Street"
+        })
+        df["corridor_id"] = df["corridor_id"].astype("category")
 
         # Direction normalization
         if "direction" in df.columns:
-            df["direction"] = _norm_dir(df["direction"]).astype("category")
+            df["direction"] = _norm_dir(df["direction"])
+            # Drop any rows where direction is not recognized (e.g., "-")
+            df = df.dropna(subset=["direction"])
+            df["direction"] = df["direction"].astype("category")
         else:
             df["direction"] = "NB"
 
@@ -254,7 +312,37 @@ def load_volume_data():
             raise RuntimeError("Missing intersection identifier column in volume CSV")
 
         # Build friendly intersection_name
-        df["intersection_name"] = df[inter_key_col].astype(str).apply(_friendly_label)
+        def _hwy111_friendly(raw: str) -> str:
+            hwy111_map = {
+                "Highway111_and_ParkviewDrive": "Park View Drive",
+                "Highway111_and_Highway74": "Highway 74",
+                "Highway111_and_JackalopeTrail": "Jackalope Trail",
+                "Highway111_and_ShieldsRoad": "Shields Road",
+                "Highway111_and_OasisStreet": "Oasis Street",
+                "Highway111_and_SmurrStreet": "Smurr Street",
+                "Highway111_and_JacksonStreet": "Jackson Street",
+                "Highway111_and_GolfCenterParkway": "Golf Center Parkway",
+                "Highway111_and_IndioBlvd": "Indio Blvd",
+                # E Palm Canyon Drive segment
+                "EPalmCanyonDr_and_CanyonPlazaDr": "Canyon Plaza Drive",
+                "EPalmCanyonDr_and_PerezRd": "Perez Road",
+                "EPalmCanyonDr_and_AutoParkDrive": "Auto Park Drive",
+                "EPalmCanyonDr_and_BanksideDrive": "Bankside Drive",
+                "EPalmCanyonDrive_and_CathedralCanyonDrive": "Cathedral Canyon Drive",
+                "EPalmCanyonDr_and_BuddyRogersAvenue": "Buddy Rogers Avenue",
+                "EPalmCanyonDr_and_VanFleetStreet": "Van Fleet Street",
+                "EPalmCanyonDr_and_DatePalmDrive": "Date Palm Drive",
+                "EPalmCanyonDr_and_SunGateWay": "Sun Gate Way",
+                "EPalmCanyonDr_and_OfficeJermainGibson": "Officer Jermain Gibson"
+            }
+            return hwy111_map.get(raw, _friendly_label(raw))
+
+        df["intersection_name"] = df.apply(
+            lambda row: _hwy111_friendly(str(row[inter_key_col])) 
+            if "highway 111" in str(row.get("corridor_id")).lower() 
+            else _friendly_label(str(row[inter_key_col])), 
+            axis=1
+        )
 
         # Ensure numeric volume column
         vol_col = "total_volume" if "total_volume" in df.columns else ("volume" if "volume" in df.columns else None)
@@ -302,6 +390,10 @@ ACYCLICA_URLS = [
     # Highway 111: Washington Street ↔ Monroe Street (EB/WB)
     _fix_raw_url(
         "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/Highway_111_DATA/ACYCLICA/MASTER_EWB_1hr_Hwy111_WashingtonStreet_to_MonroeStreet.csv"
+    ),
+    # Highway 111: Monroe Street ↔ Indio Blvd (EB/WB)
+    _fix_raw_url(
+        "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/Highway_111_DATA/ACYCLICA/MASTER_EWB_1hr_Hwy111_Monroe_to_IndioBlvd.csv"
     ),
 ]
 
@@ -364,8 +456,10 @@ def load_acyclica_data() -> pd.DataFrame:
             return "NB"
         if x in {"S", "SB", "SOUTH", "SOUTHBOUND", "S/B", "SOUTH-BOUND"}:
             return "SB"
-        return x
-    df["direction"] = dir_raw.map(_norm_dir)
+        return np.nan
+    df["direction"] = dir_raw.apply(_norm_dir)
+    # Drop any rows with invalid directions (like "-")
+    df = df.dropna(subset=["direction"])
 
     # Segment ID normalization (strip spaces if column exists)
     if "segment_id" in df.columns:
@@ -617,8 +711,8 @@ def compute_perf_kpis_interpretable(df: pd.DataFrame, high_delay_threshold: floa
             "value": cong_freq,
             "unit": "%",
             "score": score_congestion,
-            "extra": f"Hours > {high_delay_threshold:.0f}s: {cong_hours}/{total_hours}",
-            "help": "Share of hours with delay above your chosen threshold.",
+            "extra": f"Hours > {high_delay_threshold:.0f} min delay: {cong_hours}/{total_hours}",
+            "help": "The percentage of hours where average corridor delay exceeded the threshold in minutes. This refrences the HCM 6th Edition Level of Service E definition of approximately 55 seconds or 1 minute of control delay indicating unstable flow. Source: Highway Capacity Manual 6th Edition, TRB 2016. https://www.trb.org/Main/Blurbs/175169.aspx",
         },
     }
 
@@ -634,29 +728,44 @@ def render_badge(score: float) -> str:
 # =========================
 # Chart helpers
 # =========================
-def performance_chart(data: pd.DataFrame, metric_type: str = "delay"):
+def performance_chart(data: pd.DataFrame, metric_type: str = "delay", direction_label: str = ""):
     if data.empty:
         return None
     metric_type = metric_type.lower().strip()
     if metric_type == "delay":
-        y_col, title, color = "average_delay", "Traffic Delay Analysis", "#e74c3c"
-        y_label = "Average Delay (seconds)"
-        dist_x_label = "Average Delay (seconds)"
+        y_col, base_title, color = "average_delay", "Traffic Delay Analysis", "#e74c3c"
+        y_label = "Average Delay (minutes)"
+        dist_x_label = "Average Delay (minutes)"
     else:
-        y_col, title, color = "average_traveltime", "Travel Time Analysis", "#3498db"
+        y_col, base_title, color = "average_traveltime", "Travel Time Analysis", "#3498db"
         y_label = "Average Travel Time (minutes)"
         dist_x_label = "Average Travel Time (minutes)"
 
+    title = f"{direction_label} {base_title}".strip()
     dd = data.dropna(subset=["local_datetime", y_col]).sort_values("local_datetime")
+
+    # Distribution stats for annotation and vertical lines
+    series = dd[y_col]
+    mean_val = float(series.mean()) if not series.empty else 0.0
+    p25 = float(series.quantile(0.25)) if not series.empty else 0.0
+    p75 = float(series.quantile(0.75)) if not series.empty else 0.0
+    p95 = float(series.quantile(0.95)) if not series.empty else 0.0
+    unit = "min"
+    dist_annotation = f"Most hours: {p25:.1f}–{p75:.1f} {unit}. Worst 5%: above {p95:.1f} {unit}."
 
     fig = make_subplots(
         rows=2, cols=1,
-        subplot_titles=("Time Series Analysis", "Distribution Analysis"),
+        subplot_titles=("Time Series Analysis", f"Distribution Analysis. {dist_annotation}"),
         # Increase spacing between the top chart and the Distribution subtitle to prevent overlap
         vertical_spacing=0.25,
     )
 
     # Time series plot
+    ts_hover_tmpl = (
+        "%{x|%b %d, %Y %I:%M %p}\n⏱ Avg Delay: %{y:.1f} min  "
+        if metric_type == "delay"
+        else "%{x|%b %d, %Y %I:%M %p}\n🕐 Avg Travel Time: %{y:.1f} min  "
+    )
     fig.add_trace(
         go.Scatter(
             x=dd["local_datetime"],
@@ -665,6 +774,7 @@ def performance_chart(data: pd.DataFrame, metric_type: str = "delay"):
             name=f"{metric_type.title()} Trend",
             line=dict(color=color, width=2),
             marker=dict(size=4),
+            hovertemplate=ts_hover_tmpl,
         ),
         row=1, col=1,
     )
@@ -701,6 +811,11 @@ def performance_chart(data: pd.DataFrame, metric_type: str = "delay"):
         pass
 
     # Distribution histogram
+    hover_tmpl = (
+        "%{y:d} hours had an avg delay between %{x} min  <extra></extra>"
+        if metric_type == "delay"
+        else "%{y:d} hours had a travel time between %{x} min  <extra></extra>"
+    )
     fig.add_trace(
         go.Histogram(
             x=dd[y_col],
@@ -708,9 +823,14 @@ def performance_chart(data: pd.DataFrame, metric_type: str = "delay"):
             name=f"{metric_type.title()} Distribution",
             marker_color=color,
             opacity=0.75,
+            hovertemplate=hover_tmpl,
         ),
         row=2, col=1,
     )
+
+    # Add vertical lines for mean and 95th percentile
+    fig.add_vline(x=mean_val, line_dash="dash", line_color="#333", annotation_text="Avg", row=2, col=1)
+    fig.add_vline(x=p95, line_dash="dot", line_color="#333", annotation_text="95th %ile", row=2, col=1)
 
     fig.update_layout(
         height=600,
@@ -720,10 +840,27 @@ def performance_chart(data: pd.DataFrame, metric_type: str = "delay"):
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
     )
-    fig.update_xaxes(title_text="Date/Time", row=1, col=1)
-    fig.update_yaxes(title_text=y_label, row=1, col=1)
-    fig.update_xaxes(title_text=dist_x_label, row=2, col=1)
-    fig.update_yaxes(title_text="Frequency (Number of Hours)", row=2, col=1)
+    # Custom X-axis logic for better labels on long ranges
+    if get_dynamic_xaxis_params and not data.empty:
+        start_date = data["local_datetime"].min()
+        end_date = data["local_datetime"].max()
+        params = get_dynamic_xaxis_params(start_date, end_date)
+        dtick = params["dtick"]
+        tickformat = params["tickformat"]
+    else:
+        dtick = 21600000
+        tickformat = "%b %d\n%I:%M %p"
+
+    fig.update_xaxes(
+        title=dict(text="Date/Time", font=dict(size=16, weight="bold")),
+        tickfont=dict(size=14),
+        dtick=dtick,
+        tickformat=tickformat,
+        row=1, col=1
+    )
+    fig.update_yaxes(title=dict(text=y_label, font=dict(size=16, weight="bold")), tickfont=dict(size=14), row=1, col=1)
+    fig.update_xaxes(title=dict(text=dist_x_label, font=dict(size=16, weight="bold")), tickfont=dict(size=14), row=2, col=1)
+    fig.update_yaxes(title=dict(text="Frequency (Number of Hours)", font=dict(size=16, weight="bold")), tickfont=dict(size=14), row=2, col=1)
 
     return fig
 
@@ -747,19 +884,27 @@ def volume_charts(
         title=" Traffic Volume Trends by Intersection",
         labels={"total_volume": "Volume (vehicles/hour)", "local_datetime": "Date/Time"},
         template="plotly_white",
+        markers=True,
     )
     fig1.update_layout(
         height=500,
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        xaxis=dict(
+            title=dict(text="Date/Time", font=dict(size=16, weight="bold")),
+            tickfont=dict(size=13),
+            dtick=21600000,
+            tickformat="%b %d\n%I:%M %p"
+        ),
+        yaxis=dict(title=dict(text="Vehicle Volume Counts", font=dict(size=16, weight="bold")), tickfont=dict(size=13)),
     )
 
     # 2) Distribution + Hourly heatmap
     fig2 = make_subplots(
         rows=2,
         cols=1,
-        subplot_titles=("Volume Distribution by Intersection", "Hourly Avg Volume Heatmap"),
+        subplot_titles=("Volume Distribution by Intersection", "Hourly Volume Heatmap"),
         vertical_spacing=0.12,
     )
 
@@ -778,7 +923,7 @@ def volume_charts(
             y=hourly_pivot.index,
             colorscale="Blues",
             showscale=True,
-            colorbar=dict(title="Avg Volume (vph)"),
+            colorbar=dict(title="Volume (vehicles)"),
         ),
         row=2, col=1,
     )
@@ -797,27 +942,30 @@ def volume_charts(
         x="hour",
         y="total_volume",
         color="intersection_name",
-        title=" Average Hourly Volume Patterns",
-        labels={"total_volume": "Average Volume (vph)", "hour": "Hour of Day"},
+        title=" Hourly Volume Patterns",
+        labels={"total_volume": "Volume (vehicles)", "hour": "Hour of Day"},
         template="plotly_white",
+        markers=True,
     )
     fig3.add_hline(
         y=theoretical_link_capacity_vph,
         line_dash="dash",
         line_color="red",
-        annotation_text=f"Theoretical Capacity ({theoretical_link_capacity_vph:,} vph)",
+        annotation_text=f"Theoretical Capacity ({theoretical_link_capacity_vph:,} vehicles)",
     )
     fig3.add_hline(
         y=high_volume_threshold_vph,
         line_dash="dot",
         line_color="orange",
-        annotation_text=f"High Volume Threshold ({high_volume_threshold_vph:,} vph)",
+        annotation_text=f"High Volume Threshold ({high_volume_threshold_vph:,} vehicles)",
     )
     fig3.update_layout(
         height=500,
         plot_bgcolor="rgba(0,0,0,0)",
         paper_bgcolor="rgba(0,0,0,0)",
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+        xaxis=dict(title=dict(text="Hour of Day", font=dict(size=16, weight="bold")), tickfont=dict(size=13)),
+        yaxis=dict(title=dict(text="Vehicle Volume Counts", font=dict(size=16, weight="bold")), tickfont=dict(size=13)),
     )
 
     return fig1, fig2, fig3
@@ -892,7 +1040,10 @@ def compute_data_availability(
     dfx = df.copy()
     # Optional intersection filter
     if intersection and intersection_col and intersection_col in dfx.columns and intersection != "All Intersections":
-        dfx = dfx[dfx[intersection_col] == intersection]
+        if isinstance(intersection, list):
+            dfx = dfx[dfx[intersection_col].isin(intersection)]
+        else:
+            dfx = dfx[dfx[intersection_col] == intersection]
         if dfx.empty:
             return out
 
@@ -1172,6 +1323,94 @@ def process_traffic_data(df, date_range, granularity, time_filter=None, start_ho
 
     # Fallback - return filtered df
     return df.sort_values("local_datetime").reset_index(drop=True)
+
+
+def compute_missing_strength_gaps(df, start_date, end_date, granularity):
+    """
+    Identifies contiguous missing-data gaps for the Strength column.
+    Handles wide-format data (average_speed, average_traveltime columns).
+    Returns a DataFrame with columns:
+    segment_id, direction, metric, missing_start, missing_end, missing_hours, missing_days, full_day_aligned, gap_type
+    """
+    if df is None or df.empty:
+        return pd.DataFrame(columns=["segment_id", "direction", "metric", "missing_start", "missing_end", "missing_hours", "missing_days", "full_day_aligned", "gap_type"])
+
+    # Map granularity to pandas frequency
+    freq_map = {"Hourly": "1H", "Daily": "1D", "Weekly": "W", "Monthly": "MS"}
+    freq = freq_map.get(granularity, "1H")
+
+    # Hour multiplier for duration calculation
+    interval_hours = {"1H": 1.0, "1D": 24.0, "W": 168.0, "MS": 720.0}.get(freq, 1.0)
+
+    # Create expected date range
+    expected_range = pd.date_range(start=start_date, end=end_date, freq=freq)
+    results = []
+
+    # Map the wide columns back to Metric names for the report
+    metric_cols = {
+        "average_speed": "Speed",
+        "average_traveltime": "Travel Time"
+    }
+
+    group_cols = ["segment_id", "direction"]
+    temp_df = df.copy()
+    for col in group_cols:
+        if col not in temp_df.columns:
+            temp_df[col] = "Unknown"
+
+    if "local_datetime" not in temp_df.columns:
+        return pd.DataFrame(columns=["segment_id", "direction", "metric", "missing_start", "missing_end", "missing_hours", "missing_days", "full_day_aligned", "gap_type"])
+
+    for (seg_id, direction), group in temp_df.groupby(group_cols):
+        group = group.set_index("local_datetime").sort_index()
+        
+        for col, metric_label in metric_cols.items():
+            if col not in group.columns:
+                continue
+                
+            # Reindex for this specific metric
+            full_series = group[col].reindex(expected_range)
+            is_missing = full_series.isna()
+            
+            if not is_missing.any():
+                continue
+            
+            # Identify contiguous blocks
+            is_missing_int = is_missing.astype(int)
+            gap_id = (is_missing_int != is_missing_int.shift()).cumsum()
+            
+            # Group ONLY the missing blocks
+            for _, block in is_missing_int[is_missing].groupby(gap_id):
+                m_start = block.index[0]
+                m_end = block.index[-1]
+                m_intervals = len(block)
+                m_hours = m_intervals * interval_hours
+                
+                # Alignment logic for "Full Day"
+                # For hourly: start at 00:00, end at 23:00
+                is_aligned = (m_start.hour == 0 and m_end.hour == 23) if freq == "1H" else True
+                
+                if m_hours >= 24 and is_aligned:
+                    g_type = "full_days_missing"
+                    aligned_val = "TRUE"
+                else:
+                    g_type = "partial_day_missing" if m_hours < 24 else "multi_day_partial"
+                    aligned_val = "FALSE"
+
+                results.append({
+                    "segment_id": seg_id,
+                    "direction": direction,
+                    "metric": metric_label,
+                    "missing_start": m_start.strftime("%m/%d/%Y %H:%M"),
+                    "missing_end": m_end.strftime("%m/%d/%Y %H:%M"),
+                    "missing_hours": int(m_hours),
+                    "missing_days": round(m_hours / 24, 2),
+                    "full_day_aligned": aligned_val,
+                    "gap_type": g_type
+                })
+
+    return pd.DataFrame(results) if results else pd.DataFrame(columns=["segment_id", "direction", "metric", "missing_start", "missing_end", "missing_hours", "missing_days", "full_day_aligned", "gap_type"])
+
 
 #Function to help download 5 minute CSV
 

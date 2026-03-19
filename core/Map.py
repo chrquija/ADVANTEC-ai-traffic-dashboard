@@ -1,6 +1,6 @@
 # Plotly + OpenStreetMap helpers for the dashboard maps.
 
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List, Tuple, Optional, Union
 
 import numpy as np
 import requests
@@ -31,6 +31,10 @@ NODES_ORDER: List[str] = [
     "Avenue 41",
     "Harris Lane",
     "Country Club Drive",
+    "I-10 Interchange",
+    "Varner Road",
+    "Market Pl",
+    "Del Webb",
     # Highway 111 pair (Palm Canyon Dr area)
     "Canyon Plaza West",
     "Jermaine Gibson",
@@ -39,6 +43,18 @@ NODES_ORDER: List[str] = [
     "Cook Street",
     "Washington Street",
     "Monroe Street",
+    "Indio Blvd",
+    # Highway 111 - E Palm Canyon Drive
+    "Canyon Plaza Drive",
+    "Perez Road",
+    "Auto Park Drive",
+    "Bankside Drive",
+    "Cathedral Canyon Drive",
+    "Buddy Rogers Avenue",
+    "Van Fleet Street",
+    "Date Palm Drive",
+    "Sun Gate Way",
+    "Officer Jermain Gibson",
 ]
 
 # GeoJSON for each adjacent segment (A → B) along the corridor
@@ -63,7 +79,7 @@ SEGMENT_URLS: Dict[Tuple[str, str], str] = {
     ("Point Happy Simon",
      "Hwy 111"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/pointhappysimon_hwy111.geojson",
 
-    # New northbound segments (Hwy 111 to Country Club Drive)
+    # New Northbound segments (Hwy 111 to Del Webb)
     ("Hwy 111",
      "Channel Drive"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/NB_Hwy111_ChannelDrive.geojson",
     ("Channel Drive",
@@ -81,11 +97,21 @@ SEGMENT_URLS: Dict[Tuple[str, str], str] = {
     ("Avenue 42",
      "Avenue 41"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/NB_Avenue%2042_Avenue41.geojson",
 
-    # Special case: Harris Lane segments (southbound only data available)
-    ("Avenue 41",
-     "Harris Lane"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/SB_HarrisLane_Avenue41.geojson",
-    ("Harris Lane",
-     "Country Club Drive"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/SB_CountryClubDrive_HarrisLane.geojson",
+    # Northbound Segments
+    ("Avenue 41", "Harris Lane"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/119to120_NBAvenue41_HarrisLn.geojson",
+    ("Harris Lane", "Country Club Drive"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/120to121_NBHarrisLn_CountryClubDr.geojson",
+    ("Country Club Drive", "I-10 Interchange"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/121-122_NBCountryClubDr_I-10%20Interchange.geojson",
+    ("I-10 Interchange", "Varner Road"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/122-123_NBI-10Interchange_VarnerRd.geojson",
+    ("Varner Road", "Market Pl"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/123-124_NBVarnerRd_MarketPl.geojson",
+    ("Market Pl", "Del Webb"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/124-125_NBMarketPl_DelWebb.geojson",
+
+    # Southbound Segments
+    ("Harris Lane", "Avenue 41"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/SB_HarrisLane_Avenue41.geojson",
+    ("Country Club Drive", "Harris Lane"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/SB_CountryClubDrive_HarrisLane.geojson",
+    ("I-10 Interchange", "Country Club Drive"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/122-121_SBI-10Interchange_CountryClubDrive.geojson",
+    ("Varner Road", "I-10 Interchange"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/123-122_SBVarnerRd_I-10Interchange.geojson",
+    ("Market Pl", "Varner Road"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/124-123_SBMarketPl_VarnerRd.geojson",
+    ("Del Webb", "Market Pl"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/125-124_SBDelWebb_MarketPl.geojson",
 
     # Highway 111: Canyon Plaza West ↔ Jermaine Gibson
     ("Canyon Plaza West",
@@ -110,6 +136,12 @@ SEGMENT_URLS: Dict[Tuple[str, str], str] = {
      "Monroe Street"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/Hwy111EB_WashingtonSt_MonroeSt.geojson",
     ("Monroe Street",
      "Washington Street"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/Hwy111WB_MonroeSt_WashingtonStreet.geojson",
+
+    # Highway 111: Monroe Street ↔ Indio Blvd
+    ("Monroe Street",
+     "Indio Blvd"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/Highway111EB_MonroeSt_IndioBlvd.geojson",
+    ("Indio Blvd",
+     "Monroe Street"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/Highway111WB_IndioBlvd_MonroeSt.geojson",
 }
 
 # =========================
@@ -118,15 +150,15 @@ SEGMENT_URLS: Dict[Tuple[str, str], str] = {
 # =========================
 INTERSECTION_TO_NODE: Dict[str, str] = {
     # Existing canonical labels (Avenue 52 to Hwy 111)
-    "Washington St & Avenue52": "Avenue 52",
+    "Washington St & Avenue 52": "Avenue 52",
     "Washington St & Calle Tampico": "Calle Tampico",
-    "Washington St & Village Shop Ctr": "Village Shopping Ctr",
-    "Washington St & Avenue50": "Avenue 50",
-    "Washington St & Sagebrush Ave": "Sagebrush Ave",
-    "Washington St & Eisenhower": "Eisenhower Dr",
-    "Washington St & Ave48": "Avenue 48",
-    "Washington St & Ave47": "Avenue 47",
-    "Washington St & Point Happy Simon": "Point Happy Simon",
+    "Washington St & Village Shopping Center": "Village Shopping Ctr",
+    "Washington St & Avenue 50": "Avenue 50",
+    "Washington St & Sagebrush Avenue": "Sagebrush Ave",
+    "Washington St & Eisenhower Drive": "Eisenhower Dr",
+    "Washington St & Avenue 48": "Avenue 48",
+    "Washington St & Avenue 47": "Avenue 47",
+    "Washington St & Point Happy Way": "Point Happy Simon",
     "Washington St & Hwy 111": "Hwy 111",
 
     # New northern intersections (Hwy 111 to Country Club Drive)
@@ -140,6 +172,14 @@ INTERSECTION_TO_NODE: Dict[str, str] = {
     "Washington St & Avenue 41": "Avenue 41",
     "Washington St & Harris Lane": "Harris Lane",
     "Washington St & Country Club Drive": "Country Club Drive",
+    "Washington St & I-10 Interchange": "I-10 Interchange",
+    "Washington St & I-10": "I-10 Interchange",
+    "Washington St & Varner Road": "Varner Road",
+    "Washington St & Varner": "Varner Road",
+    "Washington St & Market Pl": "Market Pl",
+    "Washington St & Market Place": "Market Pl",
+    "Washington St & Del Webb": "Del Webb",
+    "Washington St & Del Webb Blvd": "Del Webb",
 
     # Highway 111 intersections (Palm Desert area)
     "Hwy 111 & Parkview Drive": "Parkview Drive",
@@ -148,12 +188,27 @@ INTERSECTION_TO_NODE: Dict[str, str] = {
     "Highway 111 & Cook Street": "Cook Street",
     "Hwy 111 & Washington Street": "Washington Street",
     "Highway 111 & Washington Street": "Washington Street",
+    "Hwy 111 & Monroe Street": "Monroe Street",
+    "Highway 111 & Monroe Street": "Monroe Street",
+    "Hwy 111 & Indio Blvd": "Indio Blvd",
+    "Highway 111 & Indio Blvd": "Indio Blvd",
 
     # Common variants / aliases (existing)
     "Washington St & Avenue 52": "Avenue 52",
     "Washington St & Avenue 50": "Avenue 50",
+    "Washington St & Avenue 48": "Avenue 48",
+    "Washington St & Avenue 47": "Avenue 47",
     "Washington St & Ave 48": "Avenue 48",
     "Washington St & Ave 47": "Avenue 47",
+    "Washington St & Ave 52": "Avenue 52",
+    "Washington St & Ave 50": "Avenue 50",
+    "Washington St & Avenue52": "Avenue 52",
+    "Washington St & Avenue50": "Avenue 50",
+    "Washington St & Avenue48": "Avenue 48",
+    "Washington St & Avenue47": "Avenue 47",
+    "Washington St & Village Shop Ctr": "Village Shopping Ctr",
+    "Washington St & Sagebrush Ave": "Sagebrush Ave",
+    "Washington St & Eisenhower": "Eisenhower Dr",
     "Washington St & Eisenhower Dr": "Eisenhower Dr",
     "Washington St & Village Shopping Ctr": "Village Shopping Ctr",
     "Washington St & Village Shopping Center": "Village Shopping Ctr",
@@ -168,6 +223,30 @@ INTERSECTION_TO_NODE: Dict[str, str] = {
     "Washington St & Ave 42": "Avenue 42",
     "Washington St & Ave 41": "Avenue 41",
     "Washington St & Country Club Dr": "Country Club Drive",
+
+    # Highway 111 - E Palm Canyon Drive
+    "Canyon Plaza Drive": "Canyon Plaza Drive",
+    "Perez Road": "Perez Road",
+    "Auto Park Drive": "Auto Park Drive",
+    "Bankside Drive": "Bankside Drive",
+    "Cathedral Canyon Drive": "Cathedral Canyon Drive",
+    "Buddy Rogers Avenue": "Buddy Rogers Avenue",
+    "Van Fleet Street": "Van Fleet Street",
+    "Date Palm Drive": "Date Palm Drive",
+    "Sun Gate Way": "Sun Gate Way",
+    "Officer Jermain Gibson": "Officer Jermain Gibson",
+
+    # Raw IDs for Highway 111 - E Palm Canyon Drive
+    "EPalmCanyonDr_and_CanyonPlazaDr": "Canyon Plaza Drive",
+    "EPalmCanyonDr_and_PerezRd": "Perez Road",
+    "EPalmCanyonDr_and_AutoParkDrive": "Auto Park Drive",
+    "EPalmCanyonDr_and_BanksideDrive": "Bankside Drive",
+    "EPalmCanyonDrive_and_CathedralCanyonDrive": "Cathedral Canyon Drive",
+    "EPalmCanyonDr_and_BuddyRogersAvenue": "Buddy Rogers Avenue",
+    "EPalmCanyonDr_and_VanFleetStreet": "Van Fleet Street",
+    "EPalmCanyonDr_and_DatePalmDrive": "Date Palm Drive",
+    "EPalmCanyonDr_and_SunGateWay": "Sun Gate Way",
+    "EPalmCanyonDr_and_OfficeJermainGibson": "Officer Jermain Gibson",
 }
 
 # Extra loose aliases (label normalization pass before INTERSECTION_TO_NODE)
@@ -204,7 +283,24 @@ LABEL_ALIASES: Dict[str, str] = {
     "Washington Street & Ave 41": "Washington St & Ave 41",
     "Washington Street & Harris Lane": "Washington St & Harris Lane",
     "Washington Street & Country Club Drive": "Washington St & Country Club Drive",
-    "Washington Street & Country Club Dr": "Washington St & Country Club Dr",
+    "Washington Street & Monroe Street": "Hwy 111 & Monroe Street",
+    "Washington Street & Indio Blvd": "Hwy 111 & Indio Blvd",
+    "Hwy 111 & Monroe St": "Monroe Street",
+    "Highway 111 & Monroe St": "Monroe Street",
+    "Hwy 111 & Indio Boulevard": "Indio Blvd",
+    "Highway 111 & Indio Boulevard": "Indio Blvd",
+
+    # Highway 111 - E Palm Canyon Drive
+    "Highway 111 & Canyon Plaza Drive": "Canyon Plaza Drive",
+    "Highway 111 & Perez Road": "Perez Road",
+    "Highway 111 & Auto Park Drive": "Auto Park Drive",
+    "Highway 111 & Bankside Drive": "Bankside Drive",
+    "Highway 111 & Cathedral Canyon Drive": "Cathedral Canyon Drive",
+    "Highway 111 & Buddy Rogers Avenue": "Buddy Rogers Avenue",
+    "Highway 111 & Van Fleet Street": "Van Fleet Street",
+    "Highway 111 & Date Palm Drive": "Date Palm Drive",
+    "Highway 111 & Sun Gate Way": "Sun Gate Way",
+    "Highway 111 & Officer Jermain Gibson": "Officer Jermain Gibson",
 }
 
 
@@ -296,12 +392,28 @@ def _lines_from_geojson(gj: dict) -> List[List[Tuple[float, float]]]:
     return [line for line in out if len(line) >= 2]
 
 
+# =========================
+# Explicit Coordinates for intersections not covered by GeoJSON segments
+# =========================
+EXPLICIT_NODE_COORDS: Dict[str, Tuple[float, float]] = {
+    "Canyon Plaza Drive": (33.78739, -116.48206),
+    "Perez Road": (33.78535, -116.47582),
+    "Auto Park Drive": (33.78370, -116.47361),
+    "Bankside Drive": (33.78092, -116.46996),
+    "Cathedral Canyon Drive": (33.77985, -116.46608),
+    "Buddy Rogers Avenue": (33.77974, -116.46443),
+    "Van Fleet Street": (33.77915, -116.46248),
+    "Date Palm Drive": (33.77725, -116.45721),
+    "Sun Gate Way": (33.77651, -116.45453),
+    "Officer Jermain Gibson": (33.77683, -116.45246),
+}
+
+
 def _derive_node_coords_from_segments() -> Dict[str, Tuple[float, float]]:
     """
-    Build approximate node coordinates using segment endpoints.
-    For each (A,B) segment, take the first and last point of its longest polyline and assign to A and B if missing.
+    Build approximate node coordinates using segment endpoints and explicit overrides.
     """
-    node_coords: Dict[str, Tuple[float, float]] = {}
+    node_coords: Dict[str, Tuple[float, float]] = EXPLICIT_NODE_COORDS.copy()
     for (a, b), url in SEGMENT_URLS.items():
         gj = _fetch_geojson(url)
         if not gj:
@@ -315,6 +427,14 @@ def _derive_node_coords_from_segments() -> Dict[str, Tuple[float, float]]:
         node_coords.setdefault(a, (start_lat, start_lon))
         node_coords.setdefault(b, (end_lat, end_lon))
     return node_coords
+
+
+def get_node_coordinates() -> Dict[str, Tuple[float, float]]:
+    """
+    Public accessor for node coordinates (cached/derived).
+    Returns dict: { 'Node Name': (lat, lon) }
+    """
+    return _derive_node_coords_from_segments()
 
 
 # =========================
@@ -335,8 +455,32 @@ AVAILABLE_INTERSECTION_NODES = {
     "Via Sevilla",
     "Avenue 42",
     "Harris Lane",
+    "Country Club Drive",
+    "I-10 Interchange",
+    "Varner Road",
+    "Market Pl",
+    "Del Webb",
+    # Highway 111 (Palm Desert area)
+    "Parkview Drive",
+    "Cook Street",
+    "Washington Street",
+    "Monroe Street",
+    "Indio Blvd",
+    # Highway 111 - E Palm Canyon Drive
+    "Canyon Plaza Drive",
+    "Perez Road",
+    "Auto Park Drive",
+    "Bankside Drive",
+    "Cathedral Canyon Drive",
+    "Buddy Rogers Avenue",
+    "Van Fleet Street",
+    "Date Palm Drive",
+    "Sun Gate Way",
+    "Officer Jermain Gibson",
 }
-def build_corridor_map(origin: str, destination: str) -> Optional[go.Figure]:
+
+
+def build_corridor_map(origin: str, destination: str, satellite: bool = False) -> Optional[go.Figure]:
     """
     Tab 1: Show the selected O→D corridor segment(s).
     Draws the path using your GeoJSON segments and highlights start/end.
@@ -376,6 +520,7 @@ def build_corridor_map(origin: str, destination: str) -> Optional[go.Figure]:
                     mode="lines",
                     line=dict(width=5, color="#1f77b4"),
                     hoverinfo="skip",
+                    showlegend=False,
                     name=f"{pair[0]} → {pair[1]}",
                 )
             )
@@ -394,7 +539,7 @@ def build_corridor_map(origin: str, destination: str) -> Optional[go.Figure]:
                 lat=[start_latlon[0]],
                 lon=[start_latlon[1]],
                 mode="markers+text",
-                marker=dict(size=13, color="#2ECC71"),
+                marker=dict(size=20, color="#2ECC71"),
                 text=[f"Start: {origin}"],
                 textposition="top right",
                 showlegend=False,
@@ -408,7 +553,7 @@ def build_corridor_map(origin: str, destination: str) -> Optional[go.Figure]:
                 lat=[end_latlon[0]],
                 lon=[end_latlon[1]],
                 mode="markers+text",
-                marker=dict(size=13, color="#E74C3C"),
+                marker=dict(size=20, color="#E74C3C"),
                 text=[f"End: {destination}"],
                 textposition="top right",
                 showlegend=False,
@@ -424,14 +569,58 @@ def build_corridor_map(origin: str, destination: str) -> Optional[go.Figure]:
             zoom=12,
         ),
         margin=dict(l=10, r=10, t=30, b=10),
-        height=360,
-        showlegend=False,
+        height=600,
+        showlegend=True,
         title=f"Corridor Segment: {origin} → {destination}",
+    )
+
+    # Satellite toggle logic
+    if satellite:
+        try:
+            token = st.secrets.get("mapbox_token", "")
+        except Exception:
+            token = ""
+        if token:
+            fig.update_layout(mapbox_style="satellite-streets", mapbox_accesstoken=token)
+        else:
+            # Fallback to free Esri Satellite tiles if no Mapbox token
+            fig.update_layout(
+                mapbox_style="white-bg",
+                mapbox_layers=[
+                    {
+                        "below": 'traces',
+                        "sourcetype": "raster",
+                        "sourceattribution": "Esri, Maxar, Earthstar Geographics",
+                        "source": [
+                            "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                        ]
+                    }
+                ]
+            )
+
+    # Legend
+    fig.add_trace(go.Scattermapbox(lat=[None], lon=[None], mode="lines", line=dict(width=4, color="#1f77b4"), showlegend=True, name="Corridor Path"))
+    fig.add_trace(go.Scattermapbox(lat=[None], lon=[None], mode="markers", marker=dict(size=10, color="#2ECC71"), showlegend=True, name="Start"))
+    fig.add_trace(go.Scattermapbox(lat=[None], lon=[None], mode="markers", marker=dict(size=10, color="#E74C3C"), showlegend=True, name="End"))
+    fig.add_trace(go.Scattermapbox(lat=[None], lon=[None], mode="markers", marker=dict(size=10, color="#5DADE2"), showlegend=True, name="Intersection"))
+
+    fig.update_layout(
+        legend=dict(
+            title=dict(text="Legend"),
+            x=0.01,
+            y=0.99,
+            xanchor="left",
+            yanchor="top",
+            bgcolor="rgba(255,255,255,0.85)",
+            bordercolor="#cccccc",
+            borderwidth=1,
+            font=dict(size=12),
+        )
     )
     return fig
 
 
-def build_intersection_map(intersection_label: str) -> Optional[go.Figure]:
+def build_intersection_map(intersection_label: str, satellite: bool = False) -> Optional[go.Figure]:
     """
     Tab 2: Show a dot for the selected intersection.
     Resolves display label -> corridor node, derives lat/lon from segments, and marks it.
@@ -454,7 +643,7 @@ def build_intersection_map(intersection_label: str) -> Optional[go.Figure]:
             lat=[lat],
             lon=[lon],
             mode="markers+text",
-            marker=dict(size=14, color="#1f77b4"),
+            marker=dict(size=25, color="#E74C3C"),
             text=[intersection_label],
             textposition="top right",
             hoverinfo="text",
@@ -468,21 +657,65 @@ def build_intersection_map(intersection_label: str) -> Optional[go.Figure]:
             zoom=14,
         ),
         margin=dict(l=10, r=10, t=30, b=10),
-        height=320,
-        showlegend=False,
+        height=600,
+        showlegend=True,
         title=f"Intersection: {intersection_label}",
+    )
+
+    # Satellite toggle logic
+    if satellite:
+        try:
+            token = st.secrets.get("mapbox_token", "")
+        except Exception:
+            token = ""
+        if token:
+            fig.update_layout(mapbox_style="satellite-streets", mapbox_accesstoken=token)
+        else:
+            # Fallback to free Esri Satellite tiles if no Mapbox token
+            fig.update_layout(
+                mapbox_style="white-bg",
+                mapbox_layers=[
+                    {
+                        "below": 'traces',
+                        "sourcetype": "raster",
+                        "sourceattribution": "Esri, Maxar, Earthstar Geographics",
+                        "source": [
+                            "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                        ]
+                    }
+                ]
+            )
+
+    # Legend
+    fig.add_trace(go.Scattermapbox(lat=[None], lon=[None], mode="markers", marker=dict(size=10, color="#5DADE2"), showlegend=True, name="Intersection"))
+
+    fig.update_layout(
+        legend=dict(
+            title=dict(text="Legend"),
+            x=0.01,
+            y=0.99,
+            xanchor="left",
+            yanchor="top",
+            bgcolor="rgba(255,255,255,0.85)",
+            bordercolor="#cccccc",
+            borderwidth=1,
+            font=dict(size=12),
+        )
     )
     return fig
 
 
-def build_intersections_overview(selected_label: Optional[str] = None) -> Optional[go.Figure]:
+def build_intersections_overview(selected_label: Optional[Union[str, List[str]]] = None, corridor: Optional[str] = None,
+                                 tooltip_map: Optional[Dict[str, str]] = None, satellite: bool = False) -> Optional[go.Figure]:
     """
     Tab 2/4: Show ALL intersections as dots. If 'selected_label' is provided,
     highlight the corresponding NODE (so label variants still match).
     Title reflects the selected intersection when provided.
 
     Special handling: when selected_label is None ("All Intersections" in UI),
-    highlight only the currently available intersections (13 nodes) in red.
+    highlight intersections based on the selected corridor.
+
+    tooltip_map: Optional dict mapping 'Intersection Name' -> 'Custom HTML Tooltip'
     """
     node_coords = _derive_node_coords_from_segments()
     if not node_coords:
@@ -499,23 +732,64 @@ def build_intersections_overview(selected_label: Optional[str] = None) -> Option
 
     # Determine which nodes should be highlighted (red)
     selected_nodes: set = set()
-    if selected_label:
-        node = _label_to_node(selected_label)
-        if node:
-            selected_nodes.add(node)
+    if selected_label and selected_label != "All Intersections":
+        if isinstance(selected_label, list):
+            for lbl in selected_label:
+                node = _label_to_node(lbl)
+                if node:
+                    selected_nodes.add(node)
+        else:
+            node = _label_to_node(selected_label)
+            if node:
+                selected_nodes.add(node)
     else:
-        # "All Intersections" case → highlight the 13 available ones
-        selected_nodes = set(n for n in AVAILABLE_INTERSECTION_NODES if n in node_to_label)
+        # "All Intersections" case → highlight based on corridor
+        if corridor == "Washington Street":
+            highlight_list = [
+                "Avenue 52", "Calle Tampico", "Village Shopping Ctr", "Avenue 50",
+                "Sagebrush Ave", "Eisenhower Dr", "Avenue 48", "Avenue 47",
+                "Channel Drive", "Miles Avenue", "Via Sevilla", "Avenue 42", "Harris Lane"
+            ]
+        elif corridor == "Highway 111":
+            highlight_list = [
+                "Parkview Drive", "Cook Street", "Washington Street", "Monroe Street", "Indio Blvd"
+            ]
+        elif corridor == "Highway 111 - E Palm Canyon Drive":
+            highlight_list = [
+                "Canyon Plaza Drive", "Perez Road", "Auto Park Drive", "Bankside Drive",
+                "Cathedral Canyon Drive", "Buddy Rogers Avenue", "Van Fleet Street",
+                "Date Palm Drive", "Sun Gate Way", "Officer Jermain Gibson"
+            ]
+        else:
+            # Fallback to all available intersections
+            highlight_list = list(AVAILABLE_INTERSECTION_NODES)
+
+        selected_nodes = set(n for n in highlight_list if n in node_to_label)
 
     # Build point sets
-    sel_lat, sel_lon, sel_text = [], [], []
-    oth_lat, oth_lon, oth_text = [], [], []
+    sel_lat, sel_lon, sel_text, sel_hover = [], [], [], []
+    oth_lat, oth_lon, oth_text, oth_hover = [], [], [], []
     for node, label in node_to_label.items():
         lat, lon = node_coords[node]
+
+        # 1. Map Label: Always use the clean name
+        map_label = label
+
+        # 2. Tooltip: Check if a custom string exists in the map (by Label or Node ID)
+        tooltip = label
+        if tooltip_map:
+            tooltip = tooltip_map.get(label, tooltip_map.get(node, label))
+
         if node in selected_nodes:
-            sel_lat.append(lat); sel_lon.append(lon); sel_text.append(label)
+            sel_lat.append(lat);
+            sel_lon.append(lon);
+            sel_text.append(map_label);
+            sel_hover.append(tooltip)
         else:
-            oth_lat.append(lat); oth_lon.append(lon); oth_text.append(label)
+            oth_lat.append(lat);
+            oth_lon.append(lon);
+            oth_text.append(map_label);
+            oth_hover.append(tooltip)
 
     if not (sel_lat or oth_lat):
         return None
@@ -528,11 +802,14 @@ def build_intersections_overview(selected_label: Optional[str] = None) -> Option
                 lat=oth_lat,
                 lon=oth_lon,
                 mode="markers+text",
-                marker=dict(size=11, color="#5DADE2"),
+                marker=dict(size=15, color="#5DADE2"),
                 text=oth_text,
+                hovertext=oth_hover,  # Use separate hover text
                 textposition="top right",
-                hoverinfo="text",
+                hoverinfo="text",  # Tells Plotly to use hovertext property
                 name="Intersections",
+                showlegend=False,
+                hoverlabel=dict(bgcolor="white", font_size=14, font_family="Arial"),
             )
         )
 
@@ -542,34 +819,90 @@ def build_intersections_overview(selected_label: Optional[str] = None) -> Option
                 lat=sel_lat,
                 lon=sel_lon,
                 mode="markers+text",
-                marker=dict(size=15, color="#E74C3C"),
+                marker=dict(size=25, color="#E74C3C"),
                 text=sel_text,
+                hovertext=sel_hover,  # Use separate hover text
                 textposition="top right",
-                hoverinfo="text",
+                hoverinfo="text",  # Tells Plotly to use hovertext property
                 name="Selected",
+                showlegend=False,
+                hoverlabel=dict(bgcolor="white", font_size=14, font_family="Arial"),
             )
         )
 
-    all_lats = [coords[0] for coords in node_coords.values()]
-    all_lons = [coords[1] for coords in node_coords.values()]
+    # Determine map center: focus on selected/highlighted nodes if available
+    if sel_lat and sel_lon:
+        center_lat = float(np.mean(sel_lat))
+        center_lon = float(np.mean(sel_lon))
+        # Dynamic zoom: tighter if single node, wider if corridor
+        zoom_level = 14 if len(sel_lat) == 1 else 12.5
+    else:
+        # Fallback to center of all known nodes
+        all_lats = [coords[0] for coords in node_coords.values()]
+        all_lons = [coords[1] for coords in node_coords.values()]
+        center_lat = float(np.mean(all_lats))
+        center_lon = float(np.mean(all_lons))
+        zoom_level = 11
 
     title_text = "All Intersections" if not selected_label else f"Intersection: {selected_label}"
 
     fig.update_layout(
         mapbox=dict(
             style="open-street-map",
-            center=dict(lat=float(np.mean(all_lats)), lon=float(np.mean(all_lons))),
-            zoom=12,
+            center=dict(lat=center_lat, lon=center_lon),
+            zoom=zoom_level,
         ),
         margin=dict(l=10, r=10, t=30, b=10),
-        height=360,
-        showlegend=False,
+        height=600,
+        showlegend=True,
         title=title_text,
+    )
+
+    # Satellite toggle logic
+    if satellite:
+        try:
+            token = st.secrets.get("mapbox_token", "")
+        except Exception:
+            token = ""
+        if token:
+            fig.update_layout(mapbox_style="satellite-streets", mapbox_accesstoken=token)
+        else:
+            # Fallback to free Esri Satellite tiles if no Mapbox token
+            fig.update_layout(
+                mapbox_style="white-bg",
+                mapbox_layers=[
+                    {
+                        "below": 'traces',
+                        "sourcetype": "raster",
+                        "sourceattribution": "Esri, Maxar, Earthstar Geographics",
+                        "source": [
+                            "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                        ]
+                    }
+                ]
+            )
+
+    # Legend
+    fig.add_trace(go.Scattermapbox(lat=[None], lon=[None], mode="markers", marker=dict(size=10, color="#5DADE2"), showlegend=True, name="Intersection"))
+    fig.add_trace(go.Scattermapbox(lat=[None], lon=[None], mode="markers", marker=dict(size=10, color="#E74C3C"), showlegend=True, name="Selected"))
+
+    fig.update_layout(
+        legend=dict(
+            title=dict(text="Legend"),
+            x=0.01,
+            y=0.99,
+            xanchor="left",
+            yanchor="top",
+            bgcolor="rgba(255,255,255,0.85)",
+            bordercolor="#cccccc",
+            borderwidth=1,
+            font=dict(size=12),
+        )
     )
     return fig
 
 
-def build_all_segments_overview() -> Optional[go.Figure]:
+def build_all_segments_overview(satellite: bool = False) -> Optional[go.Figure]:
     """
     Optional: Overview map drawing all corridor segments (thin polylines).
     Useful as a context map.
@@ -595,6 +928,7 @@ def build_all_segments_overview() -> Optional[go.Figure]:
                     mode="lines",
                     line=dict(width=3, color="#5DADE2"),
                     hoverinfo="skip",
+                    showlegend=False,
                     name=f"{pair[0]} → {pair[1]}",
                 )
             )
@@ -609,8 +943,50 @@ def build_all_segments_overview() -> Optional[go.Figure]:
             zoom=12,
         ),
         margin=dict(l=10, r=10, t=30, b=10),
-        height=340,
-        showlegend=False,
+        height=600,
+        showlegend=True,
         title="Corridor Overview",
+    )
+
+    # Satellite toggle logic
+    if satellite:
+        try:
+            token = st.secrets.get("mapbox_token", "")
+        except Exception:
+            token = ""
+        if token:
+            fig.update_layout(mapbox_style="satellite-streets", mapbox_accesstoken=token)
+        else:
+            # Fallback to free Esri Satellite tiles if no Mapbox token
+            fig.update_layout(
+                mapbox_style="white-bg",
+                mapbox_layers=[
+                    {
+                        "below": 'traces',
+                        "sourcetype": "raster",
+                        "sourceattribution": "Esri, Maxar, Earthstar Geographics",
+                        "source": [
+                            "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                        ]
+                    }
+                ]
+            )
+
+    # Legend
+    fig.add_trace(go.Scattermapbox(lat=[None], lon=[None], mode="lines", line=dict(width=4, color="#5DADE2"), showlegend=True, name="Corridor Segments"))
+    fig.add_trace(go.Scattermapbox(lat=[None], lon=[None], mode="markers", marker=dict(size=10, color="#5DADE2"), showlegend=True, name="Intersection"))
+
+    fig.update_layout(
+        legend=dict(
+            title=dict(text="Legend"),
+            x=0.01,
+            y=0.99,
+            xanchor="left",
+            yanchor="top",
+            bgcolor="rgba(255,255,255,0.85)",
+            bordercolor="#cccccc",
+            borderwidth=1,
+            font=dict(size=12),
+        )
     )
     return fig

@@ -7,6 +7,14 @@ import plotly.graph_objects as go
 
 # Optional UI helpers (use if available)
 try:
+    from ui_utils import get_dynamic_xaxis_params
+except ImportError:
+    try:
+        from core.ui_utils import get_dynamic_xaxis_params
+    except ImportError:
+        get_dynamic_xaxis_params = None
+
+try:
     from Prediction.timeline_scrubber import (
         render_gradient_header,
         create_timeline_scrubber,
@@ -193,13 +201,28 @@ def _plot_day_timeline(df_day: pd.DataFrame, title="Predicted vs Actual (hourly)
         x=df_day["local_datetime"], y=df_day["travel_time_predicted"], name="Predicted", mode="lines+markers",
         line=dict(width=2, dash="dash"), marker=dict(size=6)
     ))
+    # X-axis configuration
+    xaxis_config = dict(
+        title=dict(text="Date/Time", font=dict(size=16, weight="bold")),
+        tickfont=dict(size=14),
+    )
+    if get_dynamic_xaxis_params and not df_day.empty:
+        start_date = df_day["local_datetime"].min()
+        end_date = df_day["local_datetime"].max()
+        params = get_dynamic_xaxis_params(start_date, end_date)
+        xaxis_config["dtick"] = params["dtick"]
+        xaxis_config["tickformat"] = params["tickformat"]
+    else:
+        xaxis_config["dtick"] = 3600000  # Default to 1 hour for single day view
+        xaxis_config["tickformat"] = "%I %p"
+
     # Error bars (color via hover text)
     fig.update_layout(
         title=title,
         margin=dict(l=10,r=10,t=40,b=10),
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="left", x=0),
-        xaxis=dict(title="Time"),
-        yaxis=dict(title="Travel Time (min)"),
+        xaxis=xaxis_config,
+        yaxis=dict(title=dict(text="Travel Time (min)", font=dict(size=16, weight="bold")), tickfont=dict(size=14)),
     )
     st.plotly_chart(fig, use_container_width=True, config=dict(displaylogo=False, responsive=True))
 

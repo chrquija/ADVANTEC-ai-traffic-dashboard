@@ -67,3 +67,31 @@ def is_active_tab(tab_id: str) -> bool:
     if active:
         return active == tab_id
     return st.session_state.get("last_active_tab") == tab_id
+
+
+def get_dynamic_xaxis_params(start_date, end_date):
+    """
+    Returns a dict with 'dtick' and 'tickformat' for Plotly xaxis
+    based on the number of days between start_date and end_date.
+    """
+    import pandas as pd
+    delta = (pd.to_datetime(end_date) - pd.to_datetime(start_date)).days
+
+    if delta <= 1:
+        # 1 day or less: 4 hours
+        return {"dtick": 14400000, "tickformat": "%b %d\n%I:%M %p"}
+    elif delta <= 3:
+        # 2-3 days: 6 hours
+        return {"dtick": 21600000, "tickformat": "%b %d\n%I:%M %p"}
+    elif delta <= 7:
+        # 4-7 days: 12 hours
+        return {"dtick": 43200000, "tickformat": "%b %d\n%I:%M %p"}
+    elif delta <= 14:
+        # 8-14 days: 24 hours (1 day)
+        return {"dtick": 86400000, "tickformat": "%b %d"}
+    elif delta <= 31:
+        # Up to a month: 2 days
+        return {"dtick": 172800000, "tickformat": "%b %d"}
+    else:
+        # More than a month: 7 days
+        return {"dtick": 604800000, "tickformat": "%b %d, %Y"}

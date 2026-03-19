@@ -20,9 +20,9 @@ from Map import build_all_segments_overview
 
 # Shared UI utils (scoped loader and tab highlight)
 try:
-    from ui_utils import cad_loader as scoped_cad_loader, set_active_search_tab, is_active_tab
+    from ui_utils import cad_loader as scoped_cad_loader, set_active_search_tab, is_active_tab, get_dynamic_xaxis_params
 except ModuleNotFoundError:
-    from core.ui_utils import cad_loader as scoped_cad_loader, set_active_search_tab, is_active_tab
+    from core.ui_utils import cad_loader as scoped_cad_loader, set_active_search_tab, is_active_tab, get_dynamic_xaxis_params
 
 # =========================
 # Constants
@@ -64,17 +64,18 @@ def _canonicalize_segment(seg_id: str, corridor_label: str) -> str:
 
 # Aggregation metadata
 AGG_META = {
-    "Hourly": {"unit": "vph", "bucket": "H", "label": "hour", "fixed_hours": 1},
-    "Daily": {"unit": "vpd", "bucket": "D", "label": "day", "fixed_hours": 24},
-    "Weekly": {"unit": "vpw", "bucket": "W", "label": "week", "fixed_hours": 24 * 7},
-    "Monthly": {"unit": "vpm", "bucket": "M", "label": "month", "fixed_hours": None},
+    "Hourly": {"unit": "vehicles", "bucket": "H", "label": "hour", "fixed_hours": 1},
+    "Daily": {"unit": "vehicles", "bucket": "D", "label": "day", "fixed_hours": 24},
+    "Weekly": {"unit": "vehicles", "bucket": "W", "label": "week", "fixed_hours": 24 * 7},
+    "Monthly": {"unit": "vehicles", "bucket": "M", "label": "month", "fixed_hours": None},
 }
 
 PLOTLY_CONFIG = {
     "displaylogo": False,
+    "displayModeBar": True,
     "modeBarButtonsToRemove": ["lasso2d", "select2d", "toggleSpikelines"]
 }
-MAP_HEIGHT = 900
+MAP_HEIGHT = 1100
 
 # Vehicle class definitions (for pie charts and cycle length)
 VEHICLE_CLASSES = ["trucks", "cars", "buses", "motorcycles"]
@@ -189,7 +190,7 @@ def _prep_bucket(df: pd.DataFrame, granularity: str, volume_col: str = "vehicula
 # =========================
 # Chart Helpers
 # =========================
-def create_volume_comparison_charts(df_wide: pd.DataFrame, granularity: str):
+def create_volume_comparison_charts(df_wide: pd.DataFrame, granularity: str, direction_label: str = "", intersections: str = ""):
     if df_wide.empty:
         return None, None
 
@@ -207,19 +208,38 @@ def create_volume_comparison_charts(df_wide: pd.DataFrame, granularity: str):
             value_name="volume"
         )
         vol_melted["class"] = vol_melted["class"].replace(existing_vol)
+        chart_title_vol = f"📊 {direction_label} Volume Trends by Mode ({granularity})".strip()
+        if intersections:
+            chart_title_vol += f"<br><span style='font-size:14px; color:#666;'>{intersections}</span>"
+
         fig_vol = px.line(
             vol_melted.groupby(["local_datetime", "class"], as_index=False)["volume"].sum(),
             x="local_datetime",
             y="volume",
             color="class",
-            title=f"📊 Volume Trends by Mode ({granularity})",
+            title=chart_title_vol,
             labels={"volume": f"Volume ({unit})", "local_datetime": "Date/Time", "class": "Mode"},
             template="plotly_white",
+            markers=True,
         )
+        # X-axis configuration
+        xaxis_config = dict(
+            title=dict(text="Date/Time", font=dict(size=16, weight="bold")),
+            tickfont=dict(size=14),
+        )
+        if granularity == "Hourly" and not d.empty:
+            start_date = d["local_datetime"].min()
+            end_date = d["local_datetime"].max()
+            params = get_dynamic_xaxis_params(start_date, end_date)
+            xaxis_config["dtick"] = params["dtick"]
+            xaxis_config["tickformat"] = params["tickformat"]
+
         fig_vol.update_layout(
             height=450,
-            margin=dict(l=10, r=10, t=40, b=10),
+            margin=dict(l=10, r=10, t=80, b=10),
             legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0),
+            xaxis=xaxis_config,
+            yaxis=dict(title=dict(text="Vehicle Volume Counts", font=dict(size=16, weight="bold")), tickfont=dict(size=14)),
         )
     else:
         fig_vol = None
@@ -236,19 +256,38 @@ def create_volume_comparison_charts(df_wide: pd.DataFrame, granularity: str):
         )
         speed_melted["class"] = speed_melted["class"].replace(existing_speed)
         speed_melted = speed_melted[speed_melted["speed"] > 0]
+        chart_title_speed = f"🚗 {direction_label} Average Speed by Mode ({granularity})".strip()
+        if intersections:
+            chart_title_speed += f"<br><span style='font-size:14px; color:#666;'>{intersections}</span>"
+
         fig_speed = px.line(
             speed_melted.groupby(["local_datetime", "class"], as_index=False)["speed"].mean(),
             x="local_datetime",
             y="speed",
             color="class",
-            title=f"🚗 Average Speed by Mode ({granularity})",
+            title=chart_title_speed,
             labels={"speed": "Speed (mph)", "local_datetime": "Date/Time", "class": "Mode"},
             template="plotly_white",
+            markers=True,
         )
+        # X-axis configuration
+        xaxis_config_speed = dict(
+            title=dict(text="Date/Time", font=dict(size=16, weight="bold")),
+            tickfont=dict(size=14),
+        )
+        if granularity == "Hourly" and not d.empty:
+            start_date = d["local_datetime"].min()
+            end_date = d["local_datetime"].max()
+            params = get_dynamic_xaxis_params(start_date, end_date)
+            xaxis_config_speed["dtick"] = params["dtick"]
+            xaxis_config_speed["tickformat"] = params["tickformat"]
+
         fig_speed.update_layout(
             height=450,
-            margin=dict(l=10, r=10, t=40, b=10),
+            margin=dict(l=10, r=10, t=80, b=10),
             legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0),
+            xaxis=xaxis_config_speed,
+            yaxis=dict(title=dict(text="Speed (mph)", font=dict(size=16, weight="bold")), tickfont=dict(size=14)),
         )
     else:
         fig_speed = None
@@ -547,8 +586,9 @@ def render_bosch_tab():
             st.markdown('<div id="bosch-map-anchor"></div>', unsafe_allow_html=True)
             st.markdown("##### Corridor Map", help="Stays visible while you scroll the analysis on the left.")
 
+            satellite_t5 = st.toggle("🛰️ Satellite View", key="satellite_t5", value=False)
             try:
-                fig_map = build_all_segments_overview()
+                fig_map = build_all_segments_overview(satellite=satellite_t5)
             except Exception:
                 fig_map = None
 
@@ -656,7 +696,23 @@ def render_bosch_tab():
             st.subheader("📈 Multimodal Traffic Visualizations")
             if len(wide_df) > 1:
                 try:
-                    fig_vol, fig_speed = create_volume_comparison_charts(wide_df, granularity)
+                    # Bosch data doesn't have a global direction filter like other tabs,
+                    # but we can label the charts with the corridor name.
+                    
+                    # Determine primary street for the caption
+                    primary_street = ""
+                    if corridor == "Washington Street":
+                        primary_street = "Washington Street"
+                    elif "Highway 111" in corridor:
+                        primary_street = "Highway 111"
+                    
+                    # Bosch segments often have multiple cross streets in the name if wide
+                    # We'll just prefix the segment_name with the primary street if not already present
+                    int_label_arg = f"{primary_street} Corridor" if primary_street else corridor
+
+                    fig_vol, fig_speed = create_volume_comparison_charts(
+                        wide_df, granularity, direction_label=corridor, intersections=int_label_arg
+                    )
                     colA, colB = st.columns(2)
                     with colA:
                         if fig_vol:

@@ -4,6 +4,7 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from typing import Optional
+from datetime import datetime, timedelta
 
 # -------------------------
 # Time-period filter (AM/MD/PM/ALL)
@@ -67,13 +68,13 @@ def _get_status(recommended: str, current: str) -> str:
 # -------------------------
 # Visual helpers (legend + colors) — theme-able & colorblind-safe
 # -------------------------
-CYCLE_ORDER = ["Free mode", "110 sec", "120 sec", "130 sec", "140 sec"]
+CYCLE_ORDER = ["Free mode", "110 sec", "120 sec", "130 sec", "140 sec", "150 sec"]
 THRESHOLD_TEXT = {
-    "140 sec": "≥ 2400 vph",
-    "130 sec": "≥ 1500 vph",
-    "120 sec": "≥ 600 vph",
-    "110 sec": "≥ 300 vph",
-    "Free mode": "< 300 vph",
+    "140 sec": "≥ 2400 vehicles",
+    "130 sec": "≥ 1500 vehicles",
+    "120 sec": "≥ 600 vehicles",
+    "110 sec": "≥ 300 vehicles",
+    "Free mode": "< 300 vehicles",
 }
 
 def _get_palettes(theme: str):
@@ -88,6 +89,7 @@ def _get_palettes(theme: str):
             "120 sec": "#386CB0",
             "130 sec": "#FDC827",
             "140 sec": "#D62728",
+            "150 sec": "#7570B3",
         }
         status_colors = {"🟢 OPTIMAL": "#1B9E77", "⬆️ INCREASE": "#D62728", "🔽 REDUCE": "#386CB0"}
     elif theme == "Greens → Red":
@@ -97,6 +99,7 @@ def _get_palettes(theme: str):
             "120 sec": "#27AE60",
             "130 sec": "#E67E22",
             "140 sec": "#E74C3C",
+            "150 sec": "#C0392B",
         }
         status_colors = {"🟢 OPTIMAL": "#27AE60", "⬆️ INCREASE": "#E74C3C", "🔽 REDUCE": "#2E86C1"}
     elif theme == "Monochrome + Accents":
@@ -106,6 +109,7 @@ def _get_palettes(theme: str):
             "120 sec": "#2C3E50",
             "130 sec": "#8E44AD",
             "140 sec": "#E74C3C",
+            "150 sec": "#943126",
         }
         status_colors = {"🟢 OPTIMAL": "#2ECC71", "⬆️ INCREASE": "#E74C3C", "🔽 REDUCE": "#8E44AD"}
     else:  # "Colorblind Safe" (Okabe–Ito)
@@ -115,6 +119,7 @@ def _get_palettes(theme: str):
             "120 sec": "#0072B2",     # blue
             "130 sec": "#E69F00",     # orange
             "140 sec": "#D55E00",     # vermillion
+            "150 sec": "#CC79A7",     # reddish purple
         }
         status_colors = {"🟢 OPTIMAL": "#009E73", "⬆️ INCREASE": "#D55E00", "🔽 REDUCE": "#0072B2"}
 
@@ -124,6 +129,7 @@ def _get_palettes(theme: str):
         "120 sec": "\\",
         "130 sec": "x",
         "140 sec": ".",
+        "150 sec": "+",
     }
     return cycle_colors, status_colors, pattern_map
 
@@ -286,16 +292,14 @@ def _build_header_html(
         Cycle Length Recommendations for CVAG
       </div>
     </div>
-    <span title="Current cycle used for comparison"
-          style="display:inline-flex; align-items:center; gap:6px; padding:8px 12px;
-                 border-radius:999px; background: rgba(255,255,255,.18);
-                 font-weight:800; font-size:.95rem;
-                 box-shadow: inset 0 0 0 1px rgba(255,255,255,.18);">
-      ⚙️ Current Cycle: {current_cycle}
-    </span>
   </div>
 
   <div style="display:flex; flex-wrap:wrap; gap:8px 10px; margin:12px 0 6px;">
+    <span style="display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px;
+                 background: rgba(255,255,255,0.22); font-weight:800; font-size:.95rem;
+                 box-shadow: inset 0 0 0 1px rgba(255,255,255,.25); color: #fff; border: 1px solid rgba(255,255,255,0.3);">
+      ⚙️ Current Cycle: {current_cycle}
+    </span>
     <span style="display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px;
                  background: rgba(255,255,255,.16); font-weight:700; font-size:.95rem;
                  box-shadow: inset 0 0 0 1px rgba(255,255,255,.18);">
@@ -375,20 +379,37 @@ def render_cycle_length_section(raw: pd.DataFrame, key_prefix: str = "cycle") ->
     end_label = end_dt.strftime("%A, %b %d, %Y") if pd.notnull(end_dt) else "N/A"
 
     intersections = sorted(raw["intersection_name"].dropna().unique().tolist()) if "intersection_name" in raw else []
+    if len(intersections) > 1:
+        st.warning(f"⚠️ **Note:** Cycle Length Recommendations are currently only supported for one intersection at a time to ensure accuracy. Analyzing **{intersections[0]}** only.")
+        raw = raw[raw["intersection_name"] == intersections[0]].copy()
+        intersections = [intersections[0]]
+
     if len(intersections) == 1:
         intersection_label = intersections[0]
-    elif len(intersections) > 1:
-        intersection_label = f"{len(intersections)} Intersections"
     else:
         intersection_label = "N/A"
 
     directions = sorted(raw["direction"].dropna().unique().tolist()) if "direction" in raw else []
+    
+    dir_map_full = {
+        "NB": "Northbound", "SB": "Southbound", "EB": "Eastbound", "WB": "Westbound",
+        "NORTHBOUND": "Northbound", "SOUTHBOUND": "Southbound", "EASTBOUND": "Eastbound", "WESTBOUND": "Westbound",
+        "ALL APPROACHES": "All Approaches"
+    }
+
     if len(directions) == 1:
         direction_label = directions[0]
     elif len(directions) > 1:
         direction_label = "All Directions"
     else:
         direction_label = "N/A"
+    
+    # Corridor name next to intersection
+    corridor_name = ""
+    if "corridor_id" in raw.columns and not raw["corridor_id"].dropna().empty:
+        corridor_name = str(raw["corridor_id"].iloc[0]).strip()
+        if corridor_name.lower().endswith(" corridor"):
+            corridor_name = corridor_name[:-9].strip()
 
     # Placeholder so we can render the header AFTER we know current_cycle/time period
     header_slot = st.empty()
@@ -396,7 +417,7 @@ def render_cycle_length_section(raw: pd.DataFrame, key_prefix: str = "cycle") ->
     # -------------------------
     # Controls (user selections)
     # -------------------------
-    c1, c2, c3 = st.columns([2, 1.6, 1.5])
+    c1, c2, c3, c4 = st.columns([1.5, 1.5, 1.2, 1.3])
     with c1:
         time_period = st.selectbox(
             "🕐 Time Period",
@@ -406,16 +427,27 @@ def render_cycle_length_section(raw: pd.DataFrame, key_prefix: str = "cycle") ->
             key=f"{key_prefix}_period",
         )
     with c2:
-        current_cycle = st.selectbox(
-            "⚙️ Current System Cycle",
-            CYCLE_ORDER[::-1],  # 140, 130, 120, 110, Free
+        # Get available directions from the raw data
+        avail_dirs = sorted(raw["direction"].dropna().unique().tolist()) if "direction" in raw.columns else []
+        dir_options = ["All Approaches"] + avail_dirs
+        selected_dir = st.selectbox(
+            "🔄 Direction",
+            dir_options,
             index=0,
+            help="Filter cycle recommendations to a specific approach.",
+            key=f"{key_prefix}_dir_selector",
+        )
+    with c3:
+        current_cycle = st.selectbox(
+            "⚙️ Current Cycle",
+            CYCLE_ORDER[::-1],  # 150, 140, 130, 120, 110, Free
+            index=1,
             help="Sets the corridor's **current** cycle length used for comparison.",
             key=f"{key_prefix}_current",
         )
-    with c3:
+    with c4:
         theme_choice = st.selectbox(
-            "🎨 Color Theme",
+            "🎨 Theme",
             ["Colorblind Safe", "High Contrast", "Greens → Red", "Monochrome + Accents"],
             index=0,
             help="Pick a palette that's easy to read for presentations and printouts.",
@@ -428,25 +460,48 @@ def render_cycle_length_section(raw: pd.DataFrame, key_prefix: str = "cycle") ->
     # Legend (uses theme variables, not hard-coded colors)
     st.markdown(_legend_html(CYCLE_COLORS), unsafe_allow_html=True)
 
-    # Time period filtering
+    # Apply direction and time period filtering
+    if selected_dir != "All Approaches" and "direction" in raw.columns:
+        work_df = raw[raw["direction"] == selected_dir].copy()
+    else:
+        work_df = raw.copy()
+
     period_map = {"AM (05:00-10:00)": "AM", "MD (11:00-15:00)": "MD", "PM (16:00-20:00)": "PM", "All Day": "ALL"}
     selected_period = period_map[time_period]
-    period_data = raw if selected_period == "ALL" else filter_by_period(raw, "local_datetime", selected_period)
+    period_data = work_df if selected_period == "ALL" else filter_by_period(work_df, "local_datetime", selected_period)
     if period_data.empty:
-        # Render the header (with current cycle bubble) even if no Prediction to show
+        # Render the header (with current cycle bubble) even if no data to show
+        sel_dir_full = dir_map_full.get(selected_dir.upper()) if selected_dir != "All Approaches" else "All Approaches"
+        if not sel_dir_full:
+            sel_dir_full = selected_dir
+
+        if corridor_name:
+            int_header_label = f"{corridor_name} Corridor -- {intersection_label}"
+        else:
+            int_header_label = intersection_label
+
         header_slot.markdown(
             _build_header_html(
-                intersection_label, direction_label, start_label, end_label, time_period, current_cycle
+                int_header_label, sel_dir_full, start_label, end_label, time_period, current_cycle
             ),
             unsafe_allow_html=True,
         )
-        st.warning("⚠️ No Prediction available for the selected time period. Check if Hourly Data is Available")
+        st.warning("⚠️ No data available for the selected time period. Check if Hourly Data is Available")
         return
 
     # Now that we know the user's choices, render the header with the bubble
+    sel_dir_full = dir_map_full.get(selected_dir.upper()) if selected_dir != "All Approaches" else "All Approaches"
+    if not sel_dir_full:
+        sel_dir_full = selected_dir
+
+    if corridor_name:
+        int_header_label = f"{corridor_name} Corridor -- {intersection_label}"
+    else:
+        int_header_label = intersection_label
+
     header_slot.markdown(
         _build_header_html(
-            intersection_label, direction_label, start_label, end_label, time_period, current_cycle
+            int_header_label, sel_dir_full, start_label, end_label, time_period, current_cycle
         ),
         unsafe_allow_html=True,
     )
@@ -456,14 +511,19 @@ def render_cycle_length_section(raw: pd.DataFrame, key_prefix: str = "cycle") ->
     hours_window_str = period_windows.get(selected_period, "—")
 
     # Hourly aggregation
-    period_data["hour"] = period_data["local_datetime"].dt.hour
-    hourly = period_data.groupby("hour", as_index=False)["total_volume"].mean()
+    # First sum volumes across directions/approaches for each unique timestamp to get the "Total Volume" for that intersection at that hour.
+    t_sum = period_data.groupby("local_datetime", as_index=False)["total_volume"].sum()
+    t_sum["hour"] = t_sum["local_datetime"].dt.hour
+    
+    # Then average those hourly totals across all days in the range to get a representative hourly pattern.
+    hourly = t_sum.groupby("hour", as_index=False)["total_volume"].mean()
     hourly["Volume"] = hourly["total_volume"].fillna(0).round().astype(int)
 
     # Recommendations + Status
     hourly["CVAG Recommendation"] = hourly["Volume"].apply(get_hourly_cycle_length)
     hourly["Status"] = hourly["CVAG Recommendation"].apply(lambda rec: _get_status(rec, current_cycle))
-    hourly["Hour"] = hourly["hour"].apply(lambda x: f"{x:02d}:00")
+    # Normal time format (12-hour) instead of military
+    hourly["Hour"] = hourly["hour"].apply(lambda h: (datetime.min + timedelta(hours=h)).strftime("%I:%M %p").lstrip("0"))
     hourly["Rec (sec)"] = hourly["CVAG Recommendation"].apply(_sec_value)
 
     # ---------- NEW: add current cycle as its own column ----------
@@ -488,7 +548,7 @@ def render_cycle_length_section(raw: pd.DataFrame, key_prefix: str = "cycle") ->
 
     # Unique hour-of-day labels that exceeded threshold
     exceed_hour_ids = sorted(high_rows["local_datetime"].dt.hour.unique().tolist()) if len(high_rows) else []
-    exceed_hour_labels = [f"{h:02d}:00" for h in exceed_hour_ids]
+    exceed_hour_labels = [(datetime.min + timedelta(hours=h)).strftime("%I:%M %p").lstrip("0") for h in exceed_hour_ids]
 
     # Peak capacity utilization
     INTERSECTION_CAPACITY_VPH = 1800
@@ -517,10 +577,10 @@ def render_cycle_length_section(raw: pd.DataFrame, key_prefix: str = "cycle") ->
       {_kpi_card("✅ Optimal Hours", f"{optimal_hours}", f"{system_eff:.0f}% efficiency", tone_eff)}
       {_kpi_card("🔧 Changes Needed", f"{changes_needed}", f"↑ {len(inc_hours_list)} • ↓ {len(red_hours_list)}", tone_changes)}
       {_kpi_card("⚠️ Hours Above High-Volume Threshold", f"{high_hours}", f"{high_share:.1f}% of time",
-                 tone_high, foot1=f"Threshold: > {HIGH_VOLUME_THRESHOLD_VPH:,} vph",
+                 tone_high, foot1=f"Threshold: > {HIGH_VOLUME_THRESHOLD_VPH:,} vehicles",
                  foot2=f"Hours: {_hours_preview(exceed_hour_labels)}")}
-      {_kpi_card("🚦 Peak Capacity Utilization", f"{peak_capacity_util:.0f}%", f"Peak {int(peak_volume_pd):,} vph",
-                 tone_util, foot1=f"Capacity: {INTERSECTION_CAPACITY_VPH:,} vph")}
+      {_kpi_card("🚦 Peak Capacity Utilization", f"{peak_capacity_util:.0f}%", f"Peak {int(peak_volume_pd):,} vehicles",
+                 tone_util, foot1=f"Capacity: {INTERSECTION_CAPACITY_VPH:,} vehicles")}
     </div>
     """
     st.markdown(cards_html, unsafe_allow_html=True)
@@ -531,15 +591,33 @@ def render_cycle_length_section(raw: pd.DataFrame, key_prefix: str = "cycle") ->
     ch1, ch2 = st.columns([2.2, 1.8])
     with ch1:
         # Bar chart colored by recommended cycle (palette + patterns + outlines)
+        if start_dt == end_dt:
+            date_display = start_dt.strftime('%B %d, %Y').replace(" 0", " ")
+        else:
+            date_display = f"{start_dt.strftime('%b %d')} to {end_dt.strftime('%b %d, %Y')}"
+        
+        chart_title = f"{sel_dir_full} Total Vehicle Volume Per Hour w/ Recommended Cycle Length (Bar Chart) — {date_display}"
+        
+        if corridor_name:
+            int_subtitle = f"{corridor_name} Corridor -- {intersection_label}"
+        else:
+            int_subtitle = intersection_label
+
+        # 12-hour format hour list for category_orders
+        hour_labels_12h = [(datetime.min + timedelta(hours=h)).strftime("%I:%M %p").lstrip("0") for h in range(24)]
+
+        # 3) Cycle length under the intersection name
+        full_title = f"{chart_title}<br><span style='font-size:14px; color:#666;'>{int_subtitle}<br>Current Cycle: {current_cycle}</span>"
+
         fig = px.bar(
             hourly.sort_values("hour"),
             x="Hour",
             y="Volume",
             color="CVAG Recommendation",
             color_discrete_map=CYCLE_COLORS,
-            category_orders={"CVAG Recommendation": CYCLE_ORDER, "Hour": [f"{h:02d}:00" for h in range(24)]},
-            title="Hourly Volume with Recommended Cycle Length",
-            labels={"Volume": "Avg Volume (vph)", "Hour": "Hour of Day"},
+            category_orders={"CVAG Recommendation": CYCLE_ORDER, "Hour": hour_labels_12h},
+            title=full_title,
+            labels={"Volume": "Total Volume (vehicles)", "Hour": "Hour of Day"},
             template="simple_white",
         )
         for tr in fig.data:
@@ -560,14 +638,30 @@ def render_cycle_length_section(raw: pd.DataFrame, key_prefix: str = "cycle") ->
                     line=dict(width=1, color="white"),
                 ),
                 name="Status",
-                hovertemplate="Hour=%{x}<br>Volume=%{y:.0f}<extra></extra>",
+                hovertemplate="<b>%{x}</b><br>Total Volume: %{y:,.0f} vehicles<extra></extra>",
             )
         )
+
         fig.update_layout(
             height=420,
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
-            margin=dict(l=10, r=10, t=50, b=10),
-            bargap=0.15,
+            title=dict(text=full_title, x=0, xanchor="left"),
+            xaxis=dict(title=dict(text="Hour of Day", font=dict(size=16, weight="bold")), tickfont=dict(size=14), tickangle=-45),
+            yaxis=dict(title=dict(text="Total Volume (vehicles)", font=dict(size=16, weight="bold")), tickfont=dict(size=14)),
+            legend=dict(
+                orientation="v",
+                yanchor="top",
+                y=1.0,
+                xanchor="left",
+                x=1.02,
+                font=dict(size=13),
+                bgcolor="rgba(255,255,255,0.85)",
+                bordercolor="#cccccc",
+                borderwidth=1,
+                title=dict(text="Legend", font=dict(size=14))
+            ),
+            margin=dict(l=10, r=150, t=110, b=80),
+            bargap=0.15, 
+            bargroupgap=0.05,
         )
         fig.update_xaxes(showgrid=False)
         fig.update_yaxes(gridcolor="rgba(0,0,0,0.08)")
@@ -575,10 +669,13 @@ def render_cycle_length_section(raw: pd.DataFrame, key_prefix: str = "cycle") ->
 
     with ch2:
         status_counts = hourly["Status"].value_counts().reindex(["🟢 OPTIMAL", "⬆️ INCREASE", "🔽 REDUCE"], fill_value=0)
+        
+        pie_title = f"Hours by Status<br><span style='font-size:14px; color:#666;'>{int_subtitle}<br>Current Cycle: {current_cycle}</span>"
+        
         pie = px.pie(
             names=status_counts.index,
             values=status_counts.values,
-            title="Hours by Status",
+            title=pie_title,
             color=status_counts.index,
             color_discrete_map={
                 "🟢 OPTIMAL": STATUS_COLORS["🟢 OPTIMAL"],
@@ -589,7 +686,11 @@ def render_cycle_length_section(raw: pd.DataFrame, key_prefix: str = "cycle") ->
             template="simple_white",
         )
         pie.update_traces(textposition="inside", textinfo="label+percent")
-        pie.update_layout(height=420, margin=dict(l=10, r=10, t=50, b=10))
+        pie.update_layout(
+            height=420, 
+            margin=dict(l=10, r=10, t=110, b=10),
+            title=dict(text=pie_title, x=0, xanchor="left")
+        )
         st.plotly_chart(pie, use_container_width=True)
 
     # -------------------------
@@ -647,9 +748,9 @@ def render_cycle_length_section(raw: pd.DataFrame, key_prefix: str = "cycle") ->
         <div class="insight-box" style="margin-top:.5rem;">
             <h4>💡 Cycle Length Optimization Insights</h4>
             <p><strong>📊 System Efficiency:</strong> {optimal_hours}/{total_hours} hours optimal ({(optimal_hours/total_hours*100 if total_hours else 0):.0f}%)</p>
-            <p><strong>📈 Volume Profile:</strong> Peak {peak_volume:,} vph at {peak_hour} • Threshold exceedance: {high_hours} hours ({high_share:.1f}% of time)</p>
+            <p><strong>📈 Volume Profile:</strong> Peak {peak_volume:,} vehicles at {peak_hour} • Threshold exceedance: {high_hours} hours ({high_share:.1f}% of time)</p>
             <p><strong>🔧 Actions:</strong> ↑ {int((hourly["Status"] == "⬆️ INCREASE").sum())} hours need longer cycles • ↓ {int((hourly["Status"] == "🔽 REDUCE").sum())} hours need shorter cycles</p>
-            <p><strong>🚦 Capacity:</strong> Peak utilization {peak_capacity_util:.0f}% of intersection capacity ({INTERSECTION_CAPACITY_VPH:,} vph)</p>
+            <p><strong>🚦 Capacity:</strong> Peak utilization {peak_capacity_util:.0f}% of intersection capacity ({INTERSECTION_CAPACITY_VPH:,} vehicles)</p>
         </div>
         """,
         unsafe_allow_html=True,
