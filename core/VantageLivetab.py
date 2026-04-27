@@ -49,7 +49,7 @@ CANONICAL_INTERSECTIONS = [
     "Washington and Eisenhower Drive",
     "Washington and Avenue 48",
     "Washington and Avenue 47",
-    "Washington and Point Happy Way",
+    "Washington and Point Happy Simon",
 ]
 
 # Map label aliases to match the map’s internal labels
@@ -62,7 +62,7 @@ MAP_LABEL_ALIASES = {
     "Washington and Eisenhower Drive": "Washington St & Eisenhower Drive",
     "Washington and Avenue 48": "Washington St & Avenue 48",
     "Washington and Avenue 47": "Washington St & Avenue 47",
-    "Washington and Point Happy Way": "Washington St & Point Happy Way",
+    "Washington and Point Happy Simon": "Washington St & Point Happy Simon",
 }
 
 # Aliases we normalize from raw files
@@ -106,9 +106,13 @@ INTERSECTION_ALIASES = {
     "Washington Avenue and Avenue 47": "Washington and Avenue 47",
     "Washington Avenue and Ave 47": "Washington and Avenue 47",
 
-    "Washington Street & Point Happy Way": "Washington and Point Happy Way",
-    "Washington Street and Point Happy Way": "Washington and Point Happy Way",
-    "Washington St & Point Happy Way": "Washington and Point Happy Way",
+    "Washington Street & Point Happy Way": "Washington and Point Happy Simon",
+    "Washington Street and Point Happy Way": "Washington and Point Happy Simon",
+    "Washington St & Point Happy Way": "Washington and Point Happy Simon",
+    "Washington and Point Happy Way": "Washington and Point Happy Simon",
+    "Washington and Point Happy Simon": "Washington and Point Happy Simon",
+    "Washington Street & Point Happy Simon": "Washington and Point Happy Simon",
+    "Washington St & Point Happy Simon": "Washington and Point Happy Simon",
 }
 
 # Aggregation metadata
@@ -187,7 +191,7 @@ def _mode_emoji(mode_label: str) -> str:
 # =========================
 @st.cache_data(show_spinner=False)
 def load_vantage_bikes() -> pd.DataFrame:
-    url = "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/Iteris_VantageLive/WashingtonStreet_ALL_Bikes.csv"
+    url = "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/Iteris_VantageLive/WashingtonStreet_ALL_Bikes.csv"
     try:
         df = pd.read_csv(url)
         df["local_datetime"] = pd.to_datetime(df["local_datetime"], format="%m/%d/%Y", errors="coerce")
@@ -207,7 +211,7 @@ def load_vantage_bikes() -> pd.DataFrame:
 
 @st.cache_data(show_spinner=False)
 def load_vantage_vehicles() -> pd.DataFrame:
-    url = "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/Iteris_VantageLive/WashingtonStreet_ALL_vehicles.csv"
+    url = "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/Iteris_VantageLive/WashingtonStreet_ALL_vehicles.csv"
     try:
         df = pd.read_csv(url)
         df["local_datetime"] = pd.to_datetime(df["local_datetime"], format="%m/%d/%Y", errors="coerce")
@@ -226,7 +230,7 @@ def load_vantage_vehicles() -> pd.DataFrame:
 
 @st.cache_data(show_spinner=False)
 def load_vantage_pedestrians() -> pd.DataFrame:
-    url = "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/Iteris_VantageLive/WashingtonStreet_ALL_pedestrians.csv"
+    url = "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/Iteris_VantageLive/WashingtonStreet_ALL_pedestrians.csv"
     try:
         df = pd.read_csv(url)
         df["local_datetime"] = pd.to_datetime(df["local_datetime"], errors="coerce")
@@ -1132,7 +1136,30 @@ def render_vantage_tab():
 
             st.subheader(f" {mode_label} Demand Performance Indicators")
             if not raw.empty and raw["volume"].notna().any():
-                bucket_all = _prep_bucket(raw, granularity).groupby("local_datetime", as_index=False)["volume"].sum().sort_values("local_datetime")
+                # Fix: Use nunique of intersection+direction+turn+hour to correctly scale capacity
+                _b_temp = raw.copy()
+                _b_temp["link_hour"] = (
+                    _b_temp["intersection_name"].astype(str) +
+                    _b_temp["direction"].astype(str) +
+                    _b_temp["turn_type"].astype(str) +
+                    _b_temp["local_datetime"].dt.floor("H").astype(str)
+                )
+                
+                # Apply granularity bucketing to _b_temp
+                if granularity == "Hourly":
+                    _b_temp["bucket"] = _b_temp["local_datetime"].dt.floor("H")
+                elif granularity == "Daily":
+                    _b_temp["bucket"] = _b_temp["local_datetime"].dt.floor("D")
+                elif granularity == "Weekly":
+                    _b_temp["bucket"] = _b_temp["local_datetime"].dt.to_period("W").dt.start_time
+                else: # Monthly
+                    _b_temp["bucket"] = _b_temp["local_datetime"].dt.to_period("M").dt.start_time
+
+                bucket_all = _b_temp.groupby("bucket", as_index=False).agg(
+                    volume=("volume", "sum"),
+                    link_count=("link_hour", "nunique")
+                ).rename(columns={"bucket": "local_datetime"}).sort_values("local_datetime")
+
                 if granularity == "Monthly":
                     bucket_all["bucket_hours"] = pd.to_datetime(bucket_all["local_datetime"]).dt.days_in_month * 24
                 else:
@@ -1142,7 +1169,9 @@ def render_vantage_tab():
                 cap_key = "Vehicles" if mode_label == "All Modes" else mode_label
                 CAP_VPH, HIGH_VPH = _mode_caps(cap_key)
 
-                bucket_all["cap"] = bucket_all["bucket_hours"] * CAP_VPH
+                # Capacity scales by number of unique link-hours in the bucket
+                bucket_all["cap"] = bucket_all["link_count"] * CAP_VPH
+                bucket_all["threshold"] = bucket_all["link_count"] * HIGH_VPH
                 util_series = np.where(bucket_all["cap"] > 0, bucket_all["volume"] / bucket_all["cap"] * 100, np.nan)
 
                 peak_idx = int(bucket_all["volume"].idxmax())
@@ -1230,7 +1259,7 @@ def render_vantage_tab():
 
                 with col3:
                     total_volume = float(np.nansum(raw["volume"]))
-                    cap_total = CAP_VPH * float(bucket_all["bucket_hours"].sum())
+                    cap_total = float(bucket_all["cap"].sum())
                     kpi_title(
                         f"🚗 Total {mode_label} (period)",
                         "Sum of all volumes across the selected time window and filters. The pill compares this against the period’s total theoretical capacity."

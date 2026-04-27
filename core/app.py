@@ -34,6 +34,7 @@ from sidebar_functions import (
     render_badge,
     create_5min_data,
     compute_data_availability,
+    get_corridor_display_name,
 )
 
 # Cycle length section
@@ -192,7 +193,7 @@ if "url_hydrated" not in st.session_state:
 # =========================
 st.set_page_config(
     page_title="Active Transportation & Operations Management Dashboard",
-    page_icon="🛣️",
+    page_icon="ACE",
     layout="wide",  # Keep wide layout enabled throughout the app (including after sign-in)
     initial_sidebar_state="expanded",
 )
@@ -235,7 +236,7 @@ def cad_loader(title: str = "Processing…"):
         yield step
         progress_bar.progress(100)
         with log_container:
-            st.success("✔️ Done")
+            st.success("Done")
 
         # Wait briefly to show completion, then clear everything
         time.sleep(0.5)
@@ -245,7 +246,7 @@ def cad_loader(title: str = "Processing…"):
 
     except Exception as e:
         with log_container:
-            st.error(f"❌ {e}")
+            st.error(f"{e}")
         raise
 
 
@@ -305,6 +306,12 @@ DESIRED_NODE_ORDER_BOTTOM_UP = [
     "Del Webb",
 ]
 
+# Node order for East-West corridors (Avenue 47 and Highway 111)
+# These corridors run from Washington Street (west) to Adams Street (east)
+DESIRED_NODE_ORDER_EAST_WEST = [
+    "Washington Street",
+    "Adams St",
+]
 
 # Build ordered node list from segment_name like "A → B"
 def _build_node_order(df: pd.DataFrame) -> list[str]:
@@ -346,9 +353,15 @@ def _nodes_present_in_data(df: pd.DataFrame) -> set:
     return set(pd.concat([left, right], ignore_index=True).dropna().unique())
 
 
-def _canonical_order_in_data(df: pd.DataFrame) -> list[str]:
-    """Canonical corridor order, restricted to nodes that actually exist in the Prediction."""
+def _canonical_order_in_data(df: pd.DataFrame, corridor: str = None) -> list[str]:
+    """Canonical corridor order, restricted to nodes that actually exist in the data.
+    For East-West corridors (Avenue 47, Highway 111), use the E-W node order."""
     present = _nodes_present_in_data(df)
+
+    # Use E-W order for Avenue 47 and Highway 111 corridors
+    if corridor in ["Avenue 47", "Highway 111"]:
+        return [n for n in DESIRED_NODE_ORDER_EAST_WEST if n in present]
+
     return [n for n in DESIRED_NODE_ORDER_BOTTOM_UP if n in present]
 
 
@@ -357,15 +370,20 @@ def _canonical_order_in_data(df: pd.DataFrame) -> list[str]:
 # =========================
 def normalize_dir(s: pd.Series) -> pd.Series:
     """
-    Vectorized normalizer returning only 'nb', 'sb', or 'unk' (dtype=object).
+    Vectorized normalizer returning only 'nb', 'sb', 'eb', 'wb', or 'unk' (dtype=object).
     Safe for mixed dtype inputs; never returns NaN.
     """
     ser = s.astype(str).str.lower().str.strip()
     ser = ser.str.replace(r"[\s\-\(\)_/\\]+", " ", regex=True)
     nb_mask = ser.str.contains(r"\b(?:nb|north|northbound)\b")
     sb_mask = ser.str.contains(r"\b(?:sb|south|southbound)\b")
+    eb_mask = ser.str.contains(r"\b(?:eb|east|eastbound)\b")
+    wb_mask = ser.str.contains(r"\b(?:wb|west|westbound)\b")
     return pd.Series(
-        np.where(nb_mask, "nb", np.where(sb_mask, "sb", "unk")),
+        np.where(nb_mask, "nb",
+        np.where(sb_mask, "sb",
+        np.where(eb_mask, "eb",
+        np.where(wb_mask, "wb", "unk")))),
         index=ser.index,
         dtype="object",
     )
@@ -384,6 +402,10 @@ def normalize_dir_value(v) -> str:
         return "nb"
     if any(t in s for t in [" sb", "sb ", " southbound", " south "]):
         return "sb"
+    if any(t in s for t in [" eb", "eb ", " eastbound", " east "]):
+        return "eb"
+    if any(t in s for t in [" wb", "wb ", " westbound", " west "]):
+        return "wb"
     return "unk"
 
 
@@ -944,11 +966,11 @@ def improved_volume_charts_for_tab2(
     dir_title = "All Approaches" if show_all_approaches else direction_label
     if len(keep) == 1:
         if show_all_approaches:
-            main_chart_title = f"All Approaches Vehicle Volume Per {label.capitalize()} by Approach (Line Chart)".strip()
+            main_chart_title = f"Average {granularity} Traffic by Approach (Line Chart)".strip()
         else:
-            main_chart_title = f"{direction_label} Vehicle Volume Per {label.capitalize()} (Line Chart)".strip()
+            main_chart_title = f"Average {granularity} Traffic - {direction_label} (Line Chart)".strip()
     else:
-        main_chart_title = f"{dir_title} Vehicle Volume Per {label.capitalize()} by Intersection (Line Chart)".strip()
+        main_chart_title = f"Average {granularity} Traffic by Intersection (Line Chart)".strip()
 
     date_subtitle = ""
     if date_range and len(date_range) == 2:
@@ -972,22 +994,31 @@ def improved_volume_charts_for_tab2(
         type="date",
     )
     if granularity == "Hourly":
-        # Calculate hourly ticks at 4-hour intervals that always include midnight
-        # This allows us to show the date/day at midnight and just time otherwise
+        # Calculate hourly ticks with frequency adjusted by range
         if not plot_df.empty:
             min_ts = plot_df["local_datetime"].min()
             max_ts = plot_df["local_datetime"].max()
+            days_diff = (max_ts - min_ts).days
+            
             # Start from the beginning of the first day to align midnight ticks
             start_range = min_ts.floor("D")
             end_range = max_ts.ceil("H")
-            tick_vals = pd.date_range(start=start_range, end=end_range, freq="4H")
+            
+            # Adjust frequency based on date range to avoid crowded axis
+            if days_diff > 30: freq = "2D"
+            elif days_diff > 14: freq = "24H"
+            elif days_diff > 7: freq = "12H"
+            elif days_diff > 3: freq = "6H"
+            else: freq = "4H"
+            
+            tick_vals = pd.date_range(start=start_range, end=end_range, freq=freq)
             # Filter ticks to only those within the data range (plus some padding if needed)
             tick_vals = [t for t in tick_vals if t >= min_ts - pd.Timedelta(hours=1) and t <= max_ts + pd.Timedelta(hours=1)]
             
             tick_text = []
             for t in tick_vals:
                 if t.hour == 0 and t.minute == 0:
-                    tick_text.append(t.strftime("<b>%A</b>\n<b>%b %d</b>"))
+                    tick_text.append(t.strftime("<b>%a</b>\n%b %d"))
                 else:
                     tick_text.append(t.strftime("%I:%M %p"))
             
@@ -1000,8 +1031,18 @@ def improved_volume_charts_for_tab2(
         if not plot_df.empty:
             min_ts = plot_df["local_datetime"].min()
             max_ts = plot_df["local_datetime"].max()
-            tick_vals = pd.date_range(start=min_ts.floor("D"), end=max_ts.ceil("D"), freq="D")
-            tick_text = [t.strftime("<b>%A</b>\n<b>%b %d</b>\n<b>%Y</b>") for t in tick_vals]
+            days_diff = (max_ts - min_ts).days
+            
+            # Adjust frequency based on date range to avoid crowding
+            if days_diff > 45: freq = "7D"
+            elif days_diff > 30: freq = "4D"
+            elif days_diff > 14: freq = "2D"
+            else: freq = "D"
+                
+            tick_vals = pd.date_range(start=min_ts.floor("D"), end=max_ts.ceil("D"), freq=freq)
+            # Use a cleaner format: Day abbreviation, Month Day
+            tick_text = [t.strftime("<b>%a</b>\n%b %d") for t in tick_vals]
+            
             xaxis_config["tickvals"] = tick_vals
             xaxis_config["ticktext"] = tick_text
         else:
@@ -1033,22 +1074,35 @@ def improved_volume_charts_for_tab2(
             xaxis_config["tickformat"] = "%b %Y"
 
     fig_trend.update_layout(
-        title=dict(text=chart_title_with_sub, font=dict(size=20, color="black"), x=0, xanchor="left"),
+        title=dict(
+            text=chart_title_with_sub, 
+            font=dict(size=22, color="black"), 
+            x=0, xanchor="left",
+            y=0.98, yanchor="top"
+        ),
+        height=700,
         xaxis=xaxis_config,
-        yaxis=dict(title=dict(text="Vehicle Volume Counts", font=dict(size=16, weight="bold", color="black")), tickfont=dict(size=14, color="black")),
+        yaxis=dict(
+            title=dict(
+                text="Vehicle Volume Counts", 
+                font=dict(size=16, weight="bold", color="black"),
+                standoff=30
+            ), 
+            tickfont=dict(size=14, color="black")
+        ),
         legend=dict(
             orientation="v",
             yanchor="top",
-            y=1.18,
+            y=1.0,
             xanchor="left",
-            x=1.05,
+            x=1.02,
             font=dict(size=13),
             title=dict(text="Legend", font=dict(size=14)),
             bgcolor="rgba(255,255,255,0.85)",
             bordercolor="#cccccc",
             borderwidth=1,
         ),
-        margin=dict(l=10, r=260, t=100, b=10),
+        margin=dict(l=90, r=260, t=140, b=80),
     )
     fig_trend.update_xaxes(patch=xaxis_config, overwrite=True)
 
@@ -1336,14 +1390,18 @@ with tab1:
 
     # -------- Sidebar controls (commit on Search) --------
     with st.sidebar:
-        st.image("Logos/ACE-logo-HiRes.jpg", width=210)
-        st.image("Logos/CV Sync__.jpg", width=205)
+        st.image("Logos/ACE-logo-HiRes.jpg", width=300)
+        st.image("Logos/CV Sync__.jpg", width=300)
 
-        with st.expander("⚙️ Pg.1 ITERIS CLEARGUIDE SETTINGS", expanded=False):
+        with st.expander("Pg.1 Iteris ClearGuide Settings", expanded=False):
             st.caption("Select Route and Date Range")
             st.caption("Data: Vehicle Speed, Delay, and Travel Time")
-            st.markdown("## 🗺️ Select Route")
+            st.markdown("## Select Corridor")
+            corridor_list = sorted(corridor_df["corridor_id"].unique().tolist())
+            default_idx = corridor_list.index("Washington Street") if "Washington Street" in corridor_list else 0
+            selected_corridor = st.selectbox("Corridor", corridor_list, index=default_idx, key="t1_corridor_selector")
 
+            st.markdown("## Select Route")
             od_mode = st.checkbox(
                 "Analysis Pro",
                 value=True,
@@ -1353,8 +1411,11 @@ with tab1:
 
             origin, destination = None, None
             if not corridor_df.empty:
-                nodes_in_data = _canonical_order_in_data(corridor_df)
-                node_list = nodes_in_data if len(nodes_in_data) >= 2 else _build_node_order(corridor_df)
+                # Filter data for the selected corridor to build node list
+                filtered_nodes_df = corridor_df[corridor_df["corridor_id"] == selected_corridor]
+                nodes_in_data = _canonical_order_in_data(filtered_nodes_df, corridor=selected_corridor)
+                node_list = nodes_in_data if len(nodes_in_data) >= 2 else _build_node_order(filtered_nodes_df)
+
 
                 if len(node_list) >= 2:
                     # Add "SELECT" as the first option for both origin and destination
@@ -1392,13 +1453,14 @@ with tab1:
                         try:
                             oi = node_list.index(origin)
                             di = node_list.index(destination)
+                            is_ew = selected_corridor in ["Avenue 47", "Highway 111"]
                             if oi < di:
                                 arrow = "→"
-                                bound = "Northbound"
+                                bound = "Eastbound" if is_ew else "Northbound"
                                 route_text = f"{origin} {arrow} {destination} ({bound})"
                             elif oi > di:
                                 arrow = "←"
-                                bound = "Southbound"
+                                bound = "Westbound" if is_ew else "Southbound"
                                 route_text = f"{origin} {arrow} {destination} ({bound})"
                             else:
                                 route_text = f"{origin}"
@@ -1459,7 +1521,7 @@ with tab1:
                     path_mask = None
                     if origin != destination and dfx is not None and not dfx.empty:
                         # Build path segments between origin and destination using canonical forward naming
-                        nodes = _canonical_order_in_data(dfx)
+                        nodes = _canonical_order_in_data(dfx, corridor=selected_corridor)
                         if origin in nodes and destination in nodes:
                             oi = nodes.index(origin)
                             di = nodes.index(destination)
@@ -1541,7 +1603,7 @@ with tab1:
                     min_date = max(min_date, cap_start)
                     # max_date remains the same (today/data max)
 
-                st.markdown("## 📅 Date And Time")
+                st.markdown("## Date And Time")
                 if not od_mode:
                     st.info("Analysis Pro is OFF: Date range limited to the last 60 days.")
                 date_range = date_range_preset_controls(min_date, max_date, key_prefix="perf")
@@ -1579,6 +1641,7 @@ with tab1:
 
                 # track uncommitted controls
                 t1_current = {
+                    "corridor_name": selected_corridor,
                     "od_mode": od_mode,
                     "origin": origin,
                     "destination": destination,
@@ -1639,6 +1702,7 @@ with tab1:
                 st.error("❌ Failed to load corridor Prediction. Please check your Prediction sources.")
             else:
                 # Unpack committed params
+                sel_corr = t1_params.get("corridor_name", "Washington Street")
                 od_mode = t1_params.get("od_mode", True)
                 origin = t1_params.get("origin")
                 destination = t1_params.get("destination")
@@ -1649,7 +1713,8 @@ with tab1:
                 end_hour = t1_params.get("end_hour")
 
                 # --- Prepare working set / O-D path subset ---
-                working_df = base_df.copy()
+                # Filter by the committed corridor
+                working_df = base_df[base_df["corridor_id"] == sel_corr].copy()
                 route_label = "All Segments"
 
                 # Enforce 60-day date cap when Analysis Pro is OFF even if previous params had a wider range
@@ -1679,34 +1744,37 @@ with tab1:
                 desired_dir: str | None = None
 
                 if od_mode and origin and destination:
-                    canonical = _canonical_order_in_data(base_df)
+                    # Use base_df but filter by selected corridor first
+                    filtered_base = base_df[base_df["corridor_id"] == sel_corr]
+                    canonical = _canonical_order_in_data(filtered_base, corridor=sel_corr)
                     if len(canonical) < 2:
-                        canonical = _build_node_order(base_df)
+                        canonical = _build_node_order(filtered_base)
 
                     if origin in canonical and destination in canonical:
                         i0, i1 = canonical.index(origin), canonical.index(destination)
+                        is_ew = sel_corr in ["Avenue 47", "Highway 111"]
                         if i0 < i1:
-                            desired_dir = "nb"
+                            desired_dir = "eb" if is_ew else "nb"
                         elif i0 > i1:
-                            desired_dir = "sb"
+                            desired_dir = "wb" if is_ew else "sb"
                         else:
                             desired_dir = None
 
                         imin, imax = (i0, i1) if i0 < i1 else (i1, i0)
                         candidate_segments = [f"{canonical[j]} → {canonical[j + 1]}" for j in range(imin, imax)]
-                        seg_names_in_data = set(base_df["segment_name"].dropna().unique().tolist())
+                        seg_names_in_data = set(filtered_base["segment_name"].dropna().unique().tolist())
                         path_segments = [s for s in candidate_segments if s in seg_names_in_data]
 
                         seg_df = pd.DataFrame()
                         used_fallback_direct = False
 
                         if path_segments:
-                            seg_df = base_df[base_df["segment_name"].isin(path_segments)].copy()
+                            seg_df = filtered_base[filtered_base["segment_name"].isin(path_segments)].copy()
                         else:
-                            # Fallback: use a single aggregated segment if it exists (e.g., "Avenue 41 → Country Club Drive")
+                            # Fallback: use a single aggregated segment if it exists
                             direct_name = f"{origin} → {destination}"
                             if direct_name in seg_names_in_data:
-                                seg_df = base_df[base_df["segment_name"] == direct_name].copy()
+                                seg_df = filtered_base[filtered_base["segment_name"] == direct_name].copy()
                                 used_fallback_direct = True
 
                         if not seg_df.empty:
@@ -1775,47 +1843,57 @@ with tab1:
 
                             if filtered_data.empty:
                                 step("No Prediction found for selected filters", 100)
-                                st.warning("⚠️ No Prediction available for the selected filters.")
+                                st.warning("No Prediction available for the selected filters.")
                             else:
                                 total_records = len(filtered_data)
                                 data_span = (date_range[1] - date_range[0]).days + 1
                                 time_context = f" • {time_filter}" if (granularity == "Hourly" and time_filter) else ""
-                                dir_display = "Northbound" if desired_dir == "nb" else "Southbound" if desired_dir == "sb" else "All Directions"
+
+                                dir_display = (
+                                    "Eastbound" if desired_dir == "eb" else
+                                    "Westbound" if desired_dir == "wb" else
+                                    "Northbound" if desired_dir == "nb" else
+                                    "Southbound" if desired_dir == "sb" else
+                                    "All Directions"
+                                )
 
                                 step("Preparing summary context", 35)
                                 st.markdown(
                                     f"""
-                                                                    <div style="
-                                                                        background: linear-gradient(135deg, #2b77e5 0%, #19c3e6 100%);
-                                                                        border-radius:16px; padding:18px 20px; color:#fff; margin:8px 0 14px;
-                                                                        box-shadow:0 10px 26px rgba(25,115,210,.25); text-align:left;
-                                                                        font-family: inherit;">
-                                                                      <div style="display:flex; align-items:center; gap:10px;">
-                                                                        <div>
-                                                                            <div style="font-size:1.7rem; font-weight:800; letter-spacing:-0.01em; margin-bottom:2px;">
-                                                                              <span style="color: #ffffff;">2025 BNP PARIBUS OPEN INDIAN WELLS DASHBOARD</span><span style="color: rgba(255,255,255,0.7);">: ITERIS CLEARGUIDE TRAVEL TIME ANALYSIS</span>
-                                                                            </div>
-                                                                            <div style="font-size:1.1rem;font-weight:600;opacity:0.9; display:flex; flex-wrap:wrap; gap:15px; margin-top:4px; align-items:center;">
-                                                                              <div style="background:rgba(255,255,255,0.15); padding:4px 12px; border-radius:8px; font-size:1.2rem; border:1px solid rgba(255,255,255,0.3); font-weight:700;">
-                                                                                📅 {date_range[0].strftime('%b %d, %Y')} to {date_range[1].strftime('%b %d, %Y')} <span style="font-weight:400; opacity:0.8;">({data_span} days)</span>
-                                                                              </div>
-                                                                              <div style="background:rgba(255,255,255,0.15); padding:4px 12px; border-radius:8px; font-size:1.2rem; border:1px solid rgba(255,255,255,0.3);">
-                                                                                <span style="opacity:0.9; font-weight:400;">Corridor Segment:</span> <span style="font-weight:800;">{route_label}</span> <span style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:4px; margin-left:8px; font-size:0.9rem; font-weight:700; color:#fff;">{dir_display}</span>
-                                                                              </div>
-                                                                            </div>
-                                                                            <div style="font-size:0.95rem; opacity:0.85; display:flex; flex-wrap:wrap; gap:15px; margin-top:10px; align-items:center;">
-                                                                              <div style="display:flex; align-items:center; gap:15px;">
-                                                                                <div><span style="opacity:0.8; font-weight:400;">Region:</span> Coachella Valley</div>
-                                                                                <div style="border-left: 1px solid rgba(255,255,255,0.3); padding-left: 15px;"><span style="opacity:0.8; font-weight:400;">City:</span> Indian Wells / La Quinta</div>
-                                                                                <div style="border-left: 1px solid rgba(255,255,255,0.3); padding-left: 15px;"><span style="opacity:0.8; font-weight:400;">Corridor:</span> Washington Street</div>
-                                                                                <div style="border-left: 1px solid rgba(255,255,255,0.3); padding-left: 15px;">📊 {granularity} Aggregation{time_context}</div>
-                                                                                <div style="border-left: 1px solid rgba(255,255,255,0.3); padding-left: 15px;">✅ {total_records:,} Prediction points</div>
-                                                                              </div>
-                                                                            </div>
-                                                                        </div>
-                                                                      </div>
-                                                                    </div>
-                                                                    """,
+                                    <div style="
+                                        background: linear-gradient(135deg, #2b77e5 0%, #19c3e6 100%);
+                                        border-radius:16px; padding:22px 25px; color:#fff; margin:10px 0 16px;
+                                        box-shadow:0 12px 28px rgba(25,115,210,.25); text-align:left;
+                                        font-family: inherit;">
+                                      <div style="display:flex; align-items:center; gap:10px;">
+                                        <div>
+                                            <div style="font-size:1.8rem; font-weight:800; letter-spacing:-0.02em; margin-bottom:4px; text-transform:uppercase;">
+                                              <span style="color: #ffffff;">ADVANTEC CONSULTING ENGINEERS</span>
+                                              <span style="color: rgba(255,255,255,0.8); font-weight:400; margin-left:12px; border-left:1px solid rgba(255,255,255,0.4); padding-left:12px;">
+                                                ITERIS CLEARGUIDE TRAVEL TIME ANALYSIS
+                                              </span>
+                                            </div>
+                                            <div style="font-size:1.1rem;font-weight:600;opacity:0.9; display:flex; flex-wrap:wrap; gap:15px; margin-top:6px; align-items:center;">
+                                              <div style="background:rgba(255,255,255,0.15); padding:4px 12px; border-radius:8px; font-size:1.15rem; border:1px solid rgba(255,255,255,0.3); font-weight:700;">
+                                                Period: {date_range[0].strftime('%b %d, %Y')} to {date_range[1].strftime('%b %d, %Y')} <span style="font-weight:400; opacity:0.8;">({data_span} days)</span>
+                                              </div>
+                                              <div style="background:rgba(255,255,255,0.15); padding:4px 12px; border-radius:8px; font-size:1.15rem; border:1px solid rgba(255,255,255,0.3);">
+                                                <span style="opacity:0.9; font-weight:400;">Corridor Segment:</span> <span style="font-weight:800;">{route_label}</span> <span style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:4px; margin-left:8px; font-size:0.9rem; font-weight:700; color:#fff;">{dir_display}</span>
+                                              </div>
+                                            </div>
+                                            <div style="font-size:0.95rem; opacity:0.85; display:flex; flex-wrap:wrap; gap:15px; margin-top:10px; align-items:center;">
+                                              <div style="display:flex; align-items:center; gap:15px;">
+                                                <div><span style="opacity:0.8; font-weight:400;">Region:</span> Coachella Valley</div>
+                                                <div style="border-left: 1px solid rgba(255,255,255,0.3); padding-left: 15px;"><span style="opacity:0.8; font-weight:400;">City:</span> Indian Wells / La Quinta</div>
+                                                <div style="border-left: 1px solid rgba(255,255,255,0.3); padding-left: 15px;"><span style="opacity:0.8; font-weight:400;">Corridor:</span> {sel_corr}</div>
+                                                <div style="border-left: 1px solid rgba(255,255,255,0.3); padding-left: 15px;">{granularity} Aggregation{time_context}</div>
+                                                <div style="border-left: 1px solid rgba(255,255,255,0.3); padding-left: 15px;">{total_records:,} Data points</div>
+                                              </div>
+                                            </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    """,
                                     unsafe_allow_html=True,
                                 )
 
@@ -1873,7 +1951,7 @@ with tab1:
                                     st.info("No Prediction in this window.")
                                 else:
                                     step("Computing KPIs", 70)
-                                    st.subheader(" KPI's (Key Performance Indicators)")
+                                    st.subheader("Key Performance Indicators")
                                     k = compute_perf_kpis_interpretable(raw_data, HIGH_DELAY_SEC)
 
                                     # Calculate LOS based on Average Speed
@@ -1909,14 +1987,14 @@ with tab1:
                                     c1, c2, c3, c4, c5 = st.columns(5)
                                     with c1:
                                         st.metric(
-                                            "🎯 Reliability Index",
+                                            "Reliability Index",
                                             f"{k['reliability']['value']:.0f}{k['reliability']['unit']}",
                                             help=k['reliability']['help'],
                                         )
                                         st.markdown(render_badge(k['reliability']['score']), unsafe_allow_html=True)
                                     with c2:
                                         st.metric(
-                                            "⚠️ Congestion Frequency",
+                                            "Congestion Frequency",
                                             f"{k['congestion_freq']['value']:.1f}{k['congestion_freq']['unit']}",
                                             help=k['congestion_freq']['help'],
                                         )
@@ -1924,7 +2002,7 @@ with tab1:
                                         st.caption(k['congestion_freq'].get('extra', ''))
                                     with c3:
                                         st.metric(
-                                            "⏱️ Average Travel Time",
+                                            "Average Travel Time",
                                             f"{k['avg_tt']['value']:.1f} {k['avg_tt']['unit']}",
                                             help="Average travel time across the selected period. Used to estimate corridor Level of Service (LOS) per HCM 6th Edition (TRB, 2016) urban arterial standards based on average travel speed. LOS A = over 35 mph (free flow), LOS B = 28 to 35 mph (minor delay), LOS C = 22 to 28 mph (stable flow), LOS D = 17 to 22 mph (approaching capacity), LOS E = 13 to 17 mph (unstable flow), LOS F = under 13 mph (breakdown). Source: Highway Capacity Manual, 6th Edition, Transportation Research Board. https://www.trb.org/Main/Blurbs/175169.aspx",
                                         )
@@ -1932,7 +2010,7 @@ with tab1:
                                         st.caption(f"Estimated Corridor LOS: {los_letter}")
                                     with c4:
                                         st.metric(
-                                            "📈 Planning Time (95th Percentile)",
+                                            "Planning Time (95th Percentile)",
                                             f"{k['planning_time']['value']:.1f} {k['planning_time']['unit']}",
                                             help="95th percentile travel time — only 5% of trips are slower than this. Used to estimate worst-case corridor Level of Service (LOS) per HCM 6th Edition (TRB, 2016). This represents the reliability ceiling: LOS A = over 35 mph, LOS B = 28 to 35 mph, LOS C = 22 to 28 mph, LOS D = 17 to 22 mph, LOS E = 13 to 17 mph, LOS F = under 13 mph. If this LOS is significantly worse than the Average Travel Time LOS, the corridor suffers from unreliable, variable conditions. Source: Highway Capacity Manual, 6th Edition, TRB. https://www.trb.org/Main/Blurbs/175169.aspx",
                                         )
@@ -1940,7 +2018,7 @@ with tab1:
                                         st.caption(f"Worst-case Corridor LOS: {los_letter_worst}")
                                     with c5:
                                         st.metric(
-                                            "🧭 Buffer Time (leave this much earlier)",
+                                            "Buffer Time",
                                             f"{buffer_minutes:.1f} min",
                                             help=buffer_help,
                                         )
@@ -1948,7 +2026,7 @@ with tab1:
 
                                     if len(filtered_data) > 1:
                                         step("Rendering trend charts", 85)
-                                        st.subheader("📈 Performance Trends")
+                                        st.subheader("Performance Trends")
                                         v1, v2 = st.columns(2)
 
                                         trends_df = od_series if 'od_series' in locals() and not od_series.empty else filtered_data
@@ -1985,16 +2063,38 @@ with tab1:
                                                 )
 
                                         with v1:
-                                            dc = performance_chart(trends_df, "delay", direction_label=dir_display)
-                                            if dc:
-                                                st.plotly_chart(dc, use_container_width=True, config=PLOTLY_CONFIG)
+                                            # Determine corridor name from data if available
+                                            raw_c_name = working_df["corridor_id"].iloc[0] if "corridor_id" in working_df.columns and not working_df.empty else "Washington Street"
+                                            c_name = get_corridor_display_name(raw_c_name)
+                                            
+                                            dc_trend, dc_dist = performance_chart(
+                                                trends_df, "delay", 
+                                                direction_label=dir_display,
+                                                corridor_name=c_name,
+                                                origin=origin,
+                                                destination=destination,
+                                                date_range=date_range
+                                            )
+                                            if dc_trend:
+                                                st.plotly_chart(dc_trend, use_container_width=True, config=PLOTLY_CONFIG)
+                                            if dc_dist:
+                                                st.plotly_chart(dc_dist, use_container_width=True, config=PLOTLY_CONFIG)
                                         with v2:
-                                            tc = performance_chart(trends_df, "travel", direction_label=dir_display)
-                                            if tc:
-                                                st.plotly_chart(tc, use_container_width=True, config=PLOTLY_CONFIG)
+                                            tc_trend, tc_dist = performance_chart(
+                                                trends_df, "travel", 
+                                                direction_label=dir_display,
+                                                corridor_name=c_name,
+                                                origin=origin,
+                                                destination=destination,
+                                                date_range=date_range
+                                            )
+                                            if tc_trend:
+                                                st.plotly_chart(tc_trend, use_container_width=True, config=PLOTLY_CONFIG)
+                                            if tc_dist:
+                                                st.plotly_chart(tc_dist, use_container_width=True, config=PLOTLY_CONFIG)
 
                                         if od_mode and 'od_series' in locals() and not od_series.empty:
-                                            st.subheader("🔍Which Dates/Times have the highest Travel Time and Delay?")
+                                            st.subheader("High Travel Time and Delay Analysis")
 
                                             # Apply granularity aggregation to the display data
                                             display_od_series = od_series.copy()
@@ -2127,10 +2227,10 @@ with tab1:
                                     # =========================
                                     if od_mode:
                                         step("Running bottleneck analysis", 95)
-                                        st.subheader("🚨 Comprehensive Bottleneck Analysis")
+                                        st.subheader("Comprehensive Bottleneck Analysis")
                                     # Add legend for Performance Rating and Impact Score
                                     if od_mode:
-                                        with st.expander("📊 **Rating Methodology & Legend**", expanded=False):
+                                        with st.expander("Rating Methodology & Legend", expanded=False):
                                             st.markdown("""
                                                                             ### Impact Score Calculation
                                                                             The **Impact Score** (0-100) is a weighted composite metric that identifies bottlenecks:
@@ -2148,28 +2248,28 @@ with tab1:
                                                 5)
                                             with legend_col1:
                                                 st.markdown(
-                                                    '<span class="performance-badge badge-excellent">🟢 Excellent</span>',
+                                                    '<span class="performance-badge badge-excellent">Excellent</span>',
                                                     unsafe_allow_html=True)
                                                 st.caption("Score: 0-20")
                                                 st.caption("Optimal flow")
                                             with legend_col2:
-                                                st.markdown('<span class="performance-badge badge-good">🔵 Good</span>',
+                                                st.markdown('<span class="performance-badge badge-good">Good</span>',
                                                             unsafe_allow_html=True)
                                                 st.caption("Score: 20-40")
                                                 st.caption("Minor delays")
                                             with legend_col3:
-                                                st.markdown('<span class="performance-badge badge-fair">🟡 Fair</span>',
+                                                st.markdown('<span class="performance-badge badge-fair">Fair</span>',
                                                             unsafe_allow_html=True)
                                                 st.caption("Score: 40-60")
                                                 st.caption("Moderate congestion")
                                             with legend_col4:
-                                                st.markdown('<span class="performance-badge badge-poor">🟠 Poor</span>',
+                                                st.markdown('<span class="performance-badge badge-poor">Poor</span>',
                                                             unsafe_allow_html=True)
                                                 st.caption("Score: 60-80")
                                                 st.caption("Significant delays")
                                             with legend_col5:
                                                 st.markdown(
-                                                    '<span class="performance-badge badge-critical">🔴 Critical</span>',
+                                                    '<span class="performance-badge badge-critical">Critical</span>',
                                                     unsafe_allow_html=True)
                                                 st.caption("Score: 80-100")
                                                 st.caption("Severe bottleneck")
@@ -2225,15 +2325,15 @@ with tab1:
                                             g["Bottleneck_Score"] = score.round(1)
 
                                             bins = [-0.1, 20, 40, 60, 80, 200]
-                                            labels = ["🟢 Excellent", "🔵 Good", "🟡 Fair", "🟠 Poor", "🔴 Critical"]
-                                            g["🎯 Performance Rating"] = pd.cut(g["Bottleneck_Score"], bins=bins,
+                                            labels = ["Excellent", "Good", "Fair", "Poor", "Critical"]
+                                            g["Performance Rating"] = pd.cut(g["Bottleneck_Score"], bins=bins,
                                                                                labels=labels)
 
                                             final = g[
                                                 [
                                                     "Segment (by Dir)",
                                                     "dir_norm",
-                                                    "🎯 Performance Rating",
+                                                    "Performance Rating",
                                                     "Bottleneck_Score",
                                                     "average_delay_max",  # Peak Delay - 45% weight (1st component)
                                                     "average_delay_mean",  # Avg Delay - 35% weight (2nd component)
@@ -2362,7 +2462,7 @@ with tab2:
     volume_df = get_volume_df()
 
     with st.sidebar:
-        with st.expander("⚙️ Pg.2 KINETIC MOBILITY SETTINGS", expanded=False):
+        with st.expander("Pg.2 Kinetic Mobility Settings", expanded=False):
 
             st.caption("Select Intersection(s) and Date Range")
             st.caption("Data: Vehicle Volume")
@@ -2381,6 +2481,7 @@ with tab2:
                 "Avenue 50",
                 "Sagebrush Avenue",
                 "Eisenhower",
+                "Point Happy Simon",
                 "Avenue 48",
                 "Avenue 47",
                 "Channel Drive",
@@ -2490,9 +2591,9 @@ with tab2:
                     st.session_state["t2_qp_hydrated"] = True
 
             # Corridor selector
-            st.markdown("## 🛣️ Select Corridor")
+            st.markdown("## Select Corridor")
             corridor = st.selectbox(
-                "🛣️ Select Corridor",
+                "Select Corridor",
                 corridors,
                 key="corridor_vol",
                 label_visibility="collapsed",
@@ -2519,9 +2620,9 @@ with tab2:
             else:
                 intersections = ["SELECT", "All Intersections"]
 
-            st.markdown("## 🚦 Select Intersection(s)")
+            st.markdown("## Select Intersection(s)")
             intersection = st.multiselect(
-                "🚦 Select Intersection(s)",
+                "Select Intersection(s)",
                 intersections_ordered,
                 key="intersection_vol",
                 label_visibility="collapsed",
@@ -2642,7 +2743,7 @@ with tab2:
                     min_date = volume_df["local_datetime"].dt.date.min()
                     max_date = volume_df["local_datetime"].dt.date.max()
 
-                st.markdown("## 📅 Date And Time")
+                st.markdown("## Date And Time")
                 date_range_vol = date_range_preset_controls(min_date, max_date, key_prefix="vol")
 
                 # Comparison toggle
@@ -2654,7 +2755,7 @@ with tab2:
                 )
                 date_range_comp = None
                 if compare_mode:
-                    st.markdown("### 📅 Comparison Period")
+                    st.markdown("### Comparison Period")
                     date_range_comp = date_range_preset_controls(min_date, max_date, key_prefix="vol_comp")
 
                 st.markdown("## Granularity")
@@ -2676,9 +2777,9 @@ with tab2:
                         else:
                             scope_df = scope_df[scope_df["intersection_name"] == intersection]
                     dirs = sorted(scope_df["direction"].dropna().unique().tolist()) if not scope_df.empty else []
-                    direction_options = dirs if dirs else ["No Data"]
+                    direction_options = (["All Directions"] + dirs) if dirs else ["No Data"]
                 else:
-                    direction_options = ["No Data"]
+                    direction_options = ["All Directions", "No Data"]
                 direction_filter = st.selectbox("🔄 Direction Filter", direction_options, key="direction_filter_vol")
 
                 try:
@@ -2863,7 +2964,7 @@ with tab2:
 
                             if filtered_volume_data.empty:
                                 step("No volume Prediction in selected range", 100)
-                                st.warning("⚠️ No volume Prediction available for the selected range.")
+                                st.warning("No volume Prediction available for the selected range.")
                             else:
                                 span = (date_range_vol[1] - date_range_vol[0]).days + 1
                                 total_obs = len(filtered_volume_data)
@@ -2880,37 +2981,40 @@ with tab2:
                                 step("Preparing summary context", 35)
                                 st.markdown(
                                     f"""
-                                                                    <div style="
-                                                                        background: linear-gradient(135deg, #2b77e5 0%, #19c3e6 100%);
-                                                                        border-radius:16px; padding:18px 20px; color:#fff; margin:8px 0 14px;
-                                                                        box-shadow:0 10px 26px rgba(25,115,210,.25); text-align:left;
-                                                                        font-family: inherit;">
-                                                                      <div style="display:flex; align-items:center; gap:10px;">
-                                                                        <div>
-                                                                            <div style="font-size:1.7rem; font-weight:800; letter-spacing:-0.01em; margin-bottom:2px;">
-                                                                              <span style="color: #ffffff;">2025 BNP PARIBUS OPEN INDIAN WELLS DASHBOARD</span><span style="color: rgba(255,255,255,0.7);">: Q-FREE KINETIC MOBILITY VEHICLE VOLUME ANALYSIS</span>
-                                                                            </div>
-                                                                            <div style="font-size:1.1rem;font-weight:600;opacity:0.9; display:flex; flex-wrap:wrap; gap:15px; margin-top:4px; align-items:center;">
-                                                                              <div style="background:rgba(255,255,255,0.15); padding:4px 12px; border-radius:8px; font-size:1.2rem; border:1px solid rgba(255,255,255,0.3); font-weight:700;">
-                                                                                📅 {date_range_vol[0].strftime('%b %d, %Y')} to {date_range_vol[1].strftime('%b %d, %Y')} <span style="font-weight:400; opacity:0.8;">({span} days)</span>
-                                                                              </div>
-                                                                              <div style="background:rgba(255,255,255,0.15); padding:4px 12px; border-radius:8px; font-size:1.2rem; border:1px solid rgba(255,255,255,0.3);">
-                                                                                <span style="opacity:0.9; font-weight:400;">Intersection(s):</span> <span style="font-weight:800;">{", ".join(intersection) if isinstance(intersection, list) else intersection}</span> <span style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:4px; margin-left:8px; font-size:0.9rem; font-weight:700; color:#fff;">{dir_display_vol}</span>
-                                                                              </div>
-                                                                            </div>
-                                                                            <div style="font-size:0.95rem; opacity:0.85; display:flex; flex-wrap:wrap; gap:15px; margin-top:10px; align-items:center;">
-                                                                              <div style="display:flex; align-items:center; gap:15px;">
-                                                                                <div><span style="opacity:0.8; font-weight:400;">Region:</span> Coachella Valley</div>
-                                                                                <div style="border-left: 1px solid rgba(255,255,255,0.3); padding-left: 15px;"><span style="opacity:0.8; font-weight:400;">City:</span> Indian Wells / La Quinta</div>
-                                                                                <div style="border-left: 1px solid rgba(255,255,255,0.3); padding-left: 15px;"><span style="opacity:0.8; font-weight:400;">Corridor:</span> {corridor}</div>
-                                                                                <div style="border-left: 1px solid rgba(255,255,255,0.3); padding-left: 15px;">📊 {granularity_vol} Aggregation</div>
-                                                                                <div style="border-left: 1px solid rgba(255,255,255,0.3); padding-left: 15px;">✅ {total_obs:,} observations</div>
-                                                                              </div>
-                                                                            </div>
-                                                                        </div>
-                                                                      </div>
-                                                                    </div>
-                                                                    """,
+                                    <div style="
+                                        background: linear-gradient(135deg, #2b77e5 0%, #19c3e6 100%);
+                                        border-radius:16px; padding:22px 25px; color:#fff; margin:10px 0 16px;
+                                        box-shadow:0 12px 28px rgba(25,115,210,.25); text-align:left;
+                                        font-family: inherit;">
+                                      <div style="display:flex; align-items:center; gap:10px;">
+                                        <div>
+                                            <div style="font-size:1.8rem; font-weight:800; letter-spacing:-0.02em; margin-bottom:4px; text-transform:uppercase;">
+                                              <span style="color: #ffffff;">ADVANTEC CONSULTING ENGINEERS</span>
+                                              <span style="color: rgba(255,255,255,0.8); font-weight:400; margin-left:12px; border-left:1px solid rgba(255,255,255,0.4); padding-left:12px;">
+                                                Q-FREE KINETIC MOBILITY VEHICLE VOLUME ANALYSIS
+                                              </span>
+                                            </div>
+                                            <div style="font-size:1.1rem;font-weight:600;opacity:0.9; display:flex; flex-wrap:wrap; gap:15px; margin-top:6px; align-items:center;">
+                                              <div style="background:rgba(255,255,255,0.15); padding:4px 12px; border-radius:8px; font-size:1.15rem; border:1px solid rgba(255,255,255,0.3); font-weight:700;">
+                                                Period: {date_range_vol[0].strftime('%b %d, %Y')} to {date_range_vol[1].strftime('%b %d, %Y')} <span style="font-weight:400; opacity:0.8;">({span} days)</span>
+                                              </div>
+                                              <div style="background:rgba(255,255,255,0.15); padding:4px 12px; border-radius:8px; font-size:1.15rem; border:1px solid rgba(255,255,255,0.3);">
+                                                <span style="opacity:0.9; font-weight:400;">Intersection(s):</span> <span style="font-weight:800;">{", ".join(intersection) if isinstance(intersection, list) else intersection}</span> <span style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:4px; margin-left:8px; font-size:0.9rem; font-weight:700; color:#fff;">{dir_display_vol}</span>
+                                              </div>
+                                            </div>
+                                            <div style="font-size:0.95rem; opacity:0.85; display:flex; flex-wrap:wrap; gap:15px; margin-top:10px; align-items:center;">
+                                              <div style="display:flex; align-items:center; gap:15px;">
+                                                <div><span style="opacity:0.8; font-weight:400;">Region:</span> Coachella Valley</div>
+                                                <div style="border-left: 1px solid rgba(255,255,255,0.3); padding-left: 15px;"><span style="opacity:0.8; font-weight:400;">City:</span> Indian Wells / La Quinta</div>
+                                                <div style="border-left: 1px solid rgba(255,255,255,0.3); padding-left: 15px;"><span style="opacity:0.8; font-weight:400;">Corridor:</span> {corridor}</div>
+                                                <div style="border-left: 1px solid rgba(255,255,255,0.3); padding-left: 15px;">{granularity_vol} Aggregation</div>
+                                                <div style="border-left: 1px solid rgba(255,255,255,0.3); padding-left: 15px;">{total_obs:,} Observations</div>
+                                              </div>
+                                            </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    """,
                                     unsafe_allow_html=True,
                                 )
 
@@ -3055,32 +3159,65 @@ with tab2:
 
                                 st.session_state["t2_tooltip_map"] = tooltip_map
 
-                                st.subheader(" Traffic Demand Performance Indicators")
+                                st.subheader("Traffic Demand Performance Indicators")
                                 if raw.empty or raw["total_volume"].dropna().empty:
                                     st.info("No raw hourly volume in this window.")
                                 else:
-                                    bucket_all = \
-                                    _prep_bucket(raw, granularity_vol).groupby("local_datetime", as_index=False)[
-                                        "total_volume"].sum().sort_values("local_datetime")
+                                    # Create aggregated bucket data with correctly scaled capacity based on hour counts
+                                    _b_temp = raw.copy()
+                                    _b_temp["local_datetime"] = pd.to_datetime(_b_temp["local_datetime"])
+                                    if granularity_vol == "Hourly":
+                                        _b_temp["bucket"] = _b_temp["local_datetime"].dt.floor("H")
+                                    elif granularity_vol == "Daily":
+                                        _b_temp["bucket"] = _b_temp["local_datetime"].dt.floor("D")
+                                    elif granularity_vol == "Weekly":
+                                        _b_temp["bucket"] = _b_temp["local_datetime"].dt.to_period("W").dt.start_time
+                                    else: # Monthly
+                                        _b_temp["bucket"] = _b_temp["local_datetime"].dt.to_period("M").dt.start_time
+
+                                    # Fix: count unique intersection-direction-hours to avoid inflation by sub-hourly rows
+                                    _b_temp["link_hour"] = (
+                                        _b_temp["intersection_name"].astype(str) + 
+                                        _b_temp["direction"].astype(str) + 
+                                        _b_temp["local_datetime"].dt.floor("H").astype(str)
+                                    )
+                                    bucket_all = _b_temp.groupby("bucket", as_index=False).agg(
+                                        total_volume=("total_volume", "sum"),
+                                        count_hours=("link_hour", "nunique")
+                                    ).rename(columns={"bucket": "local_datetime"}).sort_values("local_datetime")
                                     
                                     # Comparison KPI logic
                                     comp_metrics = None
                                     if raw_comp is not None and not raw_comp.empty:
-                                        bucket_comp = _prep_bucket(raw_comp, granularity_vol).groupby("local_datetime", as_index=False)[
-                                            "total_volume"].sum().sort_values("local_datetime")
-                                        if granularity_vol == "Monthly":
-                                            bucket_comp["bucket_hours"] = pd.to_datetime(
-                                                bucket_comp["local_datetime"]).dt.days_in_month * 24
-                                        else:
-                                            bucket_comp["bucket_hours"] = AGG_META[granularity_vol]["fixed_hours"]
+                                        _bc_temp = raw_comp.copy()
+                                        _bc_temp["local_datetime"] = pd.to_datetime(_bc_temp["local_datetime"])
+                                        if granularity_vol == "Hourly":
+                                            _bc_temp["bucket"] = _bc_temp["local_datetime"].dt.floor("H")
+                                        elif granularity_vol == "Daily":
+                                            _bc_temp["bucket"] = _bc_temp["local_datetime"].dt.floor("D")
+                                        elif granularity_vol == "Weekly":
+                                            _bc_temp["bucket"] = _bc_temp["local_datetime"].dt.to_period("W").dt.start_time
+                                        else: # Monthly
+                                            _bc_temp["bucket"] = _bc_temp["local_datetime"].dt.to_period("M").dt.start_time
+
+                                        _bc_temp["link_hour"] = (
+                                            _bc_temp["intersection_name"].astype(str) + 
+                                            _bc_temp["direction"].astype(str) + 
+                                            _bc_temp["local_datetime"].dt.floor("H").astype(str)
+                                        )
+                                        bucket_comp = _bc_temp.groupby("bucket", as_index=False).agg(
+                                            total_volume=("total_volume", "sum"),
+                                            count_hours=("link_hour", "nunique")
+                                        ).rename(columns={"bucket": "local_datetime"}).sort_values("local_datetime")
                                         
                                         peak_idx_c = int(bucket_comp["total_volume"].idxmax())
                                         peak_val_c = float(bucket_comp.loc[peak_idx_c, "total_volume"])
                                         avg_bucket_val_c = float(bucket_comp["total_volume"].mean())
                                         total_vehicles_c = float(np.nansum(raw_comp["total_volume"]))
                                         cv_bucket_c = (float(np.nanstd(bucket_comp["total_volume"])) / avg_bucket_val_c * 100) if avg_bucket_val_c > 0 else 0.0
-                                        high_hours_c = int((raw_comp["total_volume"] > HIGH_VOLUME_THRESHOLD_VPH).sum())
-                                        total_hours_c = int(raw_comp["total_volume"].count())
+                                        _unique_hours_c = pd.to_datetime(raw_comp["local_datetime"]).dt.floor("H")
+                                        total_hours_c = int(_unique_hours_c.nunique())
+                                        high_hours_c = int(_unique_hours_c[raw_comp["total_volume"] > HIGH_VOLUME_THRESHOLD_VPH].nunique())
                                         risk_pct_c = (high_hours_c / total_hours_c * 100) if total_hours_c > 0 else 0.0
                                         
                                         comp_metrics = {
@@ -3092,13 +3229,7 @@ with tab2:
                                             "risk_pct": risk_pct_c
                                         }
 
-                                    if granularity_vol == "Monthly":
-                                        bucket_all["bucket_hours"] = pd.to_datetime(
-                                            bucket_all["local_datetime"]).dt.days_in_month * 24
-                                    else:
-                                        bucket_all["bucket_hours"] = AGG_META[granularity_vol]["fixed_hours"]
-
-                                    bucket_all["cap"] = bucket_all["bucket_hours"] * THEORETICAL_LINK_CAPACITY_VPH
+                                    bucket_all["cap"] = bucket_all["count_hours"] * THEORETICAL_LINK_CAPACITY_VPH
                                     util_series = np.where(bucket_all["cap"] > 0,
                                                            bucket_all["total_volume"] / bucket_all["cap"] * 100, np.nan)
 
@@ -3119,14 +3250,15 @@ with tab2:
                                     cv_bucket = (float(np.nanstd(bucket_all[
                                                                      "total_volume"])) / avg_bucket_val * 100) if avg_bucket_val > 0 else 0.0
 
-                                    high_hours = int((raw["total_volume"] > HIGH_VOLUME_THRESHOLD_VPH).sum())
-                                    total_hours = int(raw["total_volume"].count())
+                                    _unique_hours = pd.to_datetime(raw["local_datetime"]).dt.floor("H")
+                                    total_hours = int(_unique_hours.nunique())
+                                    high_hours = int(_unique_hours[raw["total_volume"] > HIGH_VOLUME_THRESHOLD_VPH].nunique())
                                     risk_pct = (high_hours / total_hours * 100) if total_hours > 0 else 0.0
 
                                     unit = AGG_META[granularity_vol]["unit"]
                                     if granularity_vol == "Hourly":
-                                        avg_label = "Hourly Volume"
-                                        peak_label = "🔥 Peak Hourly Volume"
+                                        avg_label = "Average Hourly Traffic (HT)"
+                                        peak_label = "Peak Hourly Volume"
                                         avg_suffix = "Vehicles"
                                         # Include the intersection that has the peak hourly volume at this time
                                         peak_intersection = None
@@ -3143,20 +3275,20 @@ with tab2:
                                         base_period = f"{peak_date.strftime('%A')}, {peak_date.strftime('%m/%d/%Y %H:00')}"
                                         peak_period_str = base_period + (f" • {peak_intersection}" if peak_intersection else "")
                                     elif granularity_vol == "Daily":
-                                        avg_label = "Daily Traffic (DT)"
-                                        peak_label = "🔥 Peak Daily Volume"
+                                        avg_label = "Average Daily Traffic (ADT)"
+                                        peak_label = "Peak Daily Volume"
                                         avg_suffix = "Vehicles"
                                         peak_period_str = f"{peak_date.strftime('%A')}, {peak_date.strftime('%m/%d/%Y')}"
                                     elif granularity_vol == "Weekly":
-                                        avg_label = "Weekly Traffic (WT)"
-                                        peak_label = "🔥 Peak Weekly Volume"
+                                        avg_label = "Average Weekly Traffic (AWT)"
+                                        peak_label = "Peak Weekly Volume"
                                         avg_suffix = "Vehicles"
                                         _p = pd.Period(peak_date, freq='W')
                                         _ws, _we = _p.start_time, _p.end_time
                                         peak_period_str = f"{_ws.strftime('%m/%d/%Y')} – {_we.strftime('%m/%d/%Y')}"
                                     else:
-                                        avg_label = "Monthly Traffic (MT)"
-                                        peak_label = "🔥 Peak Monthly Volume"
+                                        avg_label = "Average Monthly Traffic (AMT)"
+                                        peak_label = "Peak Monthly Volume"
                                         avg_suffix = "Vehicles"
                                         peak_period_str = peak_date.strftime('%B %Y')
 
@@ -3170,7 +3302,18 @@ with tab2:
                                             "badge-good"
                                         )
                                         # Always display peak in vehicles and show the exact peak period in delta
-                                        st.metric(peak_label, f"{peak_val:,.0f} Vehicles", delta=peak_period_str)
+                                        st.metric(
+                                            peak_label,
+                                            f"{peak_val:,.0f} Vehicles",
+                                            delta=peak_period_str,
+                                            help=(
+                                                f"The maximum traffic volume detected on a single {unit.lower()} "
+                                                f"summed across all selected intersections and directions.\n\n"
+                                                f"Capacity % represents the utilization of the theoretical maximum "
+                                                f"({THEORETICAL_LINK_CAPACITY_VPH:,} vehicles per hour per direction) "
+                                                f"for all data points contributing to this peak."
+                                            )
+                                        )
                                         if comp_metrics:
                                             diff = peak_val - comp_metrics["peak"]
                                             st.caption(f"vs Comp: {comp_metrics['peak']:,.0f} ({'+' if diff > 0 else ''}{diff:,.0f})")
@@ -3181,10 +3324,14 @@ with tab2:
 
                                     with col2:
                                         st.metric(
-                                            f"📊 {avg_label}",
+                                            f"{avg_label}",
                                             f"{avg_bucket_val:,.0f} {avg_suffix}",
-                                            help=("Traffic on the selected aggregation.\n"
-                                                  "• DT = daily traffic\n• WT = weekly traffic\n• MT = monthly traffic"),
+                                            help=(f"Average traffic for the selected aggregation.\n"
+                                                  f"• HT: Hourly Traffic\n"
+                                                  f"• ADT: Average Daily Traffic\n"
+                                                  f"• AWT: Average Weekly Traffic\n"
+                                                  f"• AMT: Average Monthly Traffic\n\n"
+                                                  f"Avg Util % is based on {THEORETICAL_LINK_CAPACITY_VPH:,} VPH capacity per direction."),
                                         )
                                         if comp_metrics:
                                             diff = avg_bucket_val - comp_metrics["avg"]
@@ -3209,18 +3356,21 @@ with tab2:
                                     with col3:
                                         total_vehicles = float(np.nansum(raw["total_volume"]))
                                         st.metric(
-                                            "🚗 Total Vehicles (period)",
+                                            "Total Vehicles (period)",
                                             f"{total_vehicles:,.0f} Vehicles",
                                             help="Sum of vehicles across the selected time window (computed from hourly records).",
                                         )
                                         if comp_metrics:
                                             diff = total_vehicles - comp_metrics["total"]
                                             st.caption(f"vs Comp: {comp_metrics['total']:,.0f} ({'+' if diff > 0 else ''}{diff:,.0f})")
-                                        state_badge = (
-                                            "badge-good" if total_vehicles < 0.4 * THEORETICAL_LINK_CAPACITY_VPH * 24
-                                            else "badge-fair" if total_vehicles < 0.7 * THEORETICAL_LINK_CAPACITY_VPH * 24
-                                            else "badge-poor"
-                                        )
+                                        
+                                        cap_total_period = float(bucket_all["cap"].sum())
+                                        if cap_total_period > 0:
+                                            ratio = total_vehicles / cap_total_period
+                                            state_badge = "badge-good" if ratio < 0.40 else ("badge-fair" if ratio < 0.70 else "badge-poor")
+                                        else:
+                                            state_badge = "badge-good"
+
                                         st.markdown(
                                             f'<span class="performance-badge {state_badge}">Period Total</span>',
                                             unsafe_allow_html=True,
@@ -3228,7 +3378,7 @@ with tab2:
 
                                     with col4:
                                         st.metric(
-                                            "🎯 Demand Consistency",
+                                            "Demand Consistency",
                                             f"{max(0, 100 - cv_bucket):.0f}%",
                                             delta=f"CV (bucket): {cv_bucket:.1f}%",
                                             help="Higher is steadier. CV calculated on bucket totals for the chosen aggregation."
@@ -3247,7 +3397,7 @@ with tab2:
 
                                     with col5:
                                         st.metric(
-                                            "⚠️ High Volume Hours",
+                                            "High Volume Hours",
                                             f"{high_hours}",
                                             delta=f"{risk_pct:.1f}% of time",
                                             help=f"Hourly records with total_volume > {HIGH_VOLUME_THRESHOLD_VPH:,} vehicles (always computed on the hourly base).",
@@ -3277,7 +3427,7 @@ with tab2:
                                 # Header with optional toggles
                                 col_title, col_toggle = st.columns([0.85, 0.15])
                                 with col_title:
-                                    st.subheader("📈 Vehicle Volume Visualizations")
+                                    st.subheader("Vehicle Volume Visualizations")
                                 sum_all_monthly = False
                                 with col_toggle:
                                     if granularity_vol == "Monthly":
@@ -3418,20 +3568,35 @@ with tab2:
                                 if 'raw' in locals() and not raw.empty:
                                     try:
                                         step("Generating insights & recommendations", 92)
-                                        agg_all = \
-                                        _prep_bucket(raw, granularity_vol).groupby("local_datetime", as_index=False)[
-                                            "total_volume"].sum()
+                                        
+                                        # Recalculate correctly scaled capacity for insights
+                                        _ai_temp = raw.copy()
+                                        _ai_temp["local_datetime"] = pd.to_datetime(_ai_temp["local_datetime"])
+                                        if granularity_vol == "Hourly":
+                                            _ai_temp["bucket"] = _ai_temp["local_datetime"].dt.floor("H")
+                                        elif granularity_vol == "Daily":
+                                            _ai_temp["bucket"] = _ai_temp["local_datetime"].dt.floor("D")
+                                        elif granularity_vol == "Weekly":
+                                            _ai_temp["bucket"] = _ai_temp["local_datetime"].dt.to_period("W").dt.start_time
+                                        else: # Monthly
+                                            _ai_temp["bucket"] = _ai_temp["local_datetime"].dt.to_period("M").dt.start_time
+
+                                        # Fix: count unique intersection-direction-hours to avoid inflation by sub-hourly rows
+                                        _ai_temp["link_hour"] = (
+                                            _ai_temp["intersection_name"].astype(str) + 
+                                            _ai_temp["direction"].astype(str) + 
+                                            _ai_temp["local_datetime"].dt.floor("H").astype(str)
+                                        )
+                                        agg_all = _ai_temp.groupby("bucket", as_index=False).agg(
+                                            total_volume=("total_volume", "sum"),
+                                            count_hours=("link_hour", "nunique")
+                                        ).rename(columns={"bucket": "local_datetime"})
+
                                         if agg_all.empty:
-                                            raise ValueError("No Prediction in selected window")
+                                            raise ValueError("No Data in selected window")
 
-                                        if granularity_vol == "Monthly":
-                                            agg_all["bucket_hours"] = pd.to_datetime(
-                                                agg_all["local_datetime"]).dt.days_in_month * 24
-                                        else:
-                                            agg_all["bucket_hours"] = AGG_META[granularity_vol]["fixed_hours"]
-
-                                        agg_all["cap"] = agg_all["bucket_hours"] * THEORETICAL_LINK_CAPACITY_VPH
-                                        agg_all["thr"] = agg_all["bucket_hours"] * HIGH_VOLUME_THRESHOLD_VPH
+                                        agg_all["cap"] = agg_all["count_hours"] * THEORETICAL_LINK_CAPACITY_VPH
+                                        agg_all["thr"] = agg_all["count_hours"] * HIGH_VOLUME_THRESHOLD_VPH
 
                                         peak_idx = int(agg_all["total_volume"].idxmax())
                                         peak_val = float(agg_all.loc[peak_idx, "total_volume"])
@@ -3452,8 +3617,9 @@ with tab2:
                                             np.nanstd(agg_all["total_volume"])) / avg_val * 100) if avg_val > 0 else 0.0
                                         peak_to_avg = (peak_val / avg_val) if avg_val > 0 else 0.0
 
-                                        hourly_over_thr = int((raw["total_volume"] > HIGH_VOLUME_THRESHOLD_VPH).sum())
-                                        total_hours = int(raw["total_volume"].count())
+                                        _unique_hours = pd.to_datetime(raw["local_datetime"]).dt.floor("H")
+                                        total_hours = int(_unique_hours.nunique())
+                                        hourly_over_thr = int(_unique_hours[raw["total_volume"] > HIGH_VOLUME_THRESHOLD_VPH].nunique())
                                         hourly_risk_pct = (
                                                     hourly_over_thr / total_hours * 100) if total_hours > 0 else 0.0
 
@@ -3520,10 +3686,10 @@ with tab2:
 
                                 # ---------------- Risk table ----------------
                                 step("Calculating intersection risk table", 97)
-                                st.subheader("🚨 Intersection Volume & Capacity Risk Analysis")
+                                st.subheader("Intersection Volume & Capacity Risk Analysis")
 
                                 # Add legend for Risk Analysis methodology
-                                with st.expander("📊 **Risk Analysis Methodology & Legend**", expanded=False):
+                                with st.expander("Risk Analysis Methodology & Legend", expanded=False):
                                     st.markdown("""
                                                                     ### Risk Score Calculation
                                                                     The **Risk Score** (0-120+) is a weighted composite metric that identifies capacity bottlenecks:
@@ -3544,38 +3710,38 @@ with tab2:
                                     # Create a visual legend with colored badges for risk levels
                                     risk_col1, risk_col2, risk_col3, risk_col4, risk_col5 = st.columns(5)
                                     with risk_col1:
-                                        st.markdown('<span class="performance-badge badge-excellent">🟢 Low Risk</span>',
+                                        st.markdown('<span class="performance-badge badge-excellent">Low Risk</span>',
                                                     unsafe_allow_html=True)
                                         st.caption("Score: 0-40")
                                         st.caption("Monitor regularly")
                                     with risk_col2:
-                                        st.markdown('<span class="performance-badge badge-good">🟡 Moderate Risk</span>',
+                                        st.markdown('<span class="performance-badge badge-good">Moderate Risk</span>',
                                                     unsafe_allow_html=True)
                                         st.caption("Score: 40-60")
                                         st.caption("Signal optimization")
                                     with risk_col3:
-                                        st.markdown('<span class="performance-badge badge-fair">🟠 High Risk</span>',
+                                        st.markdown('<span class="performance-badge badge-fair">High Risk</span>',
                                                     unsafe_allow_html=True)
                                         st.caption("Score: 60-80")
                                         st.caption("Capacity improvements")
                                     with risk_col4:
-                                        st.markdown('<span class="performance-badge badge-poor">🔴 Critical Risk</span>',
+                                        st.markdown('<span class="performance-badge badge-poor">Critical Risk</span>',
                                                     unsafe_allow_html=True)
                                         st.caption("Score: 80-90")
                                         st.caption("Urgent intervention")
                                     with risk_col5:
                                         st.markdown(
-                                            '<span class="performance-badge badge-critical">🚨 Severe Risk</span>',
+                                            '<span class="performance-badge badge-critical">Severe Risk</span>',
                                             unsafe_allow_html=True)
                                         st.caption("Score: 90+")
                                         st.caption("Immediate action")
 
                                     st.markdown("""
                                                                     ### Action Priority Guidelines
-                                                                    - **🟢 Monitor**: Peak capacity < 60% - Routine monitoring sufficient
-                                                                    - **🟡 Optimize**: Peak capacity 60-75% - Signal timing adjustments recommended  
-                                                                    - **🟠 Upgrade**: Peak capacity 75-90% - Infrastructure improvements needed
-                                                                    - **🔴 Urgent**: Peak capacity > 90% - Immediate capacity relief required
+                                                                    - **Monitor**: Peak capacity < 60% - Routine monitoring sufficient
+                                                                    - **Optimize**: Peak capacity 60-75% - Signal timing adjustments recommended  
+                                                                    - **Upgrade**: Peak capacity 75-90% - Infrastructure improvements needed
+                                                                    - **Urgent**: Peak capacity > 90% - Immediate capacity relief required
                                                                     """)
                                 try:
                                     g = raw.groupby(["intersection_name", "direction"]).agg(
@@ -3598,23 +3764,23 @@ with tab2:
                                             g["total_volume_max"] / g["total_volume_mean"]
                                     ).replace([np.inf, -np.inf], 0).fillna(0).round(1)
 
-                                    g["🚨 Risk Score"] = (
+                                    g["Risk Score"] = (
                                             0.5 * g["Peak_Capacity_Util"]
                                             + 0.3 * g["Avg_Capacity_Util"]
                                             + 0.2 * (g["Peak_Avg_Ratio"] * 10)
                                     ).round(1)
 
-                                    g["⚠️ Risk Level"] = pd.cut(
-                                        g["🚨 Risk Score"],
+                                    g["Risk Level"] = pd.cut(
+                                        g["Risk Score"],
                                         bins=[0, 40, 60, 80, 90, 999],
-                                        labels=["🟢 Low Risk", "🟡 Moderate Risk", "🟠 High Risk", "🔴 Critical Risk",
-                                                "🚨 Severe Risk"],
+                                        labels=["Low Risk", "Moderate Risk", "High Risk", "Critical Risk",
+                                                "Severe Risk"],
                                         include_lowest=True,
                                     )
-                                    g["🎯 Action Priority"] = pd.cut(
+                                    g["Action Priority"] = pd.cut(
                                         g["Peak_Capacity_Util"],
                                         bins=[0, 60, 75, 90, 999],
-                                        labels=["🟢 Monitor", "🟡 Optimize", "🟠 Upgrade", "🔴 Urgent"],
+                                        labels=["Monitor", "Optimize", "Upgrade", "Urgent"],
                                         include_lowest=True,
                                     )
 
@@ -3622,9 +3788,9 @@ with tab2:
                                         [
                                             "intersection_name",
                                             "direction",
-                                            "⚠️ Risk Level",
-                                            "🎯 Action Priority",
-                                            "🚨 Risk Score",
+                                            "Risk Level",
+                                            "Action Priority",
+                                            "Risk Score",
                                             "Peak_Capacity_Util",
                                             "Avg_Capacity_Util",
                                             "total_volume_mean",
@@ -3636,40 +3802,40 @@ with tab2:
                                         columns={
                                             "intersection_name": "Intersection",
                                             "direction": "Dir",
-                                            "Peak_Capacity_Util": "📊 Peak Capacity %",
-                                            "Avg_Capacity_Util": "📊 Avg Capacity %",
+                                            "Peak Capacity %": "Peak Capacity %",
+                                            "Avg Capacity %": "Avg Capacity %",
                                             "total_volume_mean": "Volume (vehicles)",
                                             "total_volume_max": "Peak Volume (vehicles)",
                                             "total_volume_count": "Data Points",
                                         }
-                                    ).sort_values("🚨 Risk Score", ascending=False)
+                                    ).sort_values("Risk Score", ascending=False)
 
                                     st.dataframe(
                                         final.head(15),
                                         use_container_width=True,
                                         column_config={
-                                            "🚨 Risk Score": st.column_config.NumberColumn(
-                                                "🚨 Capacity Risk Score",
+                                            "Risk Score": st.column_config.NumberColumn(
+                                                "Capacity Risk Score",
                                                 help="Composite of peak/avg util + peaking",
                                                 format="%.1f",
                                                 min_value=0,
                                                 max_value=120,
                                             ),
-                                            "📊 Peak Capacity %": st.column_config.NumberColumn("📊 Peak Capacity %",
+                                            "Peak Capacity %": st.column_config.NumberColumn("Peak Capacity %",
                                                                                                format="%.1f%%"),
-                                            "📊 Avg Capacity %": st.column_config.NumberColumn("📊 Avg Capacity %",
+                                            "Avg Capacity %": st.column_config.NumberColumn("Avg Capacity %",
                                                                                               format="%.1f%%"),
                                         },
                                     )
 
                                     st.download_button(
-                                        "⬇️ Download Capacity Risk Table (CSV)",
+                                        "Download Capacity Risk Table (CSV)",
                                         data=final.to_csv(index=False).encode("utf-8"),
                                         file_name="capacity_risk.csv",
                                         mime="text/csv",
                                     )
                                     st.download_button(
-                                        "⬇️ Download Filtered Volume (CSV)",
+                                        "Download Filtered Volume (CSV)",
                                         data=filtered_volume_data.to_csv(index=False).encode("utf-8"),
                                         file_name="volume_filtered.csv",
                                         mime="text/csv",

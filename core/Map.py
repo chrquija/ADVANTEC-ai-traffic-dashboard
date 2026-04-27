@@ -42,6 +42,7 @@ NODES_ORDER: List[str] = [
     "Parkview Drive",
     "Cook Street",
     "Washington Street",
+    "Adams St",
     "Monroe Street",
     "Indio Blvd",
     # Highway 111 - E Palm Canyon Drive
@@ -58,26 +59,27 @@ NODES_ORDER: List[str] = [
 ]
 
 # GeoJSON for each adjacent segment (A → B) along the corridor
-SEGMENT_URLS: Dict[Tuple[str, str], str] = {
+# Keys can be (Origin, Destination) or (Origin, Destination, Corridor)
+SEGMENT_URLS: Dict[Union[Tuple[str, str], Tuple[str, str, str]], str] = {
     # Existing segments (Avenue 52 to Hwy 111)
     ("Avenue 52",
-     "Calle Tampico"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/Avenue52_CalleTampico.geojson",
+     "Calle Tampico"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/Avenue52_CalleTampico.geojson",
     ("Calle Tampico",
-     "Village Shopping Ctr"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/CalleTampico_VillageShoppingctr.geojson",
+     "Village Shopping Ctr"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/CalleTampico_VillageShoppingctr.geojson",
     ("Village Shopping Ctr",
-     "Avenue 50"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/villageshoppingctr_ave50.geojson",
+     "Avenue 50"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/villageshoppingctr_ave50.geojson",
     ("Avenue 50",
-     "Sagebrush Ave"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/Avenue50_sagebrushave.geojson",
+     "Sagebrush Ave"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/Avenue50_sagebrushave.geojson",
     ("Sagebrush Ave",
-     "Eisenhower Dr"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/sagebrushave_eisenhowerdr.geojson",
+     "Eisenhower Dr"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/sagebrushave_eisenhowerdr.geojson",
     ("Eisenhower Dr",
-     "Avenue 48"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/eisenhowerdr_avenue48.geojson",
+     "Avenue 48"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/eisenhowerdr_avenue48.geojson",
     ("Avenue 48",
-     "Avenue 47"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/avenue48_avenue47.geojson",
+     "Avenue 47"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/avenue48_avenue47.geojson",
     ("Avenue 47",
-     "Point Happy Simon"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/avenue47_pointhappysimon.geojson",
+     "Point Happy Simon"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/avenue47_pointhappysimon.geojson",
     ("Point Happy Simon",
-     "Hwy 111"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/pointhappysimon_hwy111.geojson",
+     "Hwy 111"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/pointhappysimon_hwy111.geojson",
 
     # New Northbound segments (Hwy 111 to Del Webb)
     ("Hwy 111",
@@ -98,20 +100,20 @@ SEGMENT_URLS: Dict[Tuple[str, str], str] = {
      "Avenue 41"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/NB_Avenue%2042_Avenue41.geojson",
 
     # Northbound Segments
-    ("Avenue 41", "Harris Lane"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/119to120_NBAvenue41_HarrisLn.geojson",
-    ("Harris Lane", "Country Club Drive"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/120to121_NBHarrisLn_CountryClubDr.geojson",
-    ("Country Club Drive", "I-10 Interchange"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/121-122_NBCountryClubDr_I-10%20Interchange.geojson",
-    ("I-10 Interchange", "Varner Road"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/122-123_NBI-10Interchange_VarnerRd.geojson",
-    ("Varner Road", "Market Pl"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/123-124_NBVarnerRd_MarketPl.geojson",
-    ("Market Pl", "Del Webb"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/124-125_NBMarketPl_DelWebb.geojson",
+    ("Avenue 41", "Harris Lane"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/119to120_NBAvenue41_HarrisLn.geojson",
+    ("Harris Lane", "Country Club Drive"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/120to121_NBHarrisLn_CountryClubDr.geojson",
+    ("Country Club Drive", "I-10 Interchange"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/121-122_NBCountryClubDr_I-10%20Interchange.geojson",
+    ("I-10 Interchange", "Varner Road"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/122-123_NBI-10Interchange_VarnerRd.geojson",
+    ("Varner Road", "Market Pl"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/123-124_NBVarnerRd_MarketPl.geojson",
+    ("Market Pl", "Del Webb"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/124-125_NBMarketPl_DelWebb.geojson",
 
     # Southbound Segments
     ("Harris Lane", "Avenue 41"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/SB_HarrisLane_Avenue41.geojson",
     ("Country Club Drive", "Harris Lane"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/SB_CountryClubDrive_HarrisLane.geojson",
-    ("I-10 Interchange", "Country Club Drive"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/122-121_SBI-10Interchange_CountryClubDrive.geojson",
-    ("Varner Road", "I-10 Interchange"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/123-122_SBVarnerRd_I-10Interchange.geojson",
-    ("Market Pl", "Varner Road"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/124-123_SBMarketPl_VarnerRd.geojson",
-    ("Del Webb", "Market Pl"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/125-124_SBDelWebb_MarketPl.geojson",
+    ("I-10 Interchange", "Country Club Drive"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/122-121_SBI-10Interchange_CountryClubDrive.geojson",
+    ("Varner Road", "I-10 Interchange"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/123-122_SBVarnerRd_I-10Interchange.geojson",
+    ("Market Pl", "Varner Road"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/124-123_SBMarketPl_VarnerRd.geojson",
+    ("Del Webb", "Market Pl"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/125-124_SBDelWebb_MarketPl.geojson",
 
     # Highway 111: Canyon Plaza West ↔ Jermaine Gibson
     ("Canyon Plaza West",
@@ -121,27 +123,39 @@ SEGMENT_URLS: Dict[Tuple[str, str], str] = {
 
     # Highway 111: Parkview Drive ↔ Cook Street
     ("Cook Street",
-     "Parkview Drive"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/Hwy111_CookStreet_ParkviewDrive.geojson",
+     "Parkview Drive"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/Hwy111_CookStreet_ParkviewDrive.geojson",
     ("Parkview Drive",
-     "Cook Street"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/Hwy111_ParkviewDrive_CookStreet.geojson",
+     "Cook Street"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/Hwy111_ParkviewDrive_CookStreet.geojson",
 
     # Highway 111: Cook Street ↔ Washington Street
     ("Cook Street",
-     "Washington Street"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/Hwy111_CookSt_to_WashingtonSt.geojson",
+     "Washington Street"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/Hwy111_CookSt_to_WashingtonSt.geojson",
     ("Washington Street",
-     "Cook Street"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/Hwy111_WashingtonSt_to_CookSt.geojson",
+     "Cook Street"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/Hwy111_WashingtonSt_to_CookSt.geojson",
 
     # Highway 111: Washington Street ↔ Monroe Street
     ("Washington Street",
-     "Monroe Street"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/Hwy111EB_WashingtonSt_MonroeSt.geojson",
+     "Monroe Street"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/Hwy111EB_WashingtonSt_MonroeSt.geojson",
     ("Monroe Street",
-     "Washington Street"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/Hwy111WB_MonroeSt_WashingtonStreet.geojson",
+     "Washington Street"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/Hwy111WB_MonroeSt_WashingtonStreet.geojson",
 
     # Highway 111: Monroe Street ↔ Indio Blvd
     ("Monroe Street",
-     "Indio Blvd"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/Highway111EB_MonroeSt_IndioBlvd.geojson",
+     "Indio Blvd"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/Highway111EB_MonroeSt_IndioBlvd.geojson",
     ("Indio Blvd",
-     "Monroe Street"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/refs/heads/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/Highway111WB_IndioBlvd_MonroeSt.geojson",
+     "Monroe Street"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/Highway111WB_IndioBlvd_MonroeSt.geojson",
+
+    # Avenue 47 segments
+    ("Washington Street", "Adams St", "Avenue 47"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/EB_Ave47_WashingtonSt-_AdamsSt.geojson",
+    ("Adams St", "Washington Street", "Avenue 47"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/WB_Ave47_AdamsSt-_WashingtonSt.geojson",
+
+    # Highway 111 segments
+    ("Washington Street", "Adams St", "Highway 111"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/EB_hwy111_WashingtonSt_AdamsSt.geojson",
+    ("Adams St", "Washington Street", "Highway 111"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/WB_hwy111_AdamsSt_WashingtonSt.geojson",
+
+    # Adams St segments
+    ("Hwy 111", "Avenue 48", "Adams St"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/NB_AdamsSt_Highway111_Avenue48.geojson",
+    ("Avenue 48", "Hwy 111", "Adams St"): "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/DELAY_TRAVELTIME_SPEED_byintersection/Geojason/NB_AdamsSt_Avenue48_Highway111.geojson",
 }
 
 # =========================
@@ -158,7 +172,24 @@ INTERSECTION_TO_NODE: Dict[str, str] = {
     "Washington St & Eisenhower Drive": "Eisenhower Dr",
     "Washington St & Avenue 48": "Avenue 48",
     "Washington St & Avenue 47": "Avenue 47",
+    "Washington St & Point Happy Simon": "Point Happy Simon",
     "Washington St & Point Happy Way": "Point Happy Simon",
+    "Point Happy Way": "Point Happy Simon",
+    "Avenue 52": "Avenue 52",
+    "Calle Tampico": "Calle Tampico",
+    "Village Shopping Center": "Village Shopping Ctr",
+    "Avenue 50": "Avenue 50",
+    "Sagebrush Avenue": "Sagebrush Ave",
+    "Eisenhower": "Eisenhower Dr",
+    "Avenue 48": "Avenue 48",
+    "Avenue 47": "Avenue 47",
+    "Channel Drive": "Channel Drive",
+    "Miles Avenue": "Miles Avenue",
+    "Via Sevilla": "Via Sevilla",
+    "Avenue 42": "Avenue 42",
+    "Harris Lane": "Harris Lane",
+    "Country Club Drive": "Country Club Drive",
+    "Varner Road": "Varner Road",
     "Washington St & Hwy 111": "Hwy 111",
 
     # New northern intersections (Hwy 111 to Country Club Drive)
@@ -192,6 +223,18 @@ INTERSECTION_TO_NODE: Dict[str, str] = {
     "Highway 111 & Monroe Street": "Monroe Street",
     "Hwy 111 & Indio Blvd": "Indio Blvd",
     "Highway 111 & Indio Blvd": "Indio Blvd",
+
+    # Avenue 47 & Adams St
+    "Avenue 47 & Adams St": "Adams St",
+    "Highway 111 & Adams St": "Adams St",
+    "Hwy 111 & Adams St": "Adams St",
+    "Washington Street & Adams St": "Adams St",
+
+    # Adams St corridor intersections
+    "Adams St & Avenue 48": "Avenue 48",
+    "Adams St & Ave 48": "Avenue 48",
+    "Adams St & Highway 111": "Hwy 111",
+    "Adams St & Hwy 111": "Hwy 111",
 
     # Common variants / aliases (existing)
     "Washington St & Avenue 52": "Avenue 52",
@@ -241,16 +284,19 @@ INTERSECTION_TO_NODE: Dict[str, str] = {
     "EPalmCanyonDr_and_PerezRd": "Perez Road",
     "EPalmCanyonDr_and_AutoParkDrive": "Auto Park Drive",
     "EPalmCanyonDr_and_BanksideDrive": "Bankside Drive",
+    "EPalmCanyonDr_and_CathedralCanyonDrive": "Cathedral Canyon Drive",
     "EPalmCanyonDrive_and_CathedralCanyonDrive": "Cathedral Canyon Drive",
     "EPalmCanyonDr_and_BuddyRogersAvenue": "Buddy Rogers Avenue",
     "EPalmCanyonDr_and_VanFleetStreet": "Van Fleet Street",
     "EPalmCanyonDr_and_DatePalmDrive": "Date Palm Drive",
     "EPalmCanyonDr_and_SunGateWay": "Sun Gate Way",
+    "EPalmCanyonDr_and_OfficerJermainGibson": "Officer Jermain Gibson",
     "EPalmCanyonDr_and_OfficeJermainGibson": "Officer Jermain Gibson",
 }
 
 # Extra loose aliases (label normalization pass before INTERSECTION_TO_NODE)
 LABEL_ALIASES: Dict[str, str] = {
+
     # Existing aliases
     "Washington Street & Avenue 52": "Washington St & Avenue 52",
     "Washington Street & Avenue52": "Washington St & Avenue52",
@@ -406,6 +452,7 @@ EXPLICIT_NODE_COORDS: Dict[str, Tuple[float, float]] = {
     "Date Palm Drive": (33.77725, -116.45721),
     "Sun Gate Way": (33.77651, -116.45453),
     "Officer Jermain Gibson": (33.77683, -116.45246),
+    "Point Happy Simon": (33.71273, -116.29186),
 }
 
 
@@ -414,7 +461,12 @@ def _derive_node_coords_from_segments() -> Dict[str, Tuple[float, float]]:
     Build approximate node coordinates using segment endpoints and explicit overrides.
     """
     node_coords: Dict[str, Tuple[float, float]] = EXPLICIT_NODE_COORDS.copy()
-    for (a, b), url in SEGMENT_URLS.items():
+    for key, url in SEGMENT_URLS.items():
+        corridor = None
+        if len(key) == 3:
+            a, b, corridor = key
+        else:
+            a, b = key
         gj = _fetch_geojson(url)
         if not gj:
             continue
@@ -424,8 +476,12 @@ def _derive_node_coords_from_segments() -> Dict[str, Tuple[float, float]]:
         line = max(lines, key=lambda l: len(l))
         start_lat, start_lon = line[0]
         end_lat, end_lon = line[-1]
-        node_coords.setdefault(a, (start_lat, start_lon))
-        node_coords.setdefault(b, (end_lat, end_lon))
+        if corridor:
+            node_coords.setdefault(f"{a} ({corridor})", (start_lat, start_lon))
+            node_coords.setdefault(f"{b} ({corridor})", (end_lat, end_lon))
+        else:
+            node_coords.setdefault(a, (start_lat, start_lon))
+            node_coords.setdefault(b, (end_lat, end_lon))
     return node_coords
 
 
@@ -450,6 +506,7 @@ AVAILABLE_INTERSECTION_NODES = {
     "Eisenhower Dr",
     "Avenue 48",
     "Avenue 47",
+    "Point Happy Simon",
     "Channel Drive",
     "Miles Avenue",
     "Via Sevilla",
@@ -464,6 +521,7 @@ AVAILABLE_INTERSECTION_NODES = {
     "Parkview Drive",
     "Cook Street",
     "Washington Street",
+    "Adams St",
     "Monroe Street",
     "Indio Blvd",
     # Highway 111 - E Palm Canyon Drive
@@ -488,7 +546,15 @@ def build_corridor_map(origin: str, destination: str, satellite: bool = False) -
     if not origin or not destination or origin == destination:
         return None
 
-    pairs = _segment_pairs_between(origin, destination, NODES_ORDER)
+    corridor = st.session_state.get("t1_corridor_selector")
+
+    # 1. Check for a direct corridor-specific segment first (useful for non-adjacent nodes)
+    if corridor and ((origin, destination, corridor) in SEGMENT_URLS or (destination, origin, corridor) in SEGMENT_URLS):
+        pairs = [(origin, destination)]
+    else:
+        # 2. Fallback to breaking the path into segments based on canonical NODES_ORDER
+        pairs = _segment_pairs_between(origin, destination, NODES_ORDER)
+
     if not pairs:
         return None
 
@@ -498,7 +564,15 @@ def build_corridor_map(origin: str, destination: str, satellite: bool = False) -
 
     # Draw each segment polyline
     for pair in pairs:
-        url = SEGMENT_URLS.get(pair) or SEGMENT_URLS.get((pair[1], pair[0]))  # fallback to reversed if needed
+        url = None
+        if corridor:
+            # Try corridor-specific segment first
+            url = SEGMENT_URLS.get((pair[0], pair[1], corridor)) or SEGMENT_URLS.get((pair[1], pair[0], corridor))
+        
+        if not url:
+            # Fallback to general segment
+            url = SEGMENT_URLS.get(pair) or SEGMENT_URLS.get((pair[1], pair[0]))  # fallback to reversed if needed
+            
         if not url:
             st.info(f"No GeoJSON registered for segment {pair[0]} → {pair[1]}")
             continue
@@ -530,8 +604,10 @@ def build_corridor_map(origin: str, destination: str, satellite: bool = False) -
 
     # Start/end markers from derived node coordinates
     node_coords = _derive_node_coords_from_segments()
-    start_latlon = node_coords.get(origin)
-    end_latlon = node_coords.get(destination)
+    
+    # Try corridor-specific markers first
+    start_latlon = node_coords.get(f"{origin} ({corridor})") or node_coords.get(origin)
+    end_latlon = node_coords.get(f"{destination} ({corridor})") or node_coords.get(destination)
 
     if start_latlon:
         fig.add_trace(
@@ -747,7 +823,7 @@ def build_intersections_overview(selected_label: Optional[Union[str, List[str]]]
         if corridor == "Washington Street":
             highlight_list = [
                 "Avenue 52", "Calle Tampico", "Village Shopping Ctr", "Avenue 50",
-                "Sagebrush Ave", "Eisenhower Dr", "Avenue 48", "Avenue 47",
+                "Sagebrush Ave", "Eisenhower Dr", "Avenue 48", "Avenue 47", "Point Happy Simon",
                 "Channel Drive", "Miles Avenue", "Via Sevilla", "Avenue 42", "Harris Lane"
             ]
         elif corridor == "Highway 111":
