@@ -1,0 +1,3302 @@
+{
+    "Phase 1": [
+        {
+            "official_name": "Gateway Dr & N Palm Canyon Dr",
+            "normalized_name": "gateway drive and n palm canyon drive",
+            "intersection_number": "1",
+            "corridor": "HIGHWAY 111",
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "San Rafael Rd / Tramway Rd & N Palm Canyon Dr",
+            "normalized_name": "n palm canyon drive and san rafael road and tramway road",
+            "intersection_number": "2",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Racquet Club Rd & N Palm Canyon Dr",
+            "normalized_name": "n palm canyon drive and racquet club road",
+            "intersection_number": "3",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Palm Canyon Drive & Via Escuela",
+            "normalized_name": "palm canyon drive and via escuela",
+            "intersection_number": "4",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Vista Chino & N Palm Canyon Dr",
+            "normalized_name": "n palm canyon drive and vista chino",
+            "intersection_number": "5",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Indian Canyon Dr & Vista Chino",
+            "normalized_name": "indian canyon drive and vista chino",
+            "intersection_number": "6",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Vista Chino & Via Miraleste",
+            "normalized_name": "via miraleste and vista chino",
+            "intersection_number": "7",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Avenida Caballeros & Vista Chino",
+            "normalized_name": "avenida caballeros and vista chino",
+            "intersection_number": "8",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Sunrise Wy & Vista Chino",
+            "normalized_name": "sunrise way and vista chino",
+            "intersection_number": "9",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Cerritos Rd & Vista Chino",
+            "normalized_name": "cerritos road and vista chino",
+            "intersection_number": "10",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Farrell Dr & Vista Chino",
+            "normalized_name": "farrell drive and vista chino",
+            "intersection_number": "11",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Gene Autry Wy & Vista Chino",
+            "normalized_name": "gene autry way and vista chino",
+            "intersection_number": "12",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Chia Rd / Artisan Way & Gene Autry Trl",
+            "normalized_name": "artisan way and chia road and gene autry trl",
+            "intersection_number": "13",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Tachevah Dr & Gene Autry Trl",
+            "normalized_name": "gene autry trl and tachevah drive",
+            "intersection_number": "14",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Tamarisk Rd & Gene Autry Trl",
+            "normalized_name": "gene autry trl and tamarisk road",
+            "intersection_number": "15",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Skywest Dr / Escena Way & Gene Autry Trl",
+            "normalized_name": "escena way and gene autry trl and skywest drive",
+            "intersection_number": "16",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "PSUSD (District) Center Dr & Gene Autry Trl",
+            "normalized_name": "gene autry trl and psusd (district) center drive",
+            "intersection_number": "17",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Mission Dr & Gene Autry Trl",
+            "normalized_name": "gene autry trl and mission drive",
+            "intersection_number": "18",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Ramon Rd & Gene Autry Trl",
+            "normalized_name": "gene autry trl and ramon road",
+            "intersection_number": "19",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Mesquite Rd & Gene Autry Trl",
+            "normalized_name": "gene autry trl and mesquite road",
+            "intersection_number": "20",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Gene Autry Trl & E Palm Canyon Dr",
+            "normalized_name": "e palm canyon drive and gene autry trl",
+            "intersection_number": "21",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Golf Club Dr & E Palm Canyon Dr",
+            "normalized_name": "e palm canyon drive and golf club drive",
+            "intersection_number": "22",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Palm Canyon Dr & Canyon Plaza (West)",
+            "normalized_name": "canyon plaza (west) and palm canyon drive",
+            "intersection_number": "23",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Palm Canyon Dr & Canyon Plaza (East)",
+            "normalized_name": "canyon plaza (east) and palm canyon drive",
+            "intersection_number": "24",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Palm Canyon Dr & Perez Rd",
+            "normalized_name": "palm canyon drive and perez road",
+            "intersection_number": "25",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Palm Canyon Dr & Auto Park Dr",
+            "normalized_name": "auto park drive and palm canyon drive",
+            "intersection_number": "26",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Palm Canyon Dr & Bankside Dr",
+            "normalized_name": "bankside drive and palm canyon drive",
+            "intersection_number": "27",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Palm Canyon Dr & Cathedral Canyon Dr",
+            "normalized_name": "cathedral canyon drive and palm canyon drive",
+            "intersection_number": "28",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Palm Canyon Dr & West Buddy Rogers Ave",
+            "normalized_name": "palm canyon drive and west buddy rogers avenue",
+            "intersection_number": "29",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Palm Canyon Dr & Van Fleet St/ Monty Hall Dr",
+            "normalized_name": "monty hall drive and palm canyon drive and van fleet street",
+            "intersection_number": "30",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Palm Canyon Dr & Allen Ave",
+            "normalized_name": "allen avenue and palm canyon drive",
+            "intersection_number": "31",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Palm Canyon Dr & Date Palm Dr",
+            "normalized_name": "date palm drive and palm canyon drive",
+            "intersection_number": "32",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Palm Canyon Dr & Sungate Wy",
+            "normalized_name": "palm canyon drive and sungate way",
+            "intersection_number": "33",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Palm Canyon Dr & Officer Jermaine Gibson / Buddy Rogers Ave",
+            "normalized_name": "buddy rogers avenue and officer jermaine gibson and palm canyon drive",
+            "intersection_number": "34",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Highway 111 & Parkview Dr",
+            "normalized_name": "highway 111 and parkview drive",
+            "intersection_number": "51",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Highway 111 & Fred Waring Dr",
+            "normalized_name": "fred waring drive and highway 111",
+            "intersection_number": "52",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Highway 111 & Desert Crossing",
+            "normalized_name": "desert crossing and highway 111",
+            "intersection_number": "53",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Highway 111 & Town Center Wy/ El Paseo",
+            "normalized_name": "el paseo and highway 111 and town center way",
+            "intersection_number": "54",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Highway 111 & Plaza Wy",
+            "normalized_name": "highway 111 and plaza way",
+            "intersection_number": "55",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Highway 111 & Highway 74",
+            "normalized_name": "highway 111 and highway 74",
+            "intersection_number": "56",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Highway 111 & San Pablo Ave",
+            "normalized_name": "highway 111 and san pablo avenue",
+            "intersection_number": "57",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Highway 111 & San Luis Rey Ave",
+            "normalized_name": "highway 111 and san luis rey avenue",
+            "intersection_number": "58",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Highway 111 & Portola Ave",
+            "normalized_name": "highway 111 and portola avenue",
+            "intersection_number": "59",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Highway 111 & El Paseo / Cabrillo Ave",
+            "normalized_name": "cabrillo avenue and el paseo and highway 111",
+            "intersection_number": "60",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Highway 111 & Deep Canyon Rd",
+            "normalized_name": "deep canyon road and highway 111",
+            "intersection_number": "61",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Highway 111 & Hospitality Row",
+            "normalized_name": "highway 111 and hospitality row",
+            "intersection_number": "62",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Highway 111 & Village Center Dr",
+            "normalized_name": "highway 111 and village center drive",
+            "intersection_number": "63",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Highway 111 & Cook St",
+            "normalized_name": "cook street and highway 111",
+            "intersection_number": "64",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Highway 111 & Province Wy",
+            "normalized_name": "highway 111 and province way",
+            "intersection_number": "65",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Highway 111 & Palmeras Rd",
+            "normalized_name": "highway 111 and palmeras road",
+            "intersection_number": "66",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Highway 111 & El Dorado Dr",
+            "normalized_name": "el dorado drive and highway 111",
+            "intersection_number": "67",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Highway 111 & Indian Wells Ln",
+            "normalized_name": "highway 111 and indian wells lane",
+            "intersection_number": "68",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Highway 111 & Club Dr",
+            "normalized_name": "club drive and highway 111",
+            "intersection_number": "69",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Highway 111 & Miles Ave",
+            "normalized_name": "highway 111 and miles avenue",
+            "intersection_number": "70",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Highway 111 & Mountain Cove Dr",
+            "normalized_name": "highway 111 and mountain cove drive",
+            "intersection_number": "71",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Highway 111 & Plaza La Quinta",
+            "normalized_name": "highway 111 and plaza la quinta",
+            "intersection_number": "72",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Highway 111 & Washington St",
+            "normalized_name": "highway 111 and washington street",
+            "intersection_number": "73",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Highway 111 & Simon Dr",
+            "normalized_name": "highway 111 and simon drive",
+            "intersection_number": "74",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Highway 111 & La Quinta Center (Target)",
+            "normalized_name": "highway 111 and la quinta center (target)",
+            "intersection_number": "75",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Highway 111 & Adams St",
+            "normalized_name": "adams street and highway 111",
+            "intersection_number": "76",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Highway 111 & La Quinta Dr/Walmart",
+            "normalized_name": "highway 111 and la quinta drive and walmart",
+            "intersection_number": "77",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Highway 111 & Dune Palms Rd",
+            "normalized_name": "dune palms road and highway 111",
+            "intersection_number": "78",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Highway 111 & Depot Dr",
+            "normalized_name": "depot drive and highway 111",
+            "intersection_number": "79",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Highway 111 & Jefferson St",
+            "normalized_name": "highway 111 and jefferson street",
+            "intersection_number": "80",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Highway 111 & Jackalope Trl",
+            "normalized_name": "highway 111 and jackalope trl",
+            "intersection_number": "81",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Highway 111 & Shields Rd",
+            "normalized_name": "highway 111 and shields road",
+            "intersection_number": "82",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Highway 111 & Madison St",
+            "normalized_name": "highway 111 and madison street",
+            "intersection_number": "83",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Highway 111 & Clinton St",
+            "normalized_name": "clinton street and highway 111",
+            "intersection_number": "84",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Highway 111 & Las Palmas Rd",
+            "normalized_name": "highway 111 and las palmas road",
+            "intersection_number": "85",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Highway 111 & Monroe St",
+            "normalized_name": "highway 111 and monroe street",
+            "intersection_number": "86",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Highway 111 & Mall Dr",
+            "normalized_name": "highway 111 and mall drive",
+            "intersection_number": "87",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Highway 111 & Rubidoux St",
+            "normalized_name": "highway 111 and rubidoux street",
+            "intersection_number": "88",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Highway 111 & Arabia St",
+            "normalized_name": "arabia street and highway 111",
+            "intersection_number": "89",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Highway 111 & Oasis St",
+            "normalized_name": "highway 111 and oasis street",
+            "intersection_number": "90",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Highway 111 & Smurr St",
+            "normalized_name": "highway 111 and smurr street",
+            "intersection_number": "91",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Highway 111 & Jackson St",
+            "normalized_name": "highway 111 and jackson street",
+            "intersection_number": "92",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Highway 111 & Golf Center Pkwy",
+            "normalized_name": "golf center parkway and highway 111",
+            "intersection_number": "93",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Highway 111 & Indio Blvd",
+            "normalized_name": "highway 111 and indio boulevard",
+            "intersection_number": "94",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Indio Blvd & Van Buren St",
+            "normalized_name": "indio boulevard and van buren street",
+            "intersection_number": "95",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Grapefruit Blvd & Avenue 48",
+            "normalized_name": "avenue 48 and grapefruit boulevard",
+            "intersection_number": "96",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Grapefruit Blvd & Avenue 49",
+            "normalized_name": "avenue 49 and grapefruit boulevard",
+            "intersection_number": "97",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Grapefruit Blvd & Gateway Center",
+            "normalized_name": "gateway center and grapefruit boulevard",
+            "intersection_number": "98",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Grapefruit Blvd & Park Ln",
+            "normalized_name": "grapefruit boulevard and park lane",
+            "intersection_number": "99",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Grapefruit Blvd & 6th Street",
+            "normalized_name": "6th street and grapefruit boulevard",
+            "intersection_number": "100",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Grapefruit Blvd & Sunset Dr/Avenue 52",
+            "normalized_name": "avenue 52 and grapefruit boulevard and sunset drive",
+            "intersection_number": "101",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Washington St & Avenue 52",
+            "normalized_name": "avenue 52 and washington street",
+            "intersection_number": "102",
+            "corridor": "WASHINGTON STREET",
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Washington St & Calle Tampico",
+            "normalized_name": "calle tampico and washington street",
+            "intersection_number": "103",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Washington St & Village Shopping Ctr",
+            "normalized_name": "village shopping center and washington street",
+            "intersection_number": "104",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Washington St & Avenue 50",
+            "normalized_name": "avenue 50 and washington street",
+            "intersection_number": "105",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Washington St & Sagebrush Ave",
+            "normalized_name": "sagebrush avenue and washington street",
+            "intersection_number": "106",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Washington St & Eisenhower Dr",
+            "normalized_name": "eisenhower drive and washington street",
+            "intersection_number": "107",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Washington St & Avenue 48",
+            "normalized_name": "avenue 48 and washington street",
+            "intersection_number": "108",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Washington St & Avenue 47",
+            "normalized_name": "avenue 47 and washington street",
+            "intersection_number": "109",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Washington St & Simon Dr/ Point Happy Way",
+            "normalized_name": "point happy way and simon drive and washington street",
+            "intersection_number": "110",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Washington St & Hwy 111",
+            "normalized_name": "highway 111 and washington street",
+            "intersection_number": "111",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Washington St & Channel Dr",
+            "normalized_name": "channel drive and washington street",
+            "intersection_number": "112",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Washington St & Miles Ave",
+            "normalized_name": "miles avenue and washington street",
+            "intersection_number": "113",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Washington St & Via Sevilla",
+            "normalized_name": "via sevilla and washington street",
+            "intersection_number": "114",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Washington St & Fred Waring Dr",
+            "normalized_name": "fred waring drive and washington street",
+            "intersection_number": "115",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Washington St & Palm Royale Dr / Mountain View Ave",
+            "normalized_name": "mountain view avenue and palm royale drive and washington street",
+            "intersection_number": "116",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Washington St & Ave of the States",
+            "normalized_name": "avenue of the states and washington street",
+            "intersection_number": "117",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Washington St & 42nd Hovley Ln East",
+            "normalized_name": "42nd hovley lane east and washington street",
+            "intersection_number": "118",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Washington St & Avenue 41",
+            "normalized_name": "avenue 41 and washington street",
+            "intersection_number": "119",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Washington St & Harris Ln",
+            "normalized_name": "harris lane and washington street",
+            "intersection_number": "120",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Washington St & Country Club Dr",
+            "normalized_name": "country club drive and washington street",
+            "intersection_number": "121",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "I-10 EB Ramp(s) & Washington St",
+            "normalized_name": "i-10 eb ramp(s) and washington street",
+            "intersection_number": "122",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Varner Rd & Washington St",
+            "normalized_name": "varner road and washington street",
+            "intersection_number": "123",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Washington St & Market Pl",
+            "normalized_name": "market place and washington street",
+            "intersection_number": "124",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Washington St & Del Webb - South (Las Montanas)",
+            "normalized_name": "del webb - south (las montanas) and washington street",
+            "intersection_number": "125",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "S Palm Canyon Dr & Ramon Rd",
+            "normalized_name": "ramon road and s palm canyon drive",
+            "intersection_number": "126",
+            "corridor": "RAMON ROAD",
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Indian Canyon Dr & Ramon Rd",
+            "normalized_name": "indian canyon drive and ramon road",
+            "intersection_number": "127",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Calle Encilla & Ramon Rd",
+            "normalized_name": "calle encilla and ramon road",
+            "intersection_number": "128",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Avenida Caballeros & Ramon Rd",
+            "normalized_name": "avenida caballeros and ramon road",
+            "intersection_number": "129",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Sunrise Way & Ramon Rd",
+            "normalized_name": "ramon road and sunrise way",
+            "intersection_number": "130",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Farrell Dr & Ramon Rd",
+            "normalized_name": "farrell drive and ramon road",
+            "intersection_number": "131",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Compadre Rd & Ramon Rd",
+            "normalized_name": "compadre road and ramon road",
+            "intersection_number": "132",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "El Cielo Rd & Ramon Rd",
+            "normalized_name": "el cielo road and ramon road",
+            "intersection_number": "133",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "El Placer & Ramon Rd",
+            "normalized_name": "el placer and ramon road",
+            "intersection_number": "134",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Paseo Dorotea & Ramon Rd",
+            "normalized_name": "paseo dorotea and ramon road",
+            "intersection_number": "135",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Vella Rd & Ramon Rd",
+            "normalized_name": "ramon road and vella road",
+            "intersection_number": "136",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "San Luis Rey Dr & Ramon Rd",
+            "normalized_name": "ramon road and san luis rey drive",
+            "intersection_number": "137",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Crossley Rd & Ramon Rd",
+            "normalized_name": "crossley road and ramon road",
+            "intersection_number": "138",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Ramon Rd & Landau Blvd",
+            "normalized_name": "landau boulevard and ramon road",
+            "intersection_number": "139",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Ramon Rd & Whispering Palms Trl",
+            "normalized_name": "ramon road and whispering palms trl",
+            "intersection_number": "140",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Ramon Rd & Avenida Maravilla/Cathedral Canyon",
+            "normalized_name": "avenida maravilla and cathedral canyon and ramon road",
+            "intersection_number": "141",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Ramon Rd & Desert Vista Rd",
+            "normalized_name": "desert vista road and ramon road",
+            "intersection_number": "142",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Ramon Rd & Date Palm Dr",
+            "normalized_name": "date palm drive and ramon road",
+            "intersection_number": "143",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Ramon Rd & Cathedral Village",
+            "normalized_name": "cathedral village and ramon road",
+            "intersection_number": "144",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Ramon Rd & El Toro",
+            "normalized_name": "el toro and ramon road",
+            "intersection_number": "145",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Ramon Rd & Via Companile",
+            "normalized_name": "ramon road and via companile",
+            "intersection_number": "146",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Ramon Rd & Da Vall Dr (Cathedral City side of intersection)",
+            "normalized_name": "da vall drive (cathedral city side of intersection) and ramon road",
+            "intersection_number": "147",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Ramon Rd & Bob Hope Dr",
+            "normalized_name": "bob hope drive and ramon road",
+            "intersection_number": "148",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "I-10 EB Ramp(s) & Ramon Rd",
+            "normalized_name": "i-10 eb ramp(s) and ramon road",
+            "intersection_number": "149",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Ramon Rd & Varner Rd",
+            "normalized_name": "ramon road and varner road",
+            "intersection_number": "150",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Ramon Rd & Robert Rd",
+            "normalized_name": "ramon road and robert road",
+            "intersection_number": "151",
+            "corridor": null,
+            "phase": "Phase 1"
+        },
+        {
+            "official_name": "Ramon Rd & Monterey Ave",
+            "normalized_name": "monterey avenue and ramon road",
+            "intersection_number": "152",
+            "corridor": null,
+            "phase": "Phase 1"
+        }
+    ],
+    "Phase 2": [
+        {
+            "official_name": "I-10 EB Ramp(s) & Monterey Ave",
+            "normalized_name": "i-10 eb ramp(s) and monterey avenue",
+            "intersection_number": "181",
+            "corridor": "MONTEREY AVENUE",
+            "agency": "Caltrans D8",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "I-10 WB Ramp(s) & Monterey Ave (via Varner Rd)",
+            "normalized_name": "i-10 wb ramp(s) and monterey avenue (via varner road)",
+            "intersection_number": "183",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Monterey Ave & Ramon Rd",
+            "normalized_name": "monterey avenue and ramon road",
+            "intersection_number": "151",
+            "corridor": null,
+            "agency": "County of Riverside",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Monterey Ave & Varner Rd",
+            "normalized_name": "monterey avenue and varner road",
+            "intersection_number": "182",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Monterey Ave & Highway 111",
+            "normalized_name": "highway 111 and monterey avenue",
+            "intersection_number": "56",
+            "corridor": null,
+            "agency": "Palm Desert",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Monterey Ave & San Gorgonio Wy",
+            "normalized_name": "monterey avenue and san gorgonio way",
+            "intersection_number": "170",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Monterey Ave & Parkview Dr",
+            "normalized_name": "monterey avenue and parkview drive",
+            "intersection_number": "171",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Monterey Ave & Gran Via/Avenida Las Palmas",
+            "normalized_name": "avenida las palmas and gran via and monterey avenue",
+            "intersection_number": "172",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Monterey Ave & Avenida Del Sol/Clancy Ln",
+            "normalized_name": "avenida del sol and clancy lane and monterey avenue",
+            "intersection_number": "173",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Monterey Ave & Hovley Ln West",
+            "normalized_name": "hovley lane west and monterey avenue",
+            "intersection_number": "174",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Monterey Ave & Shadow Ridge Rd",
+            "normalized_name": "monterey avenue and shadow ridge road",
+            "intersection_number": "176",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Monterey Ave & Dick Kelly Dr",
+            "normalized_name": "dick kelly drive and monterey avenue",
+            "intersection_number": "178",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Monterey Ave & Dinah Shore Dr",
+            "normalized_name": "dinah shore drive and monterey avenue",
+            "intersection_number": "180",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Monterey Ave & Frank Sinatra Dr",
+            "normalized_name": "frank sinatra drive and monterey avenue",
+            "intersection_number": "175",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Monterey Ave & Gerald Ford Dr",
+            "normalized_name": "gerald ford drive and monterey avenue",
+            "intersection_number": "177",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Monterey Ave & Market Pl",
+            "normalized_name": "market place and monterey avenue",
+            "intersection_number": "179",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "I-10 EB Ramp(s) & Cook St",
+            "normalized_name": "cook street and i-10 eb ramp(s)",
+            "intersection_number": "199",
+            "corridor": "COOK STREET",
+            "agency": "Caltrans D8",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "I-10 WB Ramp(s) & Cook St",
+            "normalized_name": "cook street and i-10 wb ramp(s)",
+            "intersection_number": "200",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Cook St & Varner Rd",
+            "normalized_name": "cook street and varner road",
+            "intersection_number": "201",
+            "corridor": null,
+            "agency": "County of Riverside",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Cook St & Highway 111",
+            "normalized_name": "cook street and highway 111",
+            "intersection_number": "64",
+            "corridor": null,
+            "agency": "Indian Wells",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Cook St & Desert Horizon Way/Cachuma Rd",
+            "normalized_name": "cachuma road and cook street and desert horizon way",
+            "intersection_number": "190",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Cook St & Aztec Rd",
+            "normalized_name": "aztec road and cook street",
+            "intersection_number": "191",
+            "corridor": null,
+            "agency": "Palm Desert",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Cook St & Merle Dr",
+            "normalized_name": "cook street and merle drive",
+            "intersection_number": "192",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Cook St & 42nd Avenue",
+            "normalized_name": "42nd avenue and cook street",
+            "intersection_number": "193",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Cook St & Hovley Ln E",
+            "normalized_name": "cook street and hovley lane e",
+            "intersection_number": "194",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Cook St & Country Club Dr",
+            "normalized_name": "cook street and country club drive",
+            "intersection_number": "195",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Cook St & Market Pl (UNDER CONSTRUCTION)",
+            "normalized_name": "cook street and market place (under construction)",
+            "intersection_number": "202",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Cook St & Frank Sinatra Dr",
+            "normalized_name": "cook street and frank sinatra drive",
+            "intersection_number": "196",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Cook St & University Park Dr/Berger Dr",
+            "normalized_name": "berger drive and cook street and university park drive",
+            "intersection_number": "197",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Cook St & Gerald Ford Dr",
+            "normalized_name": "cook street and gerald ford drive",
+            "intersection_number": "198",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "I-10 WB Ramp(s) & Palm Dr",
+            "normalized_name": "i-10 wb ramp(s) and palm drive",
+            "intersection_number": "210",
+            "corridor": "PALM DRIVE",
+            "agency": "Caltrans D8",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Palm Dr & Paul Dr",
+            "normalized_name": "palm drive and paul drive",
+            "intersection_number": "211",
+            "corridor": null,
+            "agency": "Desert Hot Springs",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Palm Dr & Varner Rd",
+            "normalized_name": "palm drive and varner road",
+            "intersection_number": "212",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Palm Dr & Dillon Rd",
+            "normalized_name": "dillon road and palm drive",
+            "intersection_number": "213",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Palm Dr & Camino Aventura",
+            "normalized_name": "camino aventura and palm drive",
+            "intersection_number": "214",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Palm Dr & Camino Campanero",
+            "normalized_name": "camino campanero and palm drive",
+            "intersection_number": "215",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Palm Dr & Park Ln (FUTURE)",
+            "normalized_name": "palm drive and park lane (future)",
+            "intersection_number": "223",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Palm Dr & Two Bunch Palms Trl",
+            "normalized_name": "palm drive and two bunch palms trl",
+            "intersection_number": "216",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Palm Dr & Ironwood Dr",
+            "normalized_name": "ironwood drive and palm drive",
+            "intersection_number": "217",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Palm Dr & Hacienda Ave",
+            "normalized_name": "hacienda avenue and palm drive",
+            "intersection_number": "218",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Palm Dr & Desert View Ave",
+            "normalized_name": "desert view avenue and palm drive",
+            "intersection_number": "219",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Palm Dr & Pierson Blvd",
+            "normalized_name": "palm drive and pierson boulevard",
+            "intersection_number": "220",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Palm Dr & 20th Ave (FUTURE)",
+            "normalized_name": "20th avenue (future) and palm drive",
+            "intersection_number": "222",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "I-10 EB Ramp(s) & Bob Hope Dr",
+            "normalized_name": "bob hope drive and i-10 eb ramp(s)",
+            "intersection_number": "242",
+            "corridor": "BOB HOPE DRIVE",
+            "agency": "Caltrans D8",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "I-10 WB Ramp(s) & Bob Hope Dr",
+            "normalized_name": "bob hope drive and i-10 wb ramp(s)",
+            "intersection_number": "243",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Bob Hope Dr & Varner Rd",
+            "normalized_name": "bob hope drive and varner road",
+            "intersection_number": "244",
+            "corridor": null,
+            "agency": "Cathedral City",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Gene Autry Trail & I-10 EB Ramps",
+            "normalized_name": "gene autry trail and i-10 eb ramps",
+            "intersection_number": "301",
+            "corridor": "GENE AUTRY TRAIL",
+            "agency": "Caltrans D8",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Gene Autry Trl & Via Escuela",
+            "normalized_name": "gene autry trl and via escuela",
+            "intersection_number": "300",
+            "corridor": null,
+            "agency": "Palm Springs",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "I-10 EB Ramp(s) & Date Palm Dr",
+            "normalized_name": "date palm drive and i-10 eb ramp(s)",
+            "intersection_number": "323",
+            "corridor": "DATE PALM DRIVE",
+            "agency": "Caltrans D8",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "I-10 WB Ramp(s) & Date Palm Dr",
+            "normalized_name": "date palm drive and i-10 wb ramp(s)",
+            "intersection_number": "324",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Date Palm Dr & Highway 111",
+            "normalized_name": "date palm drive and highway 111",
+            "intersection_number": "32",
+            "corridor": null,
+            "agency": "Cathedral City",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Date Palm Dr & Ramon Rd",
+            "normalized_name": "date palm drive and ramon road",
+            "intersection_number": "141",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Date Palm Dr & Buddy Rogers Ave",
+            "normalized_name": "buddy rogers avenue and date palm drive",
+            "intersection_number": "310",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Date Palm Dr & Perez Rd",
+            "normalized_name": "date palm drive and perez road",
+            "intersection_number": "311",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Date Palm Dr & Gerald Ford Dr",
+            "normalized_name": "date palm drive and gerald ford drive",
+            "intersection_number": "312",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Date Palm Dr & Converse Rd",
+            "normalized_name": "converse road and date palm drive",
+            "intersection_number": "313",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Date Palm Dr & Victoria Dr",
+            "normalized_name": "date palm drive and victoria drive",
+            "intersection_number": "314",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Date Palm Dr & Market Place",
+            "normalized_name": "date palm drive and market place",
+            "intersection_number": "315",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Date Palm Dr & Dinah Shore Dr",
+            "normalized_name": "date palm drive and dinah shore drive",
+            "intersection_number": "316",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Date Palm Dr & Dave Kelly Rd/Ortega Rd",
+            "normalized_name": "date palm drive and dave kelly road and ortega road",
+            "intersection_number": "317",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Date Palm Dr & Cathedral Village/Via Olivera",
+            "normalized_name": "cathedral village and date palm drive and via olivera",
+            "intersection_number": "318",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Date Palm Dr & Baristo Rd",
+            "normalized_name": "baristo road and date palm drive",
+            "intersection_number": "319",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Date Palm Dr & McCallum Wy",
+            "normalized_name": "date palm drive and mccallum way",
+            "intersection_number": "320",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Date Palm Dr & 30th Ave",
+            "normalized_name": "30th avenue and date palm drive",
+            "intersection_number": "321",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Date Palm Dr & Vista Chino",
+            "normalized_name": "date palm drive and vista chino",
+            "intersection_number": "322",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "I-10 EB Ramps & Jefferson St",
+            "normalized_name": "i-10 eb ramps and jefferson street",
+            "intersection_number": "351",
+            "corridor": "JEFFERSON STREET",
+            "agency": "Caltrans D8",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "I-10 WB Ramps & Jefferson St",
+            "normalized_name": "i-10 wb ramps and jefferson street",
+            "intersection_number": "352",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Jefferson St & Westward Ho",
+            "normalized_name": "jefferson street and westward ho",
+            "intersection_number": "345",
+            "corridor": null,
+            "agency": "Indio",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Jefferson St & Pebble Beach Dr",
+            "normalized_name": "jefferson street and pebble beach drive",
+            "intersection_number": "346",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Jefferson St & Miles Ave",
+            "normalized_name": "jefferson street and miles avenue",
+            "intersection_number": "347",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Jefferson St & Dunbar Dr",
+            "normalized_name": "dunbar drive and jefferson street",
+            "intersection_number": "348",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Jefferson St & Northgate Rd/Sonic Dwy (NEW SIGNAL UNDER CONSTRUCTION)",
+            "normalized_name": "jefferson street and northgate road and sonic dwy (new signal under construction)",
+            "intersection_number": "354",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Jefferson St & Avenue 42/Country Club Dr",
+            "normalized_name": "avenue 42 and country club drive and jefferson street",
+            "intersection_number": "349",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Jefferson St and Indio Blvd",
+            "normalized_name": "indio boulevard and jefferson street",
+            "intersection_number": "350",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Jefferson St & Varner Rd",
+            "normalized_name": "jefferson street and varner road",
+            "intersection_number": "353",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Jefferson St & Seagull (FUTURE)",
+            "normalized_name": "jefferson street and seagull (future)",
+            "intersection_number": "XX",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Jefferson St & Pomelo/Pomelo Verano Dr",
+            "normalized_name": "jefferson street and pomelo and pomelo verano drive",
+            "intersection_number": "340",
+            "corridor": null,
+            "agency": "La Quinta",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Jefferson St & Avenue 50",
+            "normalized_name": "avenue 50 and jefferson street",
+            "intersection_number": "341",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Jefferson St & Avenue 49",
+            "normalized_name": "avenue 49 and jefferson street",
+            "intersection_number": "342",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Jefferson St & Avenue 48",
+            "normalized_name": "avenue 48 and jefferson street",
+            "intersection_number": "343",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Jefferson St & Vista Grande",
+            "normalized_name": "jefferson street and vista grande",
+            "intersection_number": "344",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Jefferson St & Highway 111",
+            "normalized_name": "highway 111 and jefferson street",
+            "intersection_number": "80",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "I-10 EB Ramp(s) & Monroe St",
+            "normalized_name": "i-10 eb ramp(s) and monroe street",
+            "intersection_number": "433",
+            "corridor": "MONROE STREET",
+            "agency": "Caltrans D8",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "I-10 WB Ramp(s) & Monroe St",
+            "normalized_name": "i-10 wb ramp(s) and monroe street",
+            "intersection_number": "434",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Monroe St & Avenue 50",
+            "normalized_name": "avenue 50 and monroe street",
+            "intersection_number": "420",
+            "corridor": null,
+            "agency": "Indio",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Monroe St & Avenue 49",
+            "normalized_name": "avenue 49 and monroe street",
+            "intersection_number": "421",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Monroe St & Country Club Dr",
+            "normalized_name": "country club drive and monroe street",
+            "intersection_number": "422",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Monroe St & Avenue 48",
+            "normalized_name": "avenue 48 and monroe street",
+            "intersection_number": "423",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Monroe St & Comet Ln",
+            "normalized_name": "comet lane and monroe street",
+            "intersection_number": "424",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Monroe St & Dr. Carreon Blvd",
+            "normalized_name": "drive. carreon boulevard and monroe street",
+            "intersection_number": "425",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Monroe St & John Nobles Ave",
+            "normalized_name": "john nobles avenue and monroe street",
+            "intersection_number": "426",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Monroe St & Avenida Del Mar",
+            "normalized_name": "avenida del mar and monroe street",
+            "intersection_number": "427",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Monroe St & Requa Ave",
+            "normalized_name": "monroe street and requa avenue",
+            "intersection_number": "428",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Monroe St & Miles Ave",
+            "normalized_name": "miles avenue and monroe street",
+            "intersection_number": "429",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Monroe St & Hoover Ave",
+            "normalized_name": "hoover avenue and monroe street",
+            "intersection_number": "430",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Monroe St & Avenue 44",
+            "normalized_name": "avenue 44 and monroe street",
+            "intersection_number": "431",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Monroe St & Oleander Ave",
+            "normalized_name": "monroe street and oleander avenue",
+            "intersection_number": "432",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Monroe St & Showcase Pkwy",
+            "normalized_name": "monroe street and showcase parkway",
+            "intersection_number": "435",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Monroe St & Highway 111",
+            "normalized_name": "highway 111 and monroe street",
+            "intersection_number": "86",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "CA-86 SB at Dillon",
+            "normalized_name": "ca-86 sb and dillon",
+            "intersection_number": "454",
+            "corridor": "DILLON ROAD",
+            "agency": "Caltrans D8",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "CA-86 NB at Dillon",
+            "normalized_name": "ca-86 nb and dillon",
+            "intersection_number": "455",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Dillon Rd & Cabazon Rd/Avenue 48",
+            "normalized_name": "avenue 48 and cabazon road and dillon road",
+            "intersection_number": "452",
+            "corridor": null,
+            "agency": "Coachella",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Dillon Rd & Harrison Pl",
+            "normalized_name": "dillon road and harrison place",
+            "intersection_number": "456",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Dillon Rd & Lucky Way (FUTURE)",
+            "normalized_name": "dillon road and lucky way (future)",
+            "intersection_number": "XXX",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Dillon Road & CV Link Crossing",
+            "normalized_name": "cv link crossing and dillon road",
+            "intersection_number": "453",
+            "corridor": null,
+            "agency": "County of Riverside",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "I-10 Fwy EB & Indian Canyon Dr (via Garnet Ave)",
+            "normalized_name": "i-10 fwy eb and indian canyon drive (via garnet avenue)",
+            "intersection_number": "494",
+            "corridor": "INDIAN CANYON DRIVE",
+            "agency": "Caltrans D8",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "I-10 Fwy WB & Indian Canyon Dr (via 20th Ave)",
+            "normalized_name": "i-10 fwy wb and indian canyon drive (via 20th avenue)",
+            "intersection_number": "495",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Indian Canyon Dr & Vista Chino",
+            "normalized_name": "indian canyon drive and vista chino",
+            "intersection_number": "6",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Indian Canyon Dr & Dillon Rd",
+            "normalized_name": "dillon road and indian canyon drive",
+            "intersection_number": "497",
+            "corridor": null,
+            "agency": "Desert Hot Springs",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Indian Canyon Dr & Coachillin Wy",
+            "normalized_name": "coachillin way and indian canyon drive",
+            "intersection_number": "496",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Indian Canyon Dr & 19th Avenue (FUTURE)",
+            "normalized_name": "19th avenue (future) and indian canyon drive",
+            "intersection_number": "496",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Indian Canyon Dr & Baristo Rd",
+            "normalized_name": "baristo road and indian canyon drive",
+            "intersection_number": "480",
+            "corridor": null,
+            "agency": "Palm Springs",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Indian Canyon Dr & Arenas Rd",
+            "normalized_name": "arenas road and indian canyon drive",
+            "intersection_number": "481",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Indian Canyon Dr & La Plaza",
+            "normalized_name": "indian canyon drive and la plaza",
+            "intersection_number": "482",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Indian Canyon Dr & Tahquitz Canyon Wy",
+            "normalized_name": "indian canyon drive and tahquitz canyon way",
+            "intersection_number": "483",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Indian Canyon Dr & Andreas Rd",
+            "normalized_name": "andreas road and indian canyon drive",
+            "intersection_number": "484",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Indian Canyon Dr & Amado Rd",
+            "normalized_name": "amado road and indian canyon drive",
+            "intersection_number": "485",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Indian Canyon Dr & Alejo Rd",
+            "normalized_name": "alejo road and indian canyon drive",
+            "intersection_number": "486",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Indian Canyon Dr & Tamarisk Rd",
+            "normalized_name": "indian canyon drive and tamarisk road",
+            "intersection_number": "487",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Indian Canyon Dr & Tachevah Dr",
+            "normalized_name": "indian canyon drive and tachevah drive",
+            "intersection_number": "488",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Indian Canyon Dr & Racquet Club Rd",
+            "normalized_name": "indian canyon drive and racquet club road",
+            "intersection_number": "489",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Indian Canyon Dr & San Rafael Dr",
+            "normalized_name": "indian canyon drive and san rafael drive",
+            "intersection_number": "490",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Indian Canyon Dr & Rosa Parks Rd",
+            "normalized_name": "indian canyon drive and rosa parks road",
+            "intersection_number": "499",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Indian Canyon Dr & Sunrise Pkwy",
+            "normalized_name": "indian canyon drive and sunrise parkway",
+            "intersection_number": "491",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Indian Canyon Dr & Garnet Ave",
+            "normalized_name": "garnet avenue and indian canyon drive",
+            "intersection_number": "492",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Indian Canyon Dr & 20th Ave",
+            "normalized_name": "20th avenue and indian canyon drive",
+            "intersection_number": "493",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Indian Canyon Dr & Palm Springs Station Rd/Granite Access Rd",
+            "normalized_name": "granite access road and indian canyon drive and palm springs station road",
+            "intersection_number": "498",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Indian Canyon Dr & Ramon Rd",
+            "normalized_name": "indian canyon drive and ramon road",
+            "intersection_number": "125",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "I-10 EB Ramp(s) & Jackson St",
+            "normalized_name": "i-10 eb ramp(s) and jackson street",
+            "intersection_number": "513",
+            "corridor": "JACKSON STREET",
+            "agency": "Caltrans D8",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "I-10 WB Ramp(s) & Jackson St",
+            "normalized_name": "i-10 wb ramp(s) and jackson street",
+            "intersection_number": "514",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Jackson St & Highway 111",
+            "normalized_name": "highway 111 and jackson street",
+            "intersection_number": "92",
+            "corridor": null,
+            "agency": "Indio",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Jackson St & Dr. Carreon Blvd",
+            "normalized_name": "drive. carreon boulevard and jackson street",
+            "intersection_number": "505",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Jackson St & Date Ave",
+            "normalized_name": "date avenue and jackson street",
+            "intersection_number": "506",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Jackson St & Requa Ave",
+            "normalized_name": "jackson street and requa avenue",
+            "intersection_number": "507",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Jackson St & Civic Center Dr",
+            "normalized_name": "civic center drive and jackson street",
+            "intersection_number": "508",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Jackson St & Avenue 45",
+            "normalized_name": "avenue 45 and jackson street",
+            "intersection_number": "509",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Jackson St & Dillon Ave",
+            "normalized_name": "dillon avenue and jackson street",
+            "intersection_number": "510",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Jackson St & Avenue 44",
+            "normalized_name": "avenue 44 and jackson street",
+            "intersection_number": "511",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Jackson St & Kenner Ave",
+            "normalized_name": "jackson street and kenner avenue",
+            "intersection_number": "512",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Jackson St & Showcase Pkwy",
+            "normalized_name": "jackson street and showcase parkway",
+            "intersection_number": "515",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "86 Hwy & Avenue 50",
+            "normalized_name": "86 highway and avenue 50",
+            "intersection_number": "549",
+            "corridor": "AVENUE 50",
+            "agency": "Caltrans D8",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Avenue 50 & Calhoun St",
+            "normalized_name": "avenue 50 and calhoun street",
+            "intersection_number": "543",
+            "corridor": null,
+            "agency": "Coachella",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Avenue 50 & Van Buren St",
+            "normalized_name": "avenue 50 and van buren street",
+            "intersection_number": "544",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Avenue 50 & Frederick St",
+            "normalized_name": "avenue 50 and frederick street",
+            "intersection_number": "545",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Avenue 50 & Cesar Chavez St/Harrison",
+            "normalized_name": "avenue 50 and cesar chavez street and harrison",
+            "intersection_number": "546",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Avenue 50 & Leoco Ln",
+            "normalized_name": "avenue 50 and leoco lane",
+            "intersection_number": "547",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Avenue 50 & Oates Ln/Peter Rabbit Ln",
+            "normalized_name": "avenue 50 and oates lane and peter rabbit lane",
+            "intersection_number": "548",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Avenue 50 & Madison St",
+            "normalized_name": "avenue 50 and madison street",
+            "intersection_number": "542",
+            "corridor": null,
+            "agency": "Indio",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Avenue 50 & Washington St",
+            "normalized_name": "avenue 50 and washington street",
+            "intersection_number": "104",
+            "corridor": null,
+            "agency": "La Quinta",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Avenue 50 & Eisenhower Dr",
+            "normalized_name": "avenue 50 and eisenhower drive",
+            "intersection_number": "540",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Avenue 50 & Park Ave",
+            "normalized_name": "avenue 50 and park avenue",
+            "intersection_number": "541",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Vista Chino & Gene Autry Trl",
+            "normalized_name": "gene autry trl and vista chino",
+            "intersection_number": "12",
+            "corridor": "VISTA CHINO",
+            "agency": "Caltrans D8",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Vista Chino & Avenida Quintana",
+            "normalized_name": "avenida quintana and vista chino",
+            "intersection_number": "361",
+            "corridor": null,
+            "agency": "Cathedral City",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Vista Chino & Landau Blvd",
+            "normalized_name": "landau boulevard and vista chino",
+            "intersection_number": "362",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Vista Chino & Avenida Maravilla",
+            "normalized_name": "avenida maravilla and vista chino",
+            "intersection_number": "363",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Vista Chino & Clubhouse View Dr",
+            "normalized_name": "clubhouse view drive and vista chino",
+            "intersection_number": "360",
+            "corridor": null,
+            "agency": "Palm Springs",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Dinah Shore Dr & Cathedral Canyon Dr",
+            "normalized_name": "cathedral canyon drive and dinah shore drive",
+            "intersection_number": "282",
+            "corridor": "DINAH SHORE DRIVE",
+            "agency": "Cathedral City",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Dinah Shore Dr & Via De Anza/Coble Dr (HAWK Signal)",
+            "normalized_name": "coble drive (hawk signal) and dinah shore drive and via de anza",
+            "intersection_number": "283",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Dinah Shore Dr & High School (HAWK Signal)",
+            "normalized_name": "dinah shore drive and high school (hawk signal)",
+            "intersection_number": "284",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Dinah Shore Dr & Plumley Rd",
+            "normalized_name": "dinah shore drive and plumley road",
+            "intersection_number": "285",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Dinah Shore Dr & Miriam Wy",
+            "normalized_name": "dinah shore drive and miriam way",
+            "intersection_number": "291",
+            "corridor": null,
+            "agency": "Palm Desert",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Dinah Shore Dr & Shoppers Ln",
+            "normalized_name": "dinah shore drive and shoppers lane",
+            "intersection_number": "292",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Dinah Shore Dr & Toni Dr",
+            "normalized_name": "dinah shore drive and toni drive",
+            "intersection_number": "293",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Dinah Shore Dr & Gateway Dr",
+            "normalized_name": "dinah shore drive and gateway drive",
+            "intersection_number": "294",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Dinah Shore Dr & Dick Kelly Dr",
+            "normalized_name": "dick kelly drive and dinah shore drive",
+            "intersection_number": "295",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Dinah Shore Dr & Portola Ave",
+            "normalized_name": "dinah shore drive and portola avenue",
+            "intersection_number": "296",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Dinah Shore Dr & Hwy 111/Gene Autry Trail",
+            "normalized_name": "dinah shore drive and gene autry trail and highway 111",
+            "intersection_number": "20",
+            "corridor": null,
+            "agency": "Palm Springs",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Dinah Shore Dr & San Luis Rey Dr",
+            "normalized_name": "dinah shore drive and san luis rey drive",
+            "intersection_number": "280",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Dinah Shore Dr & Crossley Rd",
+            "normalized_name": "crossley road and dinah shore drive",
+            "intersection_number": "281",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Avenue 48 & Van Buren St",
+            "normalized_name": "avenue 48 and van buren street",
+            "intersection_number": "450",
+            "corridor": "AVENUE 48",
+            "agency": "Coachella",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Avenue 48 & Shields Rd",
+            "normalized_name": "avenue 48 and shields road",
+            "intersection_number": "442",
+            "corridor": null,
+            "agency": "Indio",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Avenue 48 & Madison St",
+            "normalized_name": "avenue 48 and madison street",
+            "intersection_number": "443",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Avenue 48 & Hjorth St",
+            "normalized_name": "avenue 48 and hjorth street",
+            "intersection_number": "444",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Avenue 48 & Calle Conejo",
+            "normalized_name": "avenue 48 and calle conejo",
+            "intersection_number": "445",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Avenue 48 & Arabia St",
+            "normalized_name": "arabia street and avenue 48",
+            "intersection_number": "446",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Avenue 48 & Jackson St",
+            "normalized_name": "avenue 48 and jackson street",
+            "intersection_number": "447",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Avenue 48 & Shopping Center",
+            "normalized_name": "avenue 48 and shopping center",
+            "intersection_number": "448",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Avenue 48 & Calhoun St",
+            "normalized_name": "avenue 48 and calhoun street",
+            "intersection_number": "449",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Avenue 48 & Dillon Rd",
+            "normalized_name": "avenue 48 and dillon road",
+            "intersection_number": "451",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Avenue 48 & Washington St",
+            "normalized_name": "avenue 48 and washington street",
+            "intersection_number": "107",
+            "corridor": null,
+            "agency": "La Quinta",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Avenue 48 & Adams St",
+            "normalized_name": "adams street and avenue 48",
+            "intersection_number": "440",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Avenue 48 & Dune Palms Rd",
+            "normalized_name": "avenue 48 and dune palms road",
+            "intersection_number": "441",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Eldorado Dr & Fred Waring Dr",
+            "normalized_name": "eldorado drive and fred waring drive",
+            "intersection_number": "259",
+            "corridor": "ELDORADO DRIVE",
+            "agency": "Indian Wells",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Fred Waring Dr & Jefferson St",
+            "normalized_name": "fred waring drive and jefferson street",
+            "intersection_number": "266",
+            "corridor": "FRED WARING DRIVE",
+            "agency": "Indio",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Fred Waring Dr & Shopping Center (E/O Jefferson St)",
+            "normalized_name": "fred waring drive and o jefferson street) and shopping center (e",
+            "intersection_number": "267",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Fred Waring Dr & Heritage Palms Dr",
+            "normalized_name": "fred waring drive and heritage palms drive",
+            "intersection_number": "268",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Fred Waring Dr & Burr St",
+            "normalized_name": "burr street and fred waring drive",
+            "intersection_number": "269",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Fred Waring Dr & Madison St",
+            "normalized_name": "fred waring drive and madison street",
+            "intersection_number": "270",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Fred Waring Dr & Clinton St",
+            "normalized_name": "clinton street and fred waring drive",
+            "intersection_number": "271",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Fred Waring Dr & Hoover Ave",
+            "normalized_name": "fred waring drive and hoover avenue",
+            "intersection_number": "272",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Fred Waring Dr & Monroe St",
+            "normalized_name": "fred waring drive and monroe street",
+            "intersection_number": "273",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Fred Waring Dr & Indio Blvd",
+            "normalized_name": "fred waring drive and indio boulevard",
+            "intersection_number": "274",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Fred Waring Dr & Palm Royale Dr",
+            "normalized_name": "fred waring drive and palm royale drive",
+            "intersection_number": "263",
+            "corridor": null,
+            "agency": "La Quinta",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Fred Waring Dr & Adams St",
+            "normalized_name": "adams street and fred waring drive",
+            "intersection_number": "264",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Fred Waring Dr & Dune Palms Dr",
+            "normalized_name": "dune palms drive and fred waring drive",
+            "intersection_number": "265",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Fred Waring Dr & Washington St",
+            "normalized_name": "fred waring drive and washington street",
+            "intersection_number": "113",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Fred Waring Dr & Highway 111",
+            "normalized_name": "fred waring drive and highway 111",
+            "intersection_number": "52",
+            "corridor": null,
+            "agency": "Palm Desert",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Fred Waring Dr & Town Ctr",
+            "normalized_name": "fred waring drive and town center",
+            "intersection_number": "250",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Fred Waring Dr & Monterey Ave",
+            "normalized_name": "fred waring drive and monterey avenue",
+            "intersection_number": "251",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Fred Waring Dr & College of the Desert",
+            "normalized_name": "college of the desert and fred waring drive",
+            "intersection_number": "252",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Fred Waring Dr & San Pablo Ave",
+            "normalized_name": "fred waring drive and san pablo avenue",
+            "intersection_number": "253",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Fred Waring Dr & San Pascual Ave",
+            "normalized_name": "fred waring drive and san pascual avenue",
+            "intersection_number": "254",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Fred Waring Dr & Portola Ave",
+            "normalized_name": "fred waring drive and portola avenue",
+            "intersection_number": "255",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Fred Waring Dr & Deep Canyon Rd",
+            "normalized_name": "deep canyon road and fred waring drive",
+            "intersection_number": "256",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Fred Waring Dr & Phyllis Jackson Ln",
+            "normalized_name": "fred waring drive and phyllis jackson lane",
+            "intersection_number": "257",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Fred Waring Dr & Cook St",
+            "normalized_name": "cook street and fred waring drive",
+            "intersection_number": "258",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Fred Waring Dr & California Dr",
+            "normalized_name": "california drive and fred waring drive",
+            "intersection_number": "260",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Fred Waring Dr & Warner Trl",
+            "normalized_name": "fred waring drive and warner trl",
+            "intersection_number": "261",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Fred Waring Dr & Southwest Church",
+            "normalized_name": "fred waring drive and southwest church",
+            "intersection_number": "262",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Indio Blvd & Highway 111",
+            "normalized_name": "highway 111 and indio boulevard",
+            "intersection_number": "94",
+            "corridor": "INDIO BOULEVARD",
+            "agency": "Indio",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Indio Blvd & Van Buren St",
+            "normalized_name": "indio boulevard and van buren street",
+            "intersection_number": "95",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Indio Blvd & Avenue 48",
+            "normalized_name": "avenue 48 and indio boulevard",
+            "intersection_number": "96",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Indio Blvd & Madison St",
+            "normalized_name": "indio boulevard and madison street",
+            "intersection_number": "330",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Indio Blvd & Clinton St",
+            "normalized_name": "clinton street and indio boulevard",
+            "intersection_number": "331",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Indio Blvd & Hoover St",
+            "normalized_name": "hoover street and indio boulevard",
+            "intersection_number": "332",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Indio Blvd & Oasis St",
+            "normalized_name": "indio boulevard and oasis street",
+            "intersection_number": "333",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Indio Blvd & Civic Center Dr",
+            "normalized_name": "civic center drive and indio boulevard",
+            "intersection_number": "334",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Monroe St & Avenue 42 (Varner Corridor)",
+            "normalized_name": "avenue 42 (varner corridor) and monroe street",
+            "intersection_number": "436",
+            "corridor": "VARNER ROAD / AVENUE 42",
+            "agency": "Indio",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Jackson St & Avenue 42 (Varner Corridor)",
+            "normalized_name": "avenue 42 (varner corridor) and jackson street",
+            "intersection_number": "516",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Avenue 44 & CV Link Crossing",
+            "normalized_name": "avenue 44 and cv link crossing",
+            "intersection_number": "555",
+            "corridor": "AVENUE 44",
+            "agency": "Indio",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Avenue 44 & Golf Center Pkwy",
+            "normalized_name": "avenue 44 and golf center parkway",
+            "intersection_number": "556",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Country Club Dr & Washington St",
+            "normalized_name": "country club drive and washington street",
+            "intersection_number": "119",
+            "corridor": "COUNTRY CLUB DRIVE",
+            "agency": "Palm Desert",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Country Club Dr & Monterey Ave",
+            "normalized_name": "country club drive and monterey avenue",
+            "intersection_number": "403",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Country Club Dr & Via Scena",
+            "normalized_name": "country club drive and via scena",
+            "intersection_number": "404",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Country Club Dr & Suncrest/Regent",
+            "normalized_name": "country club drive and regent and suncrest",
+            "intersection_number": "405",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Country Club Dr & Palm Greens Via Portofino",
+            "normalized_name": "country club drive and palm greens via portofino",
+            "intersection_number": "406",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Country Club Dr & Portola Ave",
+            "normalized_name": "country club drive and portola avenue",
+            "intersection_number": "407",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Country Club Dr & Desert Springs/Desert Willow",
+            "normalized_name": "country club drive and desert springs and desert willow",
+            "intersection_number": "408",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Country Club Dr & Desert Falls Pkwy",
+            "normalized_name": "country club drive and desert falls parkway",
+            "intersection_number": "409",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Country Club Dr & E Dorado Dr",
+            "normalized_name": "country club drive and e dorado drive",
+            "intersection_number": "410",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Country Club Dr & Palm Valley Dr/Indian Ridge Dr",
+            "normalized_name": "country club drive and indian ridge drive and palm valley drive",
+            "intersection_number": "411",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Country Club Dr & Oasis Club Dr/Tamarisk St",
+            "normalized_name": "country club drive and oasis club drive and tamarisk street",
+            "intersection_number": "412",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Country Club Dr & Resorter/Liberty",
+            "normalized_name": "country club drive and liberty and resorter",
+            "intersection_number": "413",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Country Club Dr & Park Center Dr/Barrington Dr",
+            "normalized_name": "barrington drive and country club drive and park center drive",
+            "intersection_number": "414",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Country Club Dr & Harris Ln",
+            "normalized_name": "country club drive and harris lane",
+            "intersection_number": "415",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Portola Ave & Highway 111",
+            "normalized_name": "highway 111 and portola avenue",
+            "intersection_number": "59",
+            "corridor": "PORTOLA AVENUE",
+            "agency": "Palm Desert",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Portola Ave & Shadow Mountain Dr",
+            "normalized_name": "portola avenue and shadow mountain drive",
+            "intersection_number": "520",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Portola Ave & El Paseo",
+            "normalized_name": "el paseo and portola avenue",
+            "intersection_number": "521",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Portola Ave & De Anza Wy",
+            "normalized_name": "de anza way and portola avenue",
+            "intersection_number": "522",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Portola Ave & Rutledge Wy",
+            "normalized_name": "portola avenue and rutledge way",
+            "intersection_number": "523",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Portola Ave & Magnesia Falls Dr",
+            "normalized_name": "magnesia falls drive and portola avenue",
+            "intersection_number": "524",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Portola Ave & Quicksilver St",
+            "normalized_name": "portola avenue and quicksilver street",
+            "intersection_number": "525",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Portola Ave & Chaparral Dr/Via Venezia",
+            "normalized_name": "chaparral drive and portola avenue and via venezia",
+            "intersection_number": "526",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Portola Ave & Hovley Ln East",
+            "normalized_name": "hovley lane east and portola avenue",
+            "intersection_number": "527",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Portola Ave & Hovley Ln West",
+            "normalized_name": "hovley lane west and portola avenue",
+            "intersection_number": "528",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Portola Ave & Frank Sinatra Dr",
+            "normalized_name": "frank sinatra drive and portola avenue",
+            "intersection_number": "529",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Portola Ave & Julie Dr/College Dr",
+            "normalized_name": "college drive and julie drive and portola avenue",
+            "intersection_number": "530",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Portola Ave & Gerald Ford Dr",
+            "normalized_name": "gerald ford drive and portola avenue",
+            "intersection_number": "531",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "E Palm Canyon Dr & Cherokee Way",
+            "normalized_name": "cherokee way and e palm canyon drive",
+            "intersection_number": "370",
+            "corridor": "PALM CANYON DRIVE",
+            "agency": "Palm Springs",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "E Palm Canyon Dr & Auto Center",
+            "normalized_name": "auto center and e palm canyon drive",
+            "intersection_number": "371",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "E Palm Canyon Dr & Southridge Dr",
+            "normalized_name": "e palm canyon drive and southridge drive",
+            "intersection_number": "372",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "E Palm Canyon Dr & Escoba Dr/Araby Dr",
+            "normalized_name": "araby drive and e palm canyon drive and escoba drive",
+            "intersection_number": "373",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "E Palm Canyon Dr & Farrell Dr/Barona Rd",
+            "normalized_name": "barona road and e palm canyon drive and farrell drive",
+            "intersection_number": "374",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "E Palm Canyon Dr & Smoke Tree Commons",
+            "normalized_name": "e palm canyon drive and smoke tree commons",
+            "intersection_number": "375",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "E Palm Canyon Dr & Cerritos Dr",
+            "normalized_name": "cerritos drive and e palm canyon drive",
+            "intersection_number": "376",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "E Palm Canyon Dr & Sunrise Wy",
+            "normalized_name": "e palm canyon drive and sunrise way",
+            "intersection_number": "377",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "E Palm Canyon Dr & Camino Real",
+            "normalized_name": "camino real and e palm canyon drive",
+            "intersection_number": "378",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "S Palm Canyon Dr & E Palm Canyon Dr",
+            "normalized_name": "e palm canyon drive and s palm canyon drive",
+            "intersection_number": "379",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "S Palm Canyon Dr & Morongo Ave",
+            "normalized_name": "morongo avenue and s palm canyon drive",
+            "intersection_number": "380",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "S Palm Canyon Dr & Mesquite Ave",
+            "normalized_name": "mesquite avenue and s palm canyon drive",
+            "intersection_number": "381",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "S Palm Canyon Dr & Sunny Dunes Rd",
+            "normalized_name": "s palm canyon drive and sunny dunes road",
+            "intersection_number": "382",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "S Palm Canyon Dr & Camino Parocela/Indian Cyn Dr",
+            "normalized_name": "camino parocela and indian cyn drive and s palm canyon drive",
+            "intersection_number": "383",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "S Palm Canyon Dr & Baristo Rd",
+            "normalized_name": "baristo road and s palm canyon drive",
+            "intersection_number": "384",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "S Palm Canyon Dr & The Village Green Ped Xing",
+            "normalized_name": "s palm canyon drive and the village green ped xing",
+            "intersection_number": "385",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "S Palm Canyon Dr & Arenas Rd",
+            "normalized_name": "arenas road and s palm canyon drive",
+            "intersection_number": "386",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "S Palm Canyon Dr & La Plaza",
+            "normalized_name": "la plaza and s palm canyon drive",
+            "intersection_number": "387",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "S Palm Canyon Dr & Tahquitz Canyon Way",
+            "normalized_name": "s palm canyon drive and tahquitz canyon way",
+            "intersection_number": "388",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "N Palm Canyon Dr & Museum Way (Main St)",
+            "normalized_name": "museum way (main street) and n palm canyon drive",
+            "intersection_number": "389",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "N Palm Canyon Dr & Andreas Rd",
+            "normalized_name": "andreas road and n palm canyon drive",
+            "intersection_number": "390",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "N Palm Canyon Dr & Amado Rd",
+            "normalized_name": "amado road and n palm canyon drive",
+            "intersection_number": "391",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "N Palm Canyon Dr & Amado Center/Ped Xing",
+            "normalized_name": "amado center and n palm canyon drive and ped xing",
+            "intersection_number": "392",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "N Palm Canyon Dr & Alejo Rd",
+            "normalized_name": "alejo road and n palm canyon drive",
+            "intersection_number": "393",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "N Palm Canyon Dr & Granvia Valmonte",
+            "normalized_name": "granvia valmonte and n palm canyon drive",
+            "intersection_number": "394",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "N Palm Canyon Dr & Tamarisk Rd",
+            "normalized_name": "n palm canyon drive and tamarisk road",
+            "intersection_number": "395",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "N Palm Canyon Dr & Tachevah Dr/W Via Lola",
+            "normalized_name": "n palm canyon drive and tachevah drive and w via lola",
+            "intersection_number": "396",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "N Palm Canyon Dr & Vista Chino",
+            "normalized_name": "n palm canyon drive and vista chino",
+            "intersection_number": "5",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "E Palm Canyon Dr & Gene Autry Wy",
+            "normalized_name": "e palm canyon drive and gene autry way",
+            "intersection_number": "21",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "S Palm Canyon Dr & Ramon Rd",
+            "normalized_name": "ramon road and s palm canyon drive",
+            "intersection_number": "124",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Sunrise Wy & Mesquite Ave",
+            "normalized_name": "mesquite avenue and sunrise way",
+            "intersection_number": "460",
+            "corridor": "SUNRISE WAY",
+            "agency": "Palm Springs",
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Sunrise Wy & Sunny Dunes Rd",
+            "normalized_name": "sunny dunes road and sunrise way",
+            "intersection_number": "461",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Sunrise Wy & Shopping Center/Boys and Girls Club",
+            "normalized_name": "boys and girls club and shopping center and sunrise way",
+            "intersection_number": "462",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Sunrise Wy & Baristo Rd",
+            "normalized_name": "baristo road and sunrise way",
+            "intersection_number": "463",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Sunrise Wy & Tahquitz Canyon Wy",
+            "normalized_name": "sunrise way and tahquitz canyon way",
+            "intersection_number": "464",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Sunrise Wy & Amado Rd",
+            "normalized_name": "amado road and sunrise way",
+            "intersection_number": "465",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Sunrise Wy & Alejo Rd",
+            "normalized_name": "alejo road and sunrise way",
+            "intersection_number": "466",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Sunrise Wy & Tachevah Dr",
+            "normalized_name": "sunrise way and tachevah drive",
+            "intersection_number": "467",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Sunrise Wy & Via Escuela",
+            "normalized_name": "sunrise way and via escuela",
+            "intersection_number": "468",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Sunrise Wy & Racquet Club Rd",
+            "normalized_name": "racquet club road and sunrise way",
+            "intersection_number": "469",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Sunrise Wy & San Rafael Dr",
+            "normalized_name": "san rafael drive and sunrise way",
+            "intersection_number": "470",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Sunrise Wy & Ramon Road",
+            "normalized_name": "ramon road and sunrise way",
+            "intersection_number": "128",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Sunrise Wy & Hwy 111",
+            "normalized_name": "highway 111 and sunrise way",
+            "intersection_number": "9",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Data Provided",
+            "normalized_name": "data provided",
+            "intersection_number": "Yes",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        },
+        {
+            "official_name": "Data Not Provided",
+            "normalized_name": "data not provided",
+            "intersection_number": "No",
+            "corridor": null,
+            "agency": null,
+            "phase": "Phase 2"
+        }
+    ]
+}

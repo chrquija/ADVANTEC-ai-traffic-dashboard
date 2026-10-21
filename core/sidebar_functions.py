@@ -804,6 +804,25 @@ def render_badge(score: float) -> str:
 # Chart helpers
 # =========================
 
+# Shared 2-line chart header. The title is pinned in pixels from the top of the
+# figure (not as a fraction of its height) so charts of different heights place
+# their header -- and therefore their plot area -- at the same vertical position.
+CHART_HEADER_MARGIN_T = 160
+CHART_TITLE_TOP_PX = 45
+
+
+def chart_header_title(title_text: str) -> dict:
+    """Plotly layout.title dict for the shared 2-line chart header."""
+    return dict(
+        text=title_text,
+        font=dict(size=22, color="#000"),
+        x=0,
+        y=1,
+        yanchor="top",
+        pad=dict(t=CHART_TITLE_TOP_PX),
+    )
+
+
 def format_chart_title(
     corridor_name: str,
     direction: str,
@@ -819,10 +838,15 @@ def format_chart_title(
     # Ensure human-readable name
     corridor_display = get_corridor_display_name(corridor_name)
     direction = direction.title() if direction else ""
-    origin = origin.title() if origin else ""
-    destination = destination.title() if destination else ""
+    # Treat unselected O-D placeholders as missing so we never render "Northbound  to "
+    origin = origin.title() if origin and origin != "SELECT" else ""
+    destination = destination.title() if destination and destination != "SELECT" else ""
 
-    line1 = f"<b>{corridor_display}: {direction} {origin} to {destination}</b>"
+    route_parts = [direction] if direction else []
+    if origin and destination:
+        route_parts.append(f"{origin} to {destination}")
+    route = " ".join(route_parts)
+    line1 = f"<b>{corridor_display}: {route}</b>" if route else f"<b>{corridor_display}</b>"
 
     # Date formatting: March 5, 2025
     def format_date_simple(d):
@@ -957,13 +981,13 @@ def performance_chart(
 
     trend_title = format_chart_title(corridor_name, direction_label, origin, destination, date_range, trend_metric)
     fig_trend.update_layout(
-        title=dict(text=trend_title, font=dict(size=22, color="#000"), x=0, y=0.9, yanchor='top'),
+        title=chart_header_title(trend_title),
         height=450,
         showlegend=False,
         template="plotly_white",
         plot_bgcolor = "white",
         paper_bgcolor = "white",
-        margin=dict(t=160, b=60, l=70, r=30),
+        margin=dict(t=CHART_HEADER_MARGIN_T, b=60, l=70, r=30),
         xaxis=dict(
             title=dict(text="Date/Time", font=dict(size=18, color="#333")),
             tickfont=dict(size=14),
@@ -1011,13 +1035,13 @@ def performance_chart(
     dist_title = format_chart_title(corridor_name, direction_label, origin, destination, date_range, dist_full_metric)
 
     fig_dist.update_layout(
-        title=dict(text=dist_title, font=dict(size=22, color="#000"), x=0, y=0.9, yanchor='top'),
+        title=chart_header_title(dist_title),
         height=450,
         showlegend=False,
         template="plotly_white",
         plot_bgcolor = "white",
         paper_bgcolor = "white",
-        margin=dict(t=160, b=60, l=70, r=30),
+        margin=dict(t=CHART_HEADER_MARGIN_T, b=60, l=70, r=30),
         xaxis=dict(
             title=dict(text=y_label, font=dict(size=18, color="#333")),
             tickfont=dict(size=14),
@@ -1187,6 +1211,7 @@ def date_range_preset_controls(min_date: datetime.date, max_date: datetime.date,
 # =========================
 # Data availability helper (for sidebar preview)
 # =========================
+@st.cache_data(show_spinner=False)
 def compute_data_availability(
     df: pd.DataFrame,
     *,
@@ -1377,6 +1402,7 @@ def compute_data_availability(
 # =========================
 # Processing
 # =========================
+@st.cache_data(show_spinner=False)
 def process_traffic_data(df, date_range, granularity, time_filter=None, start_hour=None, end_hour=None):
     """
     Process traffic data based on date range and granularity selections.
@@ -1536,7 +1562,17 @@ def compute_missing_strength_gaps(df, start_date, end_date, granularity):
         return pd.DataFrame(columns=["segment_id", "direction", "metric", "missing_start", "missing_end", "missing_hours", "missing_days", "full_day_aligned", "gap_type"])
 
     for (seg_id, direction), group in temp_df.groupby(group_cols):
-        group = group.set_index("local_datetime").sort_index()
+        # Ensure local_datetime is datetime and aggregate any duplicate timestamps to avoid reindex error
+        group = group.dropna(subset=["local_datetime"]).copy()
+        group["local_datetime"] = pd.to_datetime(group["local_datetime"], errors="coerce")
+        group = group.dropna(subset=["local_datetime"])
+        
+        # Aggregate numeric columns if duplicate timestamps exist
+        avail_metric_cols = [c for c in metric_cols.keys() if c in group.columns]
+        if not avail_metric_cols:
+            continue
+            
+        group = group.groupby("local_datetime")[avail_metric_cols].mean().sort_index()
         
         for col, metric_label in metric_cols.items():
             if col not in group.columns:
@@ -1587,7 +1623,7 @@ def compute_missing_strength_gaps(df, start_date, end_date, granularity):
 
 
 #Function to help download 5 minute CSV
-
+@st.cache_data(show_spinner=False)
 def create_5min_data(df: pd.DataFrame) -> pd.DataFrame:
     """
     Convert filtered data to 5-minute intervals by interpolating between existing data points.

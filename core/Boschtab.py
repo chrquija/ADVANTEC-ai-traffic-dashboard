@@ -15,14 +15,15 @@ from sidebar_functions import (
     get_performance_rating,
     compute_data_availability,
 )
+from intersection_metadata import format_intersection_display
 from cycle_length_recommendations import render_cycle_length_section
 from Map import build_all_segments_overview
 
 # Shared UI utils (scoped loader and tab highlight)
 try:
-    from ui_utils import cad_loader as scoped_cad_loader, set_active_search_tab, is_active_tab, get_dynamic_xaxis_params
+    from ui_utils import cad_loader as scoped_cad_loader, set_active_search_tab, get_dynamic_xaxis_params
 except ModuleNotFoundError:
-    from core.ui_utils import cad_loader as scoped_cad_loader, set_active_search_tab, is_active_tab, get_dynamic_xaxis_params
+    from core.ui_utils import cad_loader as scoped_cad_loader, set_active_search_tab, get_dynamic_xaxis_params
 
 # =========================
 # Constants
@@ -57,10 +58,14 @@ SEGMENT_ID_ALIASES = {
 
 def _canonicalize_segment(seg_id: str, corridor_label: str) -> str:
     s = str(seg_id).strip()
+    res = s
     if s in SEGMENT_ID_ALIASES:
-        return SEGMENT_ID_ALIASES[s]
-    # Fallback: keep original but prepend corridor for readability
-    return f"{corridor_label} — {s}"
+        res = SEGMENT_ID_ALIASES[s]
+    else:
+        # Fallback: keep original but prepend corridor for readability
+        res = f"{corridor_label} — {s}"
+    
+    return format_intersection_display(res)
 
 # Aggregation metadata
 AGG_META = {
@@ -367,7 +372,7 @@ def render_bosch_tab():
 
     # -------- Sidebar controls --------
     with st.sidebar:
-        with st.expander("⚙️ Pg.5 BOSCH SETTINGS", expanded=False):
+        with st.expander("Pg.5 Bosch Settings", expanded=False):
             st.caption("Select Corridor and Date Range")
             st.caption("Data: Multimodal Traffic from Bosch Sensors")
 
@@ -621,21 +626,34 @@ def render_bosch_tab():
 
             st.markdown(
                 f"""
-                <div style="
-                    background: linear-gradient(135deg, #2b77e5 0%, #19c3e6 100%);
-                    border-radius:16px; padding:18px 20px; color:#fff; margin:8px 0 14px;
-                    box-shadow:0 10px 26px rgba(25,115,210,.25); text-align:left;">
-                  <div style="display:flex; align-items:center; gap:10px;">
-                    <div style="width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,.18);
-                                display:flex;align-items:center;justify-content:center;
-                                box-shadow:inset 0 0 0 1px rgba(255,255,255,.15);">🚦</div>
-                    <div style="font-size:1.9rem;font-weight:800;letter-spacing:.2px;">
-                      Bosch Multimodal Traffic Analysis: {corridor}
+                <div class="cvag-header-banner">
+                  <div class="cvag-header-top">
+                    <div>
+                      <div class="cvag-header-title">Advantec Consulting Engineers <span style="font-weight:400; opacity:0.85; border-left:1px solid rgba(255,255,255,0.35); padding-left:12px; margin-left:10px; font-size:1.45rem;">Bosch Multimodal Traffic Analysis</span></div>
+                      <div class="cvag-header-subtitle">Edge AI Multimodal Vehicle, Bicycle, & Pedestrian Monitoring</div>
+                    </div>
+                    <div class="cvag-tooltip-trigger" title="Bosch Cloud Analytics edge-AI video sensor counts, multimodal volume, speeds, and stopped vehicle analytics for CVAG corridors.">?
+                      <span class="cvag-tooltip-box">Bosch Cloud Analytics edge-AI video sensor counts, multimodal volume, speeds, and stopped vehicle analytics for CVAG corridors.</span>
                     </div>
                   </div>
-                  <div style="margin-top:10px;display:flex;flex-direction:column;gap:6px;">
-                    <div>📅 {date_range[0].strftime('%b %d, %Y')} to {date_range[1].strftime('%b %d, %Y')} ({span} days) • {granularity} Aggregation</div>
-                    <div>✅ {total_obs:,} measurements • Modes: {", ".join(mode_filter) if mode_filter else "All"}</div>
+                  <div class="cvag-header-meta-grid">
+                    <div class="cvag-meta-card cvag-cycle-card">
+                      <div class="cvag-meta-card-label">Date Range</div>
+                      <div class="cvag-meta-card-val" title="{date_range[0].strftime('%b %d, %Y')} — {date_range[1].strftime('%b %d, %Y')} ({span} days)">{date_range[0].strftime('%b %d, %Y')} — {date_range[1].strftime('%b %d, %Y')}</div>
+                    </div>
+                    <div class="cvag-meta-card">
+                      <div class="cvag-meta-card-label">Corridor</div>
+                      <div class="cvag-meta-card-val" title="{corridor}">{corridor}</div>
+                    </div>
+                    <div class="cvag-meta-card">
+                      <div class="cvag-meta-card-label">Modes Analyzed</div>
+                      <div class="cvag-meta-card-val" title="{', '.join(mode_filter) if mode_filter else 'All Modes'}">{", ".join(mode_filter) if mode_filter else "All Modes"}</div>
+                    </div>
+                  </div>
+                  <div class="cvag-header-chips-row">
+                    <span class="cvag-sub-chip"><strong>Granularity:</strong> {granularity} Aggregation</span>
+                    <span class="cvag-sub-chip"><strong>Region:</strong> Coachella Valley</span>
+                    <span class="cvag-sub-chip"><strong>Measurements:</strong> {total_obs:,}</span>
                   </div>
                 </div>
                 """,
@@ -762,7 +780,7 @@ def render_bosch_tab():
                     cycle_df = cycle_df.rename(columns={"vehicular_volume": "total_volume"})
                     cycle_df["intersection_name"] = cycle_df["segment_name"]
                     st.caption("Note: Using combined vehicular volume (trucks + cars + buses + motorcycles) for cycle length estimation.")
-                    render_cycle_length_section(cycle_df)
+                    render_cycle_length_section(cycle_df, key_prefix="bosch_cl")
                 else:
                     st.info("No vehicular volume data available for cycle length recommendations.")
             except Exception as e:

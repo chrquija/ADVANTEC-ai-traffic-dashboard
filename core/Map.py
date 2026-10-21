@@ -1,5 +1,6 @@
 # Plotly + OpenStreetMap helpers for the dashboard maps.
 
+from intersection_metadata import get_intersection_metadata, normalize_name
 from typing import Dict, List, Tuple, Optional, Union
 
 import numpy as np
@@ -38,12 +39,20 @@ NODES_ORDER: List[str] = [
     # Highway 111 pair (Palm Canyon Dr area)
     "Canyon Plaza West",
     "Jermaine Gibson",
-    # Highway 111 (Palm Desert area)
+    # Highway 111 (Palm Desert / Indio area)
     "Parkview Drive",
+    "Park View Drive",
+    "Highway 74",
+    "Jackalope Trail",
     "Cook Street",
     "Washington Street",
     "Adams St",
+    "Shields Road",
     "Monroe Street",
+    "Oasis Street",
+    "Smurr Street",
+    "Jackson Street",
+    "Golf Center Parkway",
     "Indio Blvd",
     # Highway 111 - E Palm Canyon Drive
     "Canyon Plaza Drive",
@@ -212,17 +221,59 @@ INTERSECTION_TO_NODE: Dict[str, str] = {
     "Washington St & Del Webb": "Del Webb",
     "Washington St & Del Webb Blvd": "Del Webb",
 
-    # Highway 111 intersections (Palm Desert area)
+    # Highway 111 intersections (Palm Desert / Indio area)
     "Hwy 111 & Parkview Drive": "Parkview Drive",
     "Highway 111 & Parkview Drive": "Parkview Drive",
+    "Parkview Drive": "Parkview Drive",
+    "Park View Drive": "Parkview Drive",
+    "Highway 111 & Park View Drive": "Parkview Drive",
+    "Hwy 111 & Park View Drive": "Parkview Drive",
+    "Highway 74": "Highway 74",
+    "Highway 111 & Highway 74": "Highway 74",
+    "Hwy 111 & Highway 74": "Highway 74",
+    "Jackalope Trail": "Jackalope Trail",
+    "Highway 111 & Jackalope Trail": "Jackalope Trail",
+    "Hwy 111 & Jackalope Trail": "Jackalope Trail",
     "Hwy 111 & Cook Street": "Cook Street",
     "Highway 111 & Cook Street": "Cook Street",
+    "Cook Street": "Cook Street",
     "Hwy 111 & Washington Street": "Washington Street",
     "Highway 111 & Washington Street": "Washington Street",
+    "Washington Street": "Washington Street",
+    "Shields Road": "Shields Road",
+    "Highway 111 & Shields Road": "Shields Road",
+    "Hwy 111 & Shields Road": "Shields Road",
     "Hwy 111 & Monroe Street": "Monroe Street",
     "Highway 111 & Monroe Street": "Monroe Street",
+    "Monroe Street": "Monroe Street",
+    "Oasis Street": "Oasis Street",
+    "Highway 111 & Oasis Street": "Oasis Street",
+    "Highway 111 & Oasis St": "Oasis Street",
+    "Hwy 111 & Oasis Street": "Oasis Street",
+    "Hwy 111 & Oasis St": "Oasis Street",
+    "Highway111_and_OasisStreet": "Oasis Street",
+    "Smurr Street": "Smurr Street",
+    "Highway 111 & Smurr Street": "Smurr Street",
+    "Highway 111 & Smurr St": "Smurr Street",
+    "Hwy 111 & Smurr Street": "Smurr Street",
+    "Hwy 111 & Smurr St": "Smurr Street",
+    "Highway111_and_SmurrStreet": "Smurr Street",
+    "Jackson Street": "Jackson Street",
+    "Highway 111 & Jackson Street": "Jackson Street",
+    "Highway 111 & Jackson St": "Jackson Street",
+    "Hwy 111 & Jackson Street": "Jackson Street",
+    "Hwy 111 & Jackson St": "Jackson Street",
+    "Highway111_and_JacksonStreet": "Jackson Street",
+    "Golf Center Parkway": "Golf Center Parkway",
+    "Highway 111 & Golf Center Parkway": "Golf Center Parkway",
+    "Highway 111 & Golf Center Pkwy": "Golf Center Parkway",
+    "Hwy 111 & Golf Center Parkway": "Golf Center Parkway",
+    "Hwy 111 & Golf Center Pkwy": "Golf Center Parkway",
+    "Highway111_and_GolfCenterParkway": "Golf Center Parkway",
     "Hwy 111 & Indio Blvd": "Indio Blvd",
     "Highway 111 & Indio Blvd": "Indio Blvd",
+    "Indio Blvd": "Indio Blvd",
+    "Highway111_and_IndioBlvd": "Indio Blvd",
 
     # Avenue 47 & Adams St
     "Avenue 47 & Adams St": "Adams St",
@@ -452,15 +503,28 @@ EXPLICIT_NODE_COORDS: Dict[str, Tuple[float, float]] = {
     "Date Palm Drive": (33.77725, -116.45721),
     "Sun Gate Way": (33.77651, -116.45453),
     "Officer Jermain Gibson": (33.77683, -116.45246),
-    "Point Happy Simon": (33.71273, -116.29186),
+    "Point Happy Simon": (33.71249, -116.29466),  # shared endpoint of the Ave 47 / Hwy 111 Washington St segments
+    # Highway 111 Indio / Palm Desert intersections
+    "Parkview Drive": (33.72030, -116.37550),
+    "Highway 74": (33.72140, -116.39800),
+    "Jackalope Trail": (33.72200, -116.40200),
+    "Cook Street": (33.72030, -116.35410),
+    "Washington Street": (33.71880, -116.29190),
+    "Shields Road": (33.71350, -116.24250),
+    "Monroe Street": (33.71440, -116.23380),
+    "Oasis Street": (33.72040, -116.21880),
+    "Smurr Street": (33.71962, -116.21548),
+    "Jackson Street": (33.71612, -116.20532),
+    "Golf Center Parkway": (33.71265, -116.19175),
+    "Indio Blvd": (33.71070, -116.18220),
 }
 
 
-def _derive_node_coords_from_segments() -> Dict[str, Tuple[float, float]]:
+def _derive_node_coords_from_segments(explicit_coords: Dict[str, Tuple[float, float]]) -> Dict[str, Tuple[float, float]]:
     """
     Build approximate node coordinates using segment endpoints and explicit overrides.
     """
-    node_coords: Dict[str, Tuple[float, float]] = EXPLICIT_NODE_COORDS.copy()
+    node_coords: Dict[str, Tuple[float, float]] = dict(explicit_coords)
     for key, url in SEGMENT_URLS.items():
         corridor = None
         if len(key) == 3:
@@ -485,12 +549,19 @@ def _derive_node_coords_from_segments() -> Dict[str, Tuple[float, float]]:
     return node_coords
 
 
+@st.cache_data(show_spinner=False)
+def _cached_node_coordinates(explicit_items: Tuple) -> Dict[str, Tuple[float, float]]:
+    return _derive_node_coords_from_segments(dict(explicit_items))
+
+
 def get_node_coordinates() -> Dict[str, Tuple[float, float]]:
     """
     Public accessor for node coordinates (cached/derived).
     Returns dict: { 'Node Name': (lat, lon) }
+    The explicit overrides are part of the cache key, so editing EXPLICIT_NODE_COORDS
+    takes effect without manually clearing Streamlit's cache.
     """
-    return _derive_node_coords_from_segments()
+    return _cached_node_coordinates(tuple(sorted(EXPLICIT_NODE_COORDS.items())))
 
 
 # =========================
@@ -519,10 +590,18 @@ AVAILABLE_INTERSECTION_NODES = {
     "Del Webb",
     # Highway 111 (Palm Desert area)
     "Parkview Drive",
+    "Park View Drive",
+    "Highway 74",
+    "Jackalope Trail",
     "Cook Street",
     "Washington Street",
     "Adams St",
+    "Shields Road",
     "Monroe Street",
+    "Oasis Street",
+    "Smurr Street",
+    "Jackson Street",
+    "Golf Center Parkway",
     "Indio Blvd",
     # Highway 111 - E Palm Canyon Drive
     "Canyon Plaza Drive",
@@ -536,6 +615,42 @@ AVAILABLE_INTERSECTION_NODES = {
     "Sun Gate Way",
     "Officer Jermain Gibson",
 }
+
+# Ordered nodes per corridor, used to draw a single path along each corridor.
+# Washington Street runs south → north; the Highway 111 corridors run west → east.
+CORRIDOR_NODE_ORDER: Dict[str, List[str]] = {
+    "Washington Street": NODES_ORDER[:NODES_ORDER.index("Del Webb") + 1],
+    "Highway 111": [
+        "Jackalope Trail", "Highway 74", "Parkview Drive", "Cook Street", "Washington Street",
+        "Shields Road", "Monroe Street", "Oasis Street", "Smurr Street", "Jackson Street",
+        "Golf Center Parkway", "Indio Blvd",
+    ],
+    "Highway 111 - E Palm Canyon Drive": [
+        "Canyon Plaza Drive", "Perez Road", "Auto Park Drive", "Bankside Drive",
+        "Cathedral Canyon Drive", "Buddy Rogers Avenue", "Van Fleet Street",
+        "Date Palm Drive", "Sun Gate Way", "Officer Jermain Gibson",
+    ],
+}
+
+
+def _corridor_path(nodes: List[str], node_coords: Dict[str, Tuple[float, float]]) -> Tuple[List, List]:
+    """
+    Lat/lon arrays for a path through consecutive corridor nodes. Each hop follows the
+    road GeoJSON when one is registered (either direction), else a straight line.
+    Pieces are separated by None so the whole path renders as one trace.
+    """
+    nodes = [n for n in nodes if n in node_coords]
+    lats: List = []
+    lons: List = []
+    for a, b in zip(nodes, nodes[1:]):
+        url = SEGMENT_URLS.get((a, b)) or SEGMENT_URLS.get((b, a))
+        lines = _lines_from_geojson(_fetch_geojson(url)) if url else []
+        if not lines:
+            lines = [[node_coords[a], node_coords[b]]]
+        for line in lines:
+            lats.extend([p[0] for p in line] + [None])
+            lons.extend([p[1] for p in line] + [None])
+    return lats, lons
 
 
 def build_corridor_map(origin: str, destination: str, satellite: bool = False) -> Optional[go.Figure]:
@@ -603,7 +718,7 @@ def build_corridor_map(origin: str, destination: str, satellite: bool = False) -
         return None
 
     # Start/end markers from derived node coordinates
-    node_coords = _derive_node_coords_from_segments()
+    node_coords = get_node_coordinates()
     
     # Try corridor-specific markers first
     start_latlon = node_coords.get(f"{origin} ({corridor})") or node_coords.get(origin)
@@ -705,7 +820,7 @@ def build_intersection_map(intersection_label: str, satellite: bool = False) -> 
         return None
 
     node_key = _label_to_node(intersection_label)
-    node_coords = _derive_node_coords_from_segments()
+    node_coords = get_node_coordinates()
     latlon = node_coords.get(node_key) if node_key else None
 
     if not latlon:
@@ -782,7 +897,10 @@ def build_intersection_map(intersection_label: str, satellite: bool = False) -> 
 
 
 def build_intersections_overview(selected_label: Optional[Union[str, List[str]]] = None, corridor: Optional[str] = None,
-                                 tooltip_map: Optional[Dict[str, str]] = None, satellite: bool = False) -> Optional[go.Figure]:
+                                 tooltip_map: Optional[Dict[str, str]] = None, satellite: bool = False,
+                                 filter_to_nodes: Optional[List[str]] = None,
+                                 show_labels: bool = False, label_font_size: int = 12,
+                                 bold_labels: bool = False) -> Optional[go.Figure]:
     """
     Tab 2/4: Show ALL intersections as dots. If 'selected_label' is provided,
     highlight the corresponding NODE (so label variants still match).
@@ -792,14 +910,25 @@ def build_intersections_overview(selected_label: Optional[Union[str, List[str]]]
     highlight intersections based on the selected corridor.
 
     tooltip_map: Optional dict mapping 'Intersection Name' -> 'Custom HTML Tooltip'
+    filter_to_nodes: Optional list of node IDs to restrict the map to.
+    show_labels: If True, display permanent text labels on the map.
+    label_font_size: Font size for permanent map labels.
+    bold_labels: If True, uses a bolder font for labels.
     """
-    node_coords = _derive_node_coords_from_segments()
+    node_coords = get_node_coordinates()
     if not node_coords:
         return None
+
+    # Restrict the map to the selected corridor's intersections (unless the caller filters explicitly)
+    corridor_nodes = CORRIDOR_NODE_ORDER.get(corridor) if corridor else None
+    if not filter_to_nodes and corridor_nodes:
+        filter_to_nodes = corridor_nodes
 
     # Collapse to a single display label per node to avoid duplicates on the map
     node_to_label: Dict[str, str] = {}
     for lbl, node in INTERSECTION_TO_NODE.items():
+        if filter_to_nodes and node not in filter_to_nodes:
+            continue
         if node in node_coords and node not in node_to_label:
             node_to_label[node] = lbl
 
@@ -814,10 +943,18 @@ def build_intersections_overview(selected_label: Optional[Union[str, List[str]]]
                 node = _label_to_node(lbl)
                 if node:
                     selected_nodes.add(node)
+                elif lbl in node_to_label:
+                    selected_nodes.add(lbl)
+                elif lbl in node_coords:
+                    selected_nodes.add(lbl)
         else:
             node = _label_to_node(selected_label)
             if node:
                 selected_nodes.add(node)
+            elif selected_label in node_to_label:
+                selected_nodes.add(selected_label)
+            elif selected_label in node_coords:
+                selected_nodes.add(selected_label)
     else:
         # "All Intersections" case → highlight based on corridor
         if corridor == "Washington Street":
@@ -828,7 +965,9 @@ def build_intersections_overview(selected_label: Optional[Union[str, List[str]]]
             ]
         elif corridor == "Highway 111":
             highlight_list = [
-                "Parkview Drive", "Cook Street", "Washington Street", "Monroe Street", "Indio Blvd"
+                "Parkview Drive", "Highway 74", "Jackalope Trail", "Cook Street", "Washington Street",
+                "Shields Road", "Monroe Street", "Oasis Street", "Smurr Street", "Jackson Street",
+                "Golf Center Parkway", "Indio Blvd"
             ]
         elif corridor == "Highway 111 - E Palm Canyon Drive":
             highlight_list = [
@@ -845,16 +984,79 @@ def build_intersections_overview(selected_label: Optional[Union[str, List[str]]]
     # Build point sets
     sel_lat, sel_lon, sel_text, sel_hover = [], [], [], []
     oth_lat, oth_lon, oth_text, oth_hover = [], [], [], []
+    
+    # ---------------------------------------------------------
+    # Authority Metadata Audit & Tooltip Generation
+    # ---------------------------------------------------------
+    def _get_official_tooltip(label, node_id, adt=0):
+        # 1. Start with metadata from authoritative source
+        meta = get_intersection_metadata(label)
+        
+        # 2. Extract Phase and Number
+        phase = "Unknown"
+        number = "N/A"
+        agency = "CVAG"
+        official_name = label
+        
+        if meta:
+            phase = meta.get("phase", "Unknown")
+            number = meta.get("intersection_number", "N/A")
+            agency = meta.get("agency", agency)
+            official_name = meta.get("official_name", label)
+            
+        # 3. GPS Coordinates
+        coords = node_coords.get(node_id)
+        gps_str = f"{coords[0]:.5f}, {coords[1]:.5f}" if coords else "Unknown"
+        
+        # 4. Fallback for specific fields if provided in tooltip_map or existing data
+        # (This preserves logic for cycle length etc. if passed in)
+        cycle = "N/A"
+        protocol = "CV Sync Protocol"
+        
+        # Check if caller passed a raw tooltip string already
+        if tooltip_map:
+            raw_tt = tooltip_map.get(label, tooltip_map.get(node_id, ""))
+            if raw_tt:
+                # Basic scraping of hard-to-derive fields from existing dashboard HTML
+                if "Cycle Length:" in raw_tt:
+                    try: cycle = raw_tt.split("Cycle Length:")[1].split("<br>")[0].strip()
+                    except: pass
+                if "Protocol:" in raw_tt:
+                    try: protocol = raw_tt.split("Protocol:")[1].split("<br>")[0].strip()
+                    except: pass
+                if "Agency:" in raw_tt:
+                    try: agency = raw_tt.split("Agency:")[1].split("<br>")[0].strip()
+                    except: pass
+                if "ADT:" in raw_tt:
+                    try: 
+                        adt_str = raw_tt.split("ADT:")[1].split("<br>")[0].strip().replace(',', '')
+                        adt = float(adt_str)
+                    except: pass
+
+        return f"""
+        <b>{official_name}</b><br>
+        GPS Location: {gps_str}<br>
+        Protocol: {protocol}<br>
+        Agency: {agency}<br>
+        CVAG Phase: {phase}<br>
+        Intersection No.: {number}<br>
+        Cycle Length: {cycle}<br>
+        ADT: {adt:,.0f}
+        """
+
     for node, label in node_to_label.items():
         lat, lon = node_coords[node]
 
-        # 1. Map Label: Always use the clean name
-        map_label = label
+        # 1. Map Label: Include official number if available
+        meta = get_intersection_metadata(label)
+        number = meta.get("intersection_number", "") if meta else ""
+        if number and number != "N/A":
+            map_label = f"#{number} {label}"
+        else:
+            map_label = label
 
-        # 2. Tooltip: Check if a custom string exists in the map (by Label or Node ID)
-        tooltip = label
-        if tooltip_map:
-            tooltip = tooltip_map.get(label, tooltip_map.get(node, label))
+        # 2. Tooltip: Build enhanced tooltip using authoritative metadata
+        tooltip = _get_official_tooltip(label, node)
 
         if node in selected_nodes:
             sel_lat.append(lat);
@@ -871,20 +1073,66 @@ def build_intersections_overview(selected_label: Optional[Union[str, List[str]]]
         return None
 
     fig = go.Figure()
+    
+    # ---------------------------------------------------------
+    # Draw Corridor Line (Polyline)
+    # ---------------------------------------------------------
+    marker_mode = "markers+text" if show_labels else "markers"
+    label_font_family = "Arial, sans-serif"
+    label_font_weight = "bold" if bold_labels else "normal"
+    
+    # Satellite text readability: use white with a high-contrast halo/shadow
+    label_color = "white" if satellite else "#1f2937"
+
+    if corridor_nodes:
+        # Follow the actual road geometry along this corridor only
+        line_lats, line_lons = _corridor_path([n for n in corridor_nodes if n in node_to_label], node_coords)
+        if line_lats:
+            # White casing underneath keeps the path visible on satellite and street tiles
+            fig.add_trace(
+                go.Scattermapbox(
+                    lat=line_lats, lon=line_lons, mode="lines",
+                    line=dict(width=9, color="rgba(255, 255, 255, 0.85)"),
+                    hoverinfo="skip", showlegend=False,
+                )
+            )
+            fig.add_trace(
+                go.Scattermapbox(
+                    lat=line_lats, lon=line_lons, mode="lines",
+                    line=dict(width=5, color="#2B77E5"),
+                    hoverinfo="skip", showlegend=True,
+                    name="Corridor",
+                )
+            )
 
     if oth_lat:
+        # White halo under the unselected dots so they stand out from the blue corridor line
+        # (Scattermapbox markers have no outline property)
+        fig.add_trace(
+            go.Scattermapbox(
+                lat=oth_lat, lon=oth_lon, mode="markers",
+                marker=dict(size=21, color="white"),
+                hoverinfo="skip", showlegend=False,
+            )
+        )
         fig.add_trace(
             go.Scattermapbox(
                 lat=oth_lat,
                 lon=oth_lon,
-                mode="markers+text",
-                marker=dict(size=15, color="#5DADE2"),
+                mode=marker_mode,
+                marker=dict(size=15, color="#0B3C78"),
                 text=oth_text,
-                hovertext=oth_hover,  # Use separate hover text
-                textposition="top right",
-                hoverinfo="text",  # Tells Plotly to use hovertext property
-                name="Intersections",
-                showlegend=False,
+                textfont=dict(
+                    size=label_font_size, 
+                    color=label_color, 
+                    family="Arial, sans-serif"
+                ),
+                texttemplate="<b>%{text}</b>" if bold_labels and show_labels else "%{text}" if show_labels else None,
+                hovertext=oth_hover,  
+                textposition="top center",
+                hoverinfo="text",  
+                name="Intersection",
+                showlegend=True,
                 hoverlabel=dict(bgcolor="white", font_size=14, font_family="Arial"),
             )
         )
@@ -894,14 +1142,20 @@ def build_intersections_overview(selected_label: Optional[Union[str, List[str]]]
             go.Scattermapbox(
                 lat=sel_lat,
                 lon=sel_lon,
-                mode="markers+text",
+                mode=marker_mode,
                 marker=dict(size=25, color="#E74C3C"),
                 text=sel_text,
-                hovertext=sel_hover,  # Use separate hover text
-                textposition="top right",
-                hoverinfo="text",  # Tells Plotly to use hovertext property
+                textfont=dict(
+                    size=label_font_size, 
+                    color=label_color, 
+                    family="Arial, sans-serif"
+                ),
+                texttemplate="<b>%{text}</b>" if bold_labels and show_labels else "%{text}" if show_labels else None,
+                hovertext=sel_hover,  
+                textposition="top center",
+                hoverinfo="text",  
                 name="Selected",
-                showlegend=False,
+                showlegend=True,
                 hoverlabel=dict(bgcolor="white", font_size=14, font_family="Arial"),
             )
         )
@@ -920,7 +1174,13 @@ def build_intersections_overview(selected_label: Optional[Union[str, List[str]]]
         center_lon = float(np.mean(all_lons))
         zoom_level = 11
 
-    title_text = "All Intersections" if not selected_label else f"Intersection: {selected_label}"
+    # Determine title
+    if not selected_label or selected_label == "All Intersections":
+        title_text = "Corridor Overview"
+    elif isinstance(selected_label, list):
+        title_text = f"{len(selected_label)} Intersections Selected"
+    else:
+        title_text = f"Intersection: {selected_label}"
 
     fig.update_layout(
         mapbox=dict(
@@ -931,7 +1191,7 @@ def build_intersections_overview(selected_label: Optional[Union[str, List[str]]]
         margin=dict(l=10, r=10, t=30, b=10),
         height=600,
         showlegend=True,
-        title=title_text,
+        title=dict(text=title_text, font=dict(size=16)),
     )
 
     # Satellite toggle logic
@@ -958,10 +1218,7 @@ def build_intersections_overview(selected_label: Optional[Union[str, List[str]]]
                 ]
             )
 
-    # Legend
-    fig.add_trace(go.Scattermapbox(lat=[None], lon=[None], mode="markers", marker=dict(size=10, color="#5DADE2"), showlegend=True, name="Intersection"))
-    fig.add_trace(go.Scattermapbox(lat=[None], lon=[None], mode="markers", marker=dict(size=10, color="#E74C3C"), showlegend=True, name="Selected"))
-
+    # Legend (handled by showlegend=True in main traces)
     fig.update_layout(
         legend=dict(
             title=dict(text="Legend"),

@@ -14,11 +14,12 @@ from plotly.subplots import make_subplots
 # Add the Map import
 from Map import build_all_segments_overview, build_intersections_overview, build_corridor_map
 
+from intersection_metadata import format_intersection_display
 # Shared UI utils (scoped loader and tab highlight)
 try:
-    from ui_utils import cad_loader as scoped_cad_loader, set_active_search_tab, is_active_tab, get_dynamic_xaxis_params
+    from ui_utils import cad_loader as scoped_cad_loader, set_active_search_tab, get_dynamic_xaxis_params
 except ModuleNotFoundError:
-    from core.ui_utils import cad_loader as scoped_cad_loader, set_active_search_tab, is_active_tab, get_dynamic_xaxis_params
+    from core.ui_utils import cad_loader as scoped_cad_loader, set_active_search_tab, get_dynamic_xaxis_params
 
 # Availability utility
 try:
@@ -33,7 +34,11 @@ try:
         date_range_preset_controls,
         process_traffic_data,
         performance_chart,
+        format_chart_title,
+        chart_header_title,
+        CHART_HEADER_MARGIN_T,
         render_badge,
+        get_performance_rating,
         compute_missing_strength_gaps,
     )
 except ModuleNotFoundError:
@@ -42,7 +47,11 @@ except ModuleNotFoundError:
         date_range_preset_controls,
         process_traffic_data,
         performance_chart,
+        format_chart_title,
+        chart_header_title,
+        CHART_HEADER_MARGIN_T,
         render_badge,
+        get_performance_rating,
         compute_missing_strength_gaps,
     )
 
@@ -156,11 +165,124 @@ def h111_apply_filter(df: pd.DataFrame, o: str, d: str) -> pd.DataFrame:
 
 # Removed duplicate helpers and charts. Using centralized implementations from sidebar_functions.
 
+def render_kpi_card(title: str, value: str, delta: str, badge_text: str, badge_class: str, help_text: str):
+    """Renders a single KPI card with title, value, delta, and status badge."""
+    safe_help = (help_text or "").replace('"', "&quot;")
+    badge_html = f'<div class="kpi-card-badge"><span class="performance-badge {badge_class}">{badge_text}</span></div>' if badge_text else ""
+    return f'<div class="kpi-card"><div class="kpi-card-title"><span>{title}</span><span class="kpi-help-icon" title="{safe_help}">?</span></div><div class="kpi-card-value">{value}</div><div class="kpi-card-delta">{delta}</div>{badge_html}</div>'
+
+
+def black_caption(html_text: str):
+    """st.caption replacement rendered in black (same caption size) for this tab."""
+    st.markdown(f'<div style="font-size:0.875rem; color:#000;">{html_text}</div>', unsafe_allow_html=True)
+
+
+def black_chart_text(fig):
+    """Force all chart text (ticks, axis titles, legend, subplot titles, annotations) to black."""
+    fig.update_layout(font_color="#000")
+    fig.update_xaxes(tickfont_color="#000", title_font_color="#000")
+    fig.update_yaxes(tickfont_color="#000", title_font_color="#000")
+    fig.update_annotations(font_color="#000")
+    return fig
+
+
 def render_tab3_analysis():
     """
     Main Tab 3 renderer for Acyclica travel time analysis.
     Matches the design and layout of Tabs 1 and 2.
     """
+    st.markdown("""
+    <style>
+    .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 12px;
+        width: 100%;
+        margin: 10px 0 25px 0;
+    }
+    @media (max-width: 1200px) {
+        .kpi-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (max-width: 768px) {
+        .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 480px) {
+        .kpi-grid { grid-template-columns: 1fr; }
+    }
+    .kpi-card {
+        min-width: 0;
+        box-sizing: border-box;
+        background: white;
+        padding: 1.25rem;
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        border: 1px solid #eaedf2;
+        display: flex;
+        flex-direction: column;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        height: 100%;
+    }
+    .kpi-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+    }
+    .kpi-card-title {
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.75rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 2.5em;
+        line-height: 1.2;
+    }
+    .kpi-card-value {
+        font-size: 1.8rem;
+        font-weight: 800;
+        color: #1e293b;
+        margin-bottom: 0.25rem;
+        line-height: 1.1;
+    }
+    .kpi-card-delta {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #27ae60;
+        margin-bottom: 1.25rem;
+    }
+    .kpi-card-badge {
+        margin-top: auto;
+    }
+    /* Black KPI labels on this tab only (.kpi-card classes are shared with other tabs) */
+    .t3-kpi .kpi-card-title, .t3-kpi .kpi-help-icon {
+        color: #000;
+    }
+    .kpi-help-icon {
+        cursor: help;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: #f1f5f9;
+        color: #94a3b8;
+        font-size: 11px;
+        font-weight: bold;
+    }
+    /* Chart Card Styling via bordered containers */
+    [data-testid="stVerticalBlockBordered"] {
+        background: var(--secondary-background-color, white) !important;
+        border: 1px solid rgba(128, 128, 128, 0.2) !important;
+        border-radius: 14px !important;
+        padding: 24px !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.03) !important;
+        margin-bottom: 24px !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
     try:
         # Load Acyclica data once to populate controls
         acyclica_df = get_acyclica_df()
@@ -173,7 +295,7 @@ def render_tab3_analysis():
 
     # -------- Sidebar controls (matching Tab 1 & 2 style) --------
     with st.sidebar:
-        with st.expander("⚙️ Pg.3 ACYCLICA SETTINGS", expanded=False):
+        with st.expander("Pg.3 Acyclica Settings", expanded=False):
 
             # Data caption at top (before corridor selection)
             st.caption("Data: Travel Time, and Speed (Acyclica)")
@@ -255,9 +377,9 @@ def render_tab3_analysis():
                     od_options = ["SELECT", "Avenue 52", "Highway111", "Avenue 41", "Harris Lane", "Country Club Drive", "I-10 Interchange", "Varner Rd", "Market Pl", "Del Webb"]
                     oc, dc = st.columns(2)
                     with oc:
-                        origin = st.selectbox("Origin", od_options, index=0, key="acyclica_od_origin")
+                        origin = st.selectbox("Origin", od_options, index=0, key="acyclica_od_origin", format_func=format_intersection_display)
                     with dc:
-                        destination = st.selectbox("Destination", od_options, index=0, key="acyclica_od_destination")
+                        destination = st.selectbox("Destination", od_options, index=0, key="acyclica_od_destination", format_func=format_intersection_display)
                     # Sidebar route summary right under O-D
                     def _route_text_sb(corr: str, o: str, d: str) -> str:
                         if not o or not d or o == "SELECT" or d == "SELECT" or o == d:
@@ -316,6 +438,7 @@ def render_tab3_analysis():
                             ["SELECT"] + od_endpoints,
                             index=(0 if st.session_state.get("acyclica_od_origin_h111", "SELECT") == "SELECT" else (["SELECT"] + od_endpoints).index(st.session_state.get("acyclica_od_origin_h111"))),
                             key="acyclica_od_origin_h111",
+                            format_func=format_intersection_display
                         )
 
                     # Constrain destination based on origin
@@ -332,6 +455,7 @@ def render_tab3_analysis():
                             dest_options,
                             index=dest_options.index(cur_dest) if cur_dest in dest_options else 0,
                             key="acyclica_od_destination_h111",
+                            format_func=format_intersection_display
                         )
 
                     # Sidebar route summary right under O-D (uses resolver)
@@ -600,7 +724,7 @@ def render_tab3_analysis():
 
                     st.markdown('<div class="cvag-map-card">', unsafe_allow_html=True)
                     st.plotly_chart(fig_corridor, use_container_width=True, config={"displaylogo": False, "displayModeBar": True})
-                    st.caption(f"**Acyclica Corridor:** {corridor}")
+                    black_caption(f"<b>Acyclica Corridor:</b> {corridor}")
                     st.markdown("</div>", unsafe_allow_html=True)
                 else:
                     # Fallback: try the intersections overview
@@ -612,7 +736,7 @@ def render_tab3_analysis():
                             pass
                         st.markdown('<div class="cvag-map-card">', unsafe_allow_html=True)
                         st.plotly_chart(fig_intersections, use_container_width=True, config={"displaylogo": False, "displayModeBar": True})
-                        st.caption(f"**Acyclica Corridor:** {corridor}")
+                        black_caption(f"<b>Acyclica Corridor:</b> {corridor}")
                         st.markdown("</div>", unsafe_allow_html=True)
                     else:
                         # Final fallback
@@ -711,34 +835,36 @@ def render_tab3_analysis():
 
             st.markdown(
                 f"""
-                <div style="
-                    background: linear-gradient(135deg, #2b77e5 0%, #19c3e6 100%);
-                    border-radius:16px; padding:18px 20px; color:#fff; margin:8px 0 14px;
-                    box-shadow:0 10px 26px rgba(25,115,210,.25); text-align:left;
-                    font-family: inherit;">
-                  <div style="display:flex; align-items:center; gap:10px;">
+                <div class="cvag-header-banner">
+                  <div class="cvag-header-top">
                     <div>
-                        <div style="font-size:1.7rem; font-weight:800; letter-spacing:-0.01em; margin-bottom:2px;">
-                          <span style="color: #ffffff;">2025 BNP PARIBUS OPEN INDIAN WELLS DASHBOARD</span><span style="color: rgba(255,255,255,0.7);">: FLIR ACYCLICA TRAVEL TIME ANALYSIS</span>
-                        </div>
-                        <div style="font-size:1.1rem;font-weight:600;opacity:0.9; display:flex; flex-wrap:wrap; gap:15px; margin-top:4px; align-items:center;">
-                          <div style="background:rgba(255,255,255,0.15); padding:4px 12px; border-radius:8px; font-size:1.2rem; border:1px solid rgba(255,255,255,0.3); font-weight:700;">
-                            📅 {date_range[0].strftime('%b %d, %Y')} to {date_range[1].strftime('%b %d, %Y')} <span style="font-weight:400; opacity:0.8;">({data_span} days)</span>
-                          </div>
-                          <div style="background:rgba(255,255,255,0.15); padding:4px 12px; border-radius:8px; font-size:1.2rem; border:1px solid rgba(255,255,255,0.3);">
-                            <span style="opacity:0.9; font-weight:400;">Corridor Segment:</span> <span style="font-weight:800;">{corridor}{f" ({origin} → {destination})" if (origin != "SELECT" and destination != "SELECT") else ""}</span> <span style="background:rgba(255,255,255,0.2); padding:2px 8px; border-radius:4px; margin-left:8px; font-size:0.9rem; font-weight:700; color:#fff;">{display_dir}</span>
-                          </div>
-                        </div>
-                        <div style="font-size:0.95rem; opacity:0.85; display:flex; flex-wrap:wrap; gap:15px; margin-top:10px; align-items:center;">
-                          <div style="display:flex; align-items:center; gap:15px;">
-                            <div><span style="opacity:0.8; font-weight:400;">Region:</span> Coachella Valley</div>
-                            <div style="border-left: 1px solid rgba(255,255,255,0.3); padding-left: 15px;"><span style="opacity:0.8; font-weight:400;">City:</span> Indian Wells / La Quinta</div>
-                            <div style="border-left: 1px solid rgba(255,255,255,0.3); padding-left: 15px;"><span style="opacity:0.8; font-weight:400;">Corridor:</span> {corridor}</div>
-                            <div style="border-left: 1px solid rgba(255,255,255,0.3); padding-left: 15px;">📊 {granularity} Aggregation{time_context}</div>
-                            <div style="border-left: 1px solid rgba(255,255,255,0.3); padding-left: 15px;">✅ {total_records:,} data points</div>
-                          </div>
-                        </div>
+                      <div class="cvag-header-title">Advantec Consulting Engineers <span style="font-weight:400; opacity:0.85; border-left:1px solid rgba(255,255,255,0.35); padding-left:12px; margin-left:10px; font-size:1.45rem;">Acyclica Travel Time Analysis</span></div>
+                      <div class="cvag-header-subtitle">2025 BNP Paribas Open Indian Wells Corridor Performance</div>
                     </div>
+                    <div class="cvag-tooltip-trigger" title="Acyclica sensor-based travel time, speed, and reliability analysis for CVAG corridors.">?
+                      <span class="cvag-tooltip-box">Acyclica sensor-based travel time, speed, and reliability analysis for CVAG corridors.</span>
+                    </div>
+                  </div>
+                  <div class="cvag-header-meta-grid">
+                    <div class="cvag-meta-card cvag-cycle-card">
+                      <div class="cvag-meta-card-label">Date Range</div>
+                      <div class="cvag-meta-card-val" title="{date_range[0].strftime('%b %d, %Y')} — {date_range[1].strftime('%b %d, %Y')} ({data_span} days)">{date_range[0].strftime('%b %d, %Y')} — {date_range[1].strftime('%b %d, %Y')}</div>
+                    </div>
+                    <div class="cvag-meta-card">
+                      <div class="cvag-meta-card-label">Corridor Segment</div>
+                      <div class="cvag-meta-card-val" title="{corridor}{f' ({origin} → {destination})' if (origin != 'SELECT' and destination != 'SELECT') else ''}">{corridor}{f" ({origin} → {destination})" if (origin != "SELECT" and destination != "SELECT") else ""}</div>
+                    </div>
+                    <div class="cvag-meta-card">
+                      <div class="cvag-meta-card-label">Corridor</div>
+                      <div class="cvag-meta-card-val" title="{corridor}">{corridor}</div>
+                    </div>
+                  </div>
+                  <div class="cvag-header-chips-row">
+                    <span class="cvag-sub-chip"><strong>Direction:</strong> {display_dir}</span>
+                    <span class="cvag-sub-chip"><strong>Granularity:</strong> {granularity} Aggregation{time_context}</span>
+                    <span class="cvag-sub-chip"><strong>Region:</strong> Coachella Valley</span>
+                    <span class="cvag-sub-chip"><strong>City:</strong> Indian Wells / La Quinta</span>
+                    <span class="cvag-sub-chip"><strong>Data Points:</strong> {total_records:,}</span>
                   </div>
                 </div>
                 """,
@@ -753,7 +879,7 @@ def render_tab3_analysis():
                     filtered_data[col] = pd.to_numeric(filtered_data[col], errors="coerce")
 
             # ---- KPIs Section (matching Tab 1 order and style) ----
-            st.subheader(" KPI's (Key Performance Indicators)")
+            st.subheader("KPIs (Key Performance Indicators)")
             if not filtered_data.empty:
                 # Calculate KPI values
                 avg_tt = float(np.nanmean(
@@ -799,176 +925,198 @@ def render_tab3_analysis():
                 elif worst_speed_val > 0: los_letter_worst = "F"
                 else: los_letter_worst = "N/A"
 
-                # Display metrics in the same order as Tab 1
-                col1, col2, col3, col4, col5 = st.columns(5)
+                # Build KPI cards in uniform boxed design
+                rel_label, rel_css = get_performance_rating(reliability)
+                tt_label, tt_css = get_performance_rating(tt_score)
+                plan_label, plan_css = get_performance_rating(planning_score)
+                buf_label, buf_css = get_performance_rating(buffer_score)
+                spd_label, spd_css = get_performance_rating(speed_score)
 
-                with col1:
-                    st.metric(
-                        "🎯 Reliability Index",
-                        f"{reliability:.0f}%",
-                        help="Travel time reliability (100% - coefficient of variation%)"
-                    )
-                    st.markdown(render_badge(reliability), unsafe_allow_html=True)
+                card1 = render_kpi_card(
+                    "RELIABILITY INDEX",
+                    f"{reliability:.0f}%",
+                    "",
+                    rel_label,
+                    rel_css,
+                    "Travel time reliability (100% - coefficient of variation%)"
+                )
 
-                with col2:
-                    st.metric(
-                        "⏱️ Average Travel Time",
-                        f"{avg_tt:.1f} min",
-                        help="Average travel time across the selected period. Used to estimate corridor Level of Service (LOS) per HCM 6th Edition (TRB, 2016) urban arterial standards based on average travel speed. LOS A = over 35 mph (free flow), LOS B = 28 to 35 mph (minor delay), LOS C = 22 to 28 mph (stable flow), LOS D = 17 to 22 mph (approaching capacity), LOS E = 13 to 17 mph (unstable flow), LOS F = under 13 mph (breakdown). Source: Highway Capacity Manual, 6th Edition, Transportation Research Board. https://www.trb.org/Main/Blurbs/175169.aspx"
-                    )
-                    st.markdown(render_badge(tt_score), unsafe_allow_html=True)
-                    st.caption(f"Estimated Corridor LOS: {los_letter}")
+                card2 = render_kpi_card(
+                    "AVERAGE TRAVEL TIME",
+                    f"{avg_tt:.1f} min",
+                    f"Estimated LOS: {los_letter}",
+                    tt_label,
+                    tt_css,
+                    "Average travel time across the selected period. Used to estimate corridor Level of Service (LOS) per HCM 6th Edition (TRB, 2016) urban arterial standards based on average travel speed. LOS A = over 35 mph (free flow), LOS B = 28 to 35 mph (minor delay), LOS C = 22 to 28 mph (stable flow), LOS D = 17 to 22 mph (approaching capacity), LOS E = 13 to 17 mph (unstable flow), LOS F = under 13 mph (breakdown). Source: Highway Capacity Manual, 6th Edition, Transportation Research Board. https://www.trb.org/Main/Blurbs/175169.aspx"
+                )
 
-                with col3:
-                    st.metric(
-                        "📈 Planning Time (95th Percentile)",
-                        f"{p95_tt:.1f} min",
-                        help="95th percentile travel time — only 5% of trips are slower than this. Used to estimate worst-case corridor Level of Service (LOS) per HCM 6th Edition (TRB, 2016). This represents the reliability ceiling: LOS A = over 35 mph, LOS B = 28 to 35 mph, LOS C = 22 to 28 mph, LOS D = 17 to 22 mph, LOS E = 13 to 17 mph, LOS F = under 13 mph. If this LOS is significantly worse than the Average Travel Time LOS, the corridor suffers from unreliable, variable conditions. Source: Highway Capacity Manual, 6th Edition, TRB. https://www.trb.org/Main/Blurbs/175169.aspx"
-                    )
-                    st.markdown(render_badge(planning_score), unsafe_allow_html=True)
-                    st.caption(f"Worst-case Corridor LOS: {los_letter_worst}")
+                card3 = render_kpi_card(
+                    "PLANNING TIME (95TH PERCENTILE)",
+                    f"{p95_tt:.1f} min",
+                    f"Worst-case LOS: {los_letter_worst}",
+                    plan_label,
+                    plan_css,
+                    "95th percentile travel time — only 5% of trips are slower than this. Used to estimate worst-case corridor Level of Service (LOS) per HCM 6th Edition (TRB, 2016). This represents the reliability ceiling: LOS A = over 35 mph, LOS B = 28 to 35 mph, LOS C = 22 to 28 mph, LOS D = 17 to 22 mph, LOS E = 13 to 17 mph, LOS F = under 13 mph. If this LOS is significantly worse than the Average Travel Time LOS, the corridor suffers from unreliable, variable conditions. Source: Highway Capacity Manual, 6th Edition, TRB. https://www.trb.org/Main/Blurbs/175169.aspx"
+                )
 
-                with col4:
-                    st.metric(
-                        "🧭 Buffer Time (leave this much earlier)",
-                        f"{buffer_minutes:.1f} min",
-                        help="Extra time needed above average to arrive on time 95% of trips"
-                    )
-                    st.markdown(render_badge(buffer_score), unsafe_allow_html=True)
+                card4 = render_kpi_card(
+                    "BUFFER TIME",
+                    f"{buffer_minutes:.1f} min",
+                    "Leave this much earlier",
+                    buf_label,
+                    buf_css,
+                    "Extra time needed above average to arrive on time 95% of trips"
+                )
 
-                with col5:
-                    st.metric(
-                        "🚗 Average Speed",
-                        f"{avg_speed:.1f} mph",
-                        help="Average speed across the corridor"
-                    )
-                    st.markdown(render_badge(speed_score), unsafe_allow_html=True)
+                card5 = render_kpi_card(
+                    "AVERAGE SPEED",
+                    f"{avg_speed:.1f} mph",
+                    "",
+                    spd_label,
+                    spd_css,
+                    "Average speed across the corridor"
+                )
+
+                st.markdown(f'<div class="kpi-grid t3-kpi">{card1}{card2}{card3}{card4}{card5}</div>', unsafe_allow_html=True)
 
             # ---- Charts Section ----
             if len(filtered_data) > 1:
-                st.subheader("📈 Performance Trends")
-                st.caption("Shaded bands indicate periods with no data.")
+                st.subheader("Performance Trends")
+                black_caption("Shaded bands indicate periods with no data.")
 
                 chart_col1, chart_col2 = st.columns(2)
 
                 with chart_col1:
-                    # Travel Time Chart
-                    tt_chart = performance_chart(filtered_data, "travel", direction_label=dir_display)
-                    if tt_chart:
-                        st.plotly_chart(tt_chart, use_container_width=True, config={"displaylogo": False, "displayModeBar": True})
+                    with st.container(border=True):
+                        # Travel Time Chart
+                        tt_chart, tt_dist = performance_chart(
+                            filtered_data, "travel",
+                            direction_label=dir_display,
+                            corridor_name=corridor,
+                            origin=origin,
+                            destination=destination,
+                            date_range=date_range,
+                        )
+                        if tt_chart:
+                            st.plotly_chart(black_chart_text(tt_chart), use_container_width=True, config={"displaylogo": False, "displayModeBar": True})
 
                 with chart_col2:
-                    # Speed Chart
-                    if "average_speed" in filtered_data.columns:
-                        speed_data = filtered_data.dropna(subset=["local_datetime", "average_speed"]).sort_values(
-                            "local_datetime")
+                    with st.container(border=True):
+                        # Speed Chart
+                        if "average_speed" in filtered_data.columns:
+                            speed_data = filtered_data.dropna(subset=["local_datetime", "average_speed"]).sort_values(
+                                "local_datetime")
 
-                        # Distribution stats for annotation and vertical lines
-                        s_speed = speed_data["average_speed"]
-                        mean_speed = float(s_speed.mean()) if not s_speed.empty else 0.0
-                        p5 = float(s_speed.quantile(0.05)) if not s_speed.empty else 0.0
-                        p25 = float(s_speed.quantile(0.25)) if not s_speed.empty else 0.0
-                        p75 = float(s_speed.quantile(0.75)) if not s_speed.empty else 0.0
-                        p95 = float(s_speed.quantile(0.95)) if not s_speed.empty else 0.0
-                        dist_annotation = f"Most hours: {p25:.1f}–{p75:.1f} mph. Worst 5%: below {p5:.1f} mph."
+                            # Distribution stats for annotation and vertical lines
+                            s_speed = speed_data["average_speed"]
+                            mean_speed = float(s_speed.mean()) if not s_speed.empty else 0.0
+                            p5 = float(s_speed.quantile(0.05)) if not s_speed.empty else 0.0
+                            p25 = float(s_speed.quantile(0.25)) if not s_speed.empty else 0.0
+                            p75 = float(s_speed.quantile(0.75)) if not s_speed.empty else 0.0
+                            p95 = float(s_speed.quantile(0.95)) if not s_speed.empty else 0.0
+                            dist_annotation = f"Most hours: {p25:.1f}–{p75:.1f} mph. Worst 5%: below {p5:.1f} mph."
 
-                        fig = make_subplots(
-                            rows=2, cols=1,
-                            subplot_titles=(f"{dir_display} Speed Time Series Analysis".strip(), f"Speed Distribution Analysis. {dist_annotation}"),
-                            vertical_spacing=0.28,
-                        )
-
-                        # Time series plot
-                        fig.add_trace(
-                            go.Scatter(
-                                x=speed_data["local_datetime"],
-                                y=speed_data["average_speed"],
-                                mode="lines+markers",
-                                name="Speed Trend",
-                                line=dict(color="#2ecc71", width=2),
-                                marker=dict(size=4),
-                                hovertemplate="%{x|%b %d, %Y %I:%M %p}\n🚗 Avg Speed: %{y:.1f} mph  ",
-                            ),
-                            row=1, col=1,
-                        )
-
-                        # Shade missing-data gaps on the speed time-series panel (row 1)
-                        try:
-                            times = pd.to_datetime(speed_data["local_datetime"]).sort_values().reset_index(drop=True)
-                            if len(times) >= 3:
-                                deltas = times.diff().dropna()
-                                med = deltas.median()
-                                if pd.notna(med) and med > pd.Timedelta(0):
-                                    gap_threshold = med * 1.5
-                                    gap_spans = []
-                                    for i in range(1, len(times)):
-                                        dt = times[i] - times[i - 1]
-                                        if dt > gap_threshold:
-                                            gap_spans.append((times[i - 1], times[i]))
-                                    for start, end in gap_spans:
-                                        fig.add_vrect(
-                                            x0=start,
-                                            x1=end,
-                                            fillcolor="#95a5a6",
-                                            opacity=0.18,
-                                            line_width=0,
-                                            layer="below",
-                                            row=1,
-                                            col=1,
-                                        )
-                        except Exception:
-                            pass
-
-                        # Distribution histogram
-                        fig.add_trace(
-                            go.Histogram(
-                                x=speed_data["average_speed"],
-                                nbinsx=30,
-                                name="Speed Distribution",
-                                marker_color="#2ecc71",
-                                opacity=0.75,
-                                hovertemplate="%{y} hours had a speed between %{x} mph  <extra></extra>",
-                            ),
-                            row=2, col=1,
-                        )
-
-                        # Add vertical reference lines for mean and 5th percentile
-                        fig.add_vline(x=mean_speed, line_dash="dash", line_color="black", annotation_text="Avg", annotation_position="top right", row=2, col=1)
-                        fig.add_vline(x=p5, line_dash="dot", line_color="#333", annotation_text="Worst 5%", annotation_position="top right", row=2, col=1)
-
-                        fig.update_layout(
-                            height=600,
-                            title="Speed Analysis",
-                            showlegend=True,
-                            template="plotly_white",
-                            plot_bgcolor="rgba(0,0,0,0)",
-                            paper_bgcolor="rgba(0,0,0,0)",
-                        )
-                        # Custom X-axis logic for better labels on long ranges
-                        if not speed_data.empty:
-                            start_date = speed_data["local_datetime"].min()
-                            end_date = speed_data["local_datetime"].max()
-                            params = get_dynamic_xaxis_params(start_date, end_date)
-                            fig.update_xaxes(
-                                title=dict(text="Date/Time", font=dict(size=16, weight="bold")),
-                                tickfont=dict(size=14),
-                                dtick=params["dtick"],
-                                tickformat=params["tickformat"],
-                                row=1, col=1
+                            fig = make_subplots(
+                                rows=2, cols=1,
+                                subplot_titles=(f"{dir_display} Speed Time Series Analysis".strip(), f"Speed Distribution Analysis. {dist_annotation}"),
+                                vertical_spacing=0.28,
                             )
-                        else:
-                            fig.update_xaxes(
-                                title=dict(text="Date/Time", font=dict(size=16, weight="bold")),
-                                tickfont=dict(size=14),
-                                dtick=21600000,
-                                tickformat="%b %d\n%I:%M %p",
-                                row=1, col=1
-                            )
-                        fig.update_yaxes(title=dict(text="Average Speed (mph)", font=dict(size=16, weight="bold")), tickfont=dict(size=14), row=1, col=1)
-                        fig.update_xaxes(title=dict(text="Average Speed (mph)", font=dict(size=16, weight="bold")), tickfont=dict(size=14), row=2, col=1)
-                        fig.update_yaxes(title=dict(text="Frequency (Number of Hours)", font=dict(size=16, weight="bold")), tickfont=dict(size=14), row=2, col=1)
 
-                        st.plotly_chart(fig, use_container_width=True, config={"displaylogo": False, "displayModeBar": True})
+                            # Time series plot
+                            fig.add_trace(
+                                go.Scatter(
+                                    x=speed_data["local_datetime"],
+                                    y=speed_data["average_speed"],
+                                    mode="lines+markers",
+                                    name="Speed Trend",
+                                    line=dict(color="#2ecc71", width=2),
+                                    marker=dict(size=4),
+                                    hovertemplate="%{x|%b %d, %Y %I:%M %p}\n🚗 Avg Speed: %{y:.1f} mph  ",
+                                ),
+                                row=1, col=1,
+                            )
+
+                            # Shade missing-data gaps on the speed time-series panel (row 1)
+                            try:
+                                times = pd.to_datetime(speed_data["local_datetime"]).sort_values().reset_index(drop=True)
+                                if len(times) >= 3:
+                                    deltas = times.diff().dropna()
+                                    med = deltas.median()
+                                    if pd.notna(med) and med > pd.Timedelta(0):
+                                        gap_threshold = med * 1.5
+                                        gap_spans = []
+                                        for i in range(1, len(times)):
+                                            dt = times[i] - times[i - 1]
+                                            if dt > gap_threshold:
+                                                gap_spans.append((times[i - 1], times[i]))
+                                        for start, end in gap_spans:
+                                            fig.add_vrect(
+                                                x0=start,
+                                                x1=end,
+                                                fillcolor="#95a5a6",
+                                                opacity=0.18,
+                                                line_width=0,
+                                                layer="below",
+                                                row=1,
+                                                col=1,
+                                            )
+                            except Exception:
+                                pass
+
+                            # Distribution histogram
+                            fig.add_trace(
+                                go.Histogram(
+                                    x=speed_data["average_speed"],
+                                    nbinsx=30,
+                                    name="Speed Distribution",
+                                    marker_color="#2ecc71",
+                                    opacity=0.75,
+                                    hovertemplate="%{y} hours had a speed between %{x} mph  <extra></extra>",
+                                ),
+                                row=2, col=1,
+                            )
+
+                            # Add vertical reference lines for mean and 5th percentile
+                            fig.add_vline(x=mean_speed, line_dash="dash", line_color="black", annotation_text="Avg", annotation_position="top right", row=2, col=1)
+                            fig.add_vline(x=p5, line_dash="dot", line_color="#333", annotation_text="Worst 5%", annotation_position="top right", row=2, col=1)
+
+                            # Same header + top margin as the Travel Time chart so both plot areas start at the same height.
+                            # Height grows by the extra header margin (160 vs default 100) so both panels keep their size.
+                            speed_title = format_chart_title(corridor, dir_display, origin, destination, date_range, "Speed Analysis")
+                            fig.update_layout(
+                                height=660,
+                                title=chart_header_title(speed_title),
+                                margin=dict(t=CHART_HEADER_MARGIN_T),
+                                showlegend=True,
+                                template="plotly_white",
+                                plot_bgcolor="rgba(0,0,0,0)",
+                                paper_bgcolor="rgba(0,0,0,0)",
+                            )
+                            # Custom X-axis logic for better labels on long ranges
+                            if not speed_data.empty:
+                                start_date = speed_data["local_datetime"].min()
+                                end_date = speed_data["local_datetime"].max()
+                                params = get_dynamic_xaxis_params(start_date, end_date)
+                                fig.update_xaxes(
+                                    title=dict(text="Date/Time", font=dict(size=16, weight="bold")),
+                                    tickfont=dict(size=14),
+                                    dtick=params["dtick"],
+                                    tickformat=params["tickformat"],
+                                    row=1, col=1
+                                )
+                            else:
+                                fig.update_xaxes(
+                                    title=dict(text="Date/Time", font=dict(size=16, weight="bold")),
+                                    tickfont=dict(size=14),
+                                    dtick=21600000,
+                                    tickformat="%b %d\n%I:%M %p",
+                                    row=1, col=1
+                                )
+                            fig.update_yaxes(title=dict(text="Average Speed (mph)", font=dict(size=16, weight="bold")), tickfont=dict(size=14), row=1, col=1)
+                            fig.update_xaxes(title=dict(text="Average Speed (mph)", font=dict(size=16, weight="bold")), tickfont=dict(size=14), row=2, col=1)
+                            fig.update_yaxes(title=dict(text="Frequency (Number of Hours)", font=dict(size=16, weight="bold")), tickfont=dict(size=14), row=2, col=1)
+
+                            st.plotly_chart(black_chart_text(fig), use_container_width=True, config={"displaylogo": False, "displayModeBar": True})
 
             # ---- Data Table ----
             st.subheader("🔍 Which Dates/Times have the highest Travel Time?")

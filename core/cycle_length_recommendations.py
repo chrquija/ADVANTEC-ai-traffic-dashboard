@@ -174,6 +174,187 @@ html.dark, [Prediction-theme="dark"], [Prediction-base-theme="dark"], body[Predi
   --kpi-pill: rgba(255,255,255,.10);
 }
 
+/* ---------- Control labels styling (Black font color) ---------- */
+.stSelectbox label, .stSelectbox label p, div[data-testid="stSelectbox"] label p,
+div[data-testid="stSelectbox"] label div, div[data-testid="stSelectbox"] label span {
+  color: #000000 !important;
+  font-weight: 700 !important;
+  font-size: 0.95rem !important;
+}
+
+/* ---------- Executive Header Banner ---------- */
+.cvag-header-banner {
+  background: linear-gradient(135deg, #0f2b5c 0%, #1a4f8b 45%, #0284c7 100%);
+  border-radius: 16px;
+  padding: 22px 26px 20px;
+  color: #ffffff;
+  box-shadow: 0 10px 28px rgba(15, 43, 92, 0.22);
+  margin: 8px 0 18px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+}
+.cvag-header-top {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.cvag-header-title {
+  font-size: 1.85rem;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  line-height: 1.18;
+  color: #ffffff !important;
+}
+.cvag-header-subtitle {
+  font-size: 0.90rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.88);
+  margin-top: 4px;
+}
+.cvag-header-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 14px;
+}
+@media (max-width: 900px) {
+  .cvag-header-meta-grid { grid-template-columns: 1fr; }
+}
+.cvag-meta-card {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 12px;
+  padding: 10px 16px;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.cvag-cycle-card {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.20) 0%, rgba(255, 255, 255, 0.10) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12), inset 0 0 12px rgba(255, 255, 255, 0.08);
+}
+.cvag-meta-card-label {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #93c5fd;
+  margin-bottom: 2px;
+}
+.cvag-meta-card-val {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #ffffff !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cvag-header-chips-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.cvag-sub-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.09);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.95);
+}
+.cvag-sub-chip strong {
+  color: #bae6fd;
+  font-weight: 700;
+}
+
+/* ---------- Tooltip styles ---------- */
+.cvag-tooltip-trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.20);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: help;
+  position: relative;
+  user-select: none;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+.cvag-tooltip-trigger:hover {
+  background: rgba(255, 255, 255, 0.35);
+  color: #ffffff;
+}
+.cvag-kpi-card .cvag-tooltip-trigger {
+  background: rgba(15,47,82,.14);
+  border: none;
+  color: #0f2f52;
+  width: 19px;
+  height: 19px;
+  font-size: 11px;
+}
+.cvag-kpi-card .cvag-tooltip-trigger:hover {
+  background: #2b77e5;
+  color: #ffffff;
+}
+.cvag-tooltip-box {
+  visibility: hidden;
+  opacity: 0;
+  width: 250px;
+  background-color: #0f172a;
+  color: #ffffff !important;
+  text-align: left;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.80rem;
+  font-weight: 500;
+  line-height: 1.35;
+  position: absolute;
+  z-index: 9999;
+  bottom: 130%;
+  left: 50%;
+  transform: translateX(-50%);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.30);
+  border: 1px solid rgba(255,255,255,0.15);
+  transition: opacity 0.2s, visibility 0.2s;
+  pointer-events: none;
+}
+.cvag-tooltip-box::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: #0f172a transparent transparent transparent;
+}
+.cvag-tooltip-trigger:hover .cvag-tooltip-box {
+  visibility: visible;
+  opacity: 1;
+}
+
+/* ---------- Chart Card / Container Styling (like VantageLive) ---------- */
+[data-testid="stVerticalBlockBordered"] {
+  background: var(--secondary-background-color, white) !important;
+  border: 1px solid rgba(128, 128, 128, 0.22) !important;
+  border-radius: 14px !important;
+  padding: 20px 24px !important;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.04) !important;
+  margin-bottom: 20px !important;
+}
+
 /* ---------- Legend block ---------- */
 .cvag-legend{
   border:1px solid var(--legend-border);
@@ -185,8 +366,14 @@ html.dark, [Prediction-theme="dark"], [Prediction-base-theme="dark"], body[Predi
 }
 .cvag-legend-title{
   font-weight:800;
-  color:var(--legend-title) !important;
+  color:#000000 !important;
   margin-bottom:.35rem;
+}
+.cvag-legend-text{
+  color:#000000 !important;
+  font-weight:700 !important;
+  font-size:.92rem !important;
+  margin-right:1rem;
 }
 
 /* ---------- KPI grid/cards ---------- */
@@ -201,6 +388,13 @@ html.dark, [Prediction-theme="dark"], [Prediction-base-theme="dark"], body[Predi
   border:1px solid var(--kpi-border);
   box-shadow:var(--kpi-shadow);
   color:var(--kpi-text);
+}
+.cvag-kpi-title-row{
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 2px;
 }
 .cvag-kpi-title{
   font-weight:800; font-size:.95rem; letter-spacing:.2px;
@@ -230,11 +424,11 @@ def _legend_html(cycle_colors: dict) -> str:
             f'<span style="display:inline-flex;align-items:center;margin:.25rem .5rem;'
             f'padding:.3rem .6rem;border-radius:999px;background:{color};color:#fff;'
             f'font-weight:800;font-size:.85rem;">{label}</span>'
-            f'<span style="margin-right:1rem;opacity:.85;font-size:.9rem">{text}</span>'
+            f'<span class="cvag-legend-text" style="margin-right:1rem;color:#000000 !important;font-weight:700;font-size:.92rem;">{text}</span>'
         )
     return (
         '<div class="cvag-legend">'
-        '<div class="cvag-legend-title">Cycle Length Thresholds</div>'
+        '<div class="cvag-legend-title" style="color:#000000 !important;font-weight:800;">Cycle Length Thresholds</div>'
         + "".join(pill_items) +
         '</div>'
     )
@@ -250,7 +444,7 @@ def _sec_value(label: str) -> int:
 # -------------------------
 def render_howto_sidebar() -> None:
     """Sidebar expander with the exact workflow steps you provided."""
-    with st.sidebar.expander("ℹ️ How to use Cycle Length Calculator (4 steps)", expanded=False):
+    with st.sidebar.expander("How to Use Cycle Length Calculator (4 Steps)", expanded=False):
         st.markdown(
             """
 **Step 1. Select Intersection**  
@@ -268,6 +462,38 @@ The calculator below will use your selections.
         )
 
 
+def _format_hour_ranges(hour_ids: list) -> str:
+    """Group consecutive hour integers into clean ranges (e.g. '5:00 AM–10:00 AM' or '7:00 AM, 4:00 PM–6:00 PM')."""
+    if not hour_ids:
+        return "None"
+    sorted_hrs = sorted(set(int(h) for h in hour_ids))
+    ranges = []
+    start = sorted_hrs[0]
+    prev = sorted_hrs[0]
+
+    for h in sorted_hrs[1:]:
+        if h == prev + 1:
+            prev = h
+        else:
+            if start == prev:
+                ranges.append((datetime.min + timedelta(hours=start)).strftime("%I:%M %p").lstrip("0"))
+            else:
+                s_str = (datetime.min + timedelta(hours=start)).strftime("%I:%M %p").lstrip("0")
+                e_str = (datetime.min + timedelta(hours=prev)).strftime("%I:%M %p").lstrip("0")
+                ranges.append(f"{s_str}–{e_str}")
+            start = h
+            prev = h
+
+    if start == prev:
+        ranges.append((datetime.min + timedelta(hours=start)).strftime("%I:%M %p").lstrip("0"))
+    else:
+        s_str = (datetime.min + timedelta(hours=start)).strftime("%I:%M %p").lstrip("0")
+        e_str = (datetime.min + timedelta(hours=prev)).strftime("%I:%M %p").lstrip("0")
+        ranges.append(f"{s_str}–{e_str}")
+
+    return ", ".join(ranges)
+
+
 def _build_header_html(
     intersection_label: str,
     direction_label: str,
@@ -276,79 +502,70 @@ def _build_header_html(
     time_period_label: str,
     current_cycle: str,
 ) -> str:
-    """Header with gradient + right-aligned pill for Current Cycle."""
-    return f"""
-<div style="background: linear-gradient(135deg, #2b77e5 0%, #19c3e6 100%);
-            border-radius: 16px; padding: 22px 24px 20px; color: #fff;
-            box-shadow: 0 10px 26px rgba(25,115,210,.25); margin: 8px 0 16px;">
-  <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
-    <div style="display:flex; align-items:center; gap:12px;">
-      <div style="width:40px; height:40px; border-radius:10px; background: rgba(255,255,255,.18);
-                  display:flex; align-items:center; justify-content:center;
-                  box-shadow: inset 0 0 0 1px rgba(255,255,255,.15);">
-        <span style="font-size:20px;">🔁</span>
-      </div>
-      <div style="font-size:2.1rem; font-weight:800; letter-spacing:.2px; line-height:1.1;">
-        Cycle Length Recommendations for CVAG
-      </div>
-    </div>
-  </div>
-
-  <div style="display:flex; flex-wrap:wrap; gap:8px 10px; margin:12px 0 6px;">
-    <span style="display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px;
-                 background: rgba(255,255,255,0.22); font-weight:800; font-size:.95rem;
-                 box-shadow: inset 0 0 0 1px rgba(255,255,255,.25); color: #fff; border: 1px solid rgba(255,255,255,0.3);">
-      ⚙️ Current Cycle: {current_cycle}
-    </span>
-    <span style="display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px;
-                 background: rgba(255,255,255,.16); font-weight:700; font-size:.95rem;
-                 box-shadow: inset 0 0 0 1px rgba(255,255,255,.18);">
-      <span style="opacity:.9;">Intersection:</span><span style="opacity:1;">{intersection_label}</span>
-    </span>
-    <span style="display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px;
-                 background: rgba(255,255,255,.16); font-weight:700; font-size:.95rem;
-                 box-shadow: inset 0 0 0 1px rgba(255,255,255,.18);">
-      <span style="opacity:.9;">Direction:</span><span style="opacity:1;">{direction_label}</span>
-    </span>
-    <span style="display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px;
-                 background: rgba(255,255,255,.16); font-weight:700; font-size:.95rem;
-                 box-shadow: inset 0 0 0 1px rgba(255,255,255,.18);">
-      <span style="opacity:.9;">Time Period:</span><span style="opacity:1;">{time_period_label}</span>
-    </span>
-    <span style="display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px;
-                 background: rgba(255,255,255,.16); font-weight:700; font-size:.95rem;
-                 box-shadow: inset 0 0 0 1px rgba(255,255,255,.18);">
-      <span style="opacity:.9;">Study Type:</span><span style="opacity:1;">Hourly Analysis</span>
-    </span>
-  </div>
-
-  <div style="display:flex; align-items:center; gap:8px; margin-top:2px;">
-    <span style="width:24px; height:24px; border-radius:8px; background: rgba(255,255,255,.18);
-                 display:inline-flex; align-items:center; justify-content:center; font-size:13px;
-                 box-shadow: inset 0 0 0 1px rgba(255,255,255,.16);">📅</span>
-    <span style="font-size:1.05rem; font-weight:600; opacity:.95;">{start_label} — {end_label}</span>
-  </div>
-</div>
-"""
+    """Header with executive navy-to-cyan gradient and high-contrast structured metadata cards."""
+    date_display = start_label if start_label == end_label else f"{start_label} — {end_label}"
+    return (
+        f'<div class="cvag-header-banner">'
+        f'<div class="cvag-header-top">'
+        f'<div>'
+        f'<div class="cvag-header-title">Cycle Length Recommendations for CVAG</div>'
+        f'<div class="cvag-header-subtitle">Traffic Signal Timing & Corridor Coordination Optimization</div>'
+        f'</div>'
+        f'<div class="cvag-tooltip-trigger" title="Cycle Length Optimization analyzes hourly traffic volume against regional signal timing thresholds (110s–140s / Free Mode) to determine optimal coordination plans for CVAG corridors.">?'
+        f'<span class="cvag-tooltip-box" style="width:280px; bottom:130%;">Cycle Length Optimization analyzes hourly traffic volume against regional signal timing thresholds (110s–140s / Free Mode) to determine optimal coordination plans for CVAG corridors.</span>'
+        f'</div>'
+        f'</div>'
+        f'<div class="cvag-header-meta-grid">'
+        f'<div class="cvag-meta-card cvag-cycle-card">'
+        f'<div class="cvag-meta-card-label">Current Cycle</div>'
+        f'<div class="cvag-meta-card-val">{current_cycle}</div>'
+        f'</div>'
+        f'<div class="cvag-meta-card">'
+        f'<div class="cvag-meta-card-label">Intersection</div>'
+        f'<div class="cvag-meta-card-val" title="{intersection_label}">{intersection_label}</div>'
+        f'</div>'
+        f'<div class="cvag-meta-card">'
+        f'<div class="cvag-meta-card-label">Date</div>'
+        f'<div class="cvag-meta-card-val" title="{date_display}">{date_display}</div>'
+        f'</div>'
+        f'</div>'
+        f'<div class="cvag-header-chips-row">'
+        f'<span class="cvag-sub-chip"><strong>Direction:</strong> {direction_label}</span>'
+        f'<span class="cvag-sub-chip"><strong>Time Period:</strong> {time_period_label}</span>'
+        f'<span class="cvag-sub-chip"><strong>Study Type:</strong> Hourly Analysis</span>'
+        f'</div>'
+        f'</div>'
+    )
 
 
 # -------------------------
 # KPI-card HTML
 # -------------------------
 def _kpi_card(title: str, value_html: str, delta_text: str, tone: str = "neutral",
-              foot1: Optional[str] = None, foot2: Optional[str] = None) -> str:
+              foot1: Optional[str] = None, foot2: Optional[str] = None,
+              tooltip: Optional[str] = None) -> str:
     tone = tone if tone in {"good", "warn", "bad", "neutral"} else "neutral"
     foot1_html = f'<div class="cvag-kpi-foot">{foot1}</div>' if foot1 else ""
     foot2_html = f'<div class="cvag-kpi-foot">{foot2}</div>' if foot2 else ""
     tone_class = f" {tone}" if tone != "neutral" else " neutral"
-    return f"""
-    <div class="cvag-kpi-card">
-      <div class="cvag-kpi-title">{title}</div>
-      <div class="cvag-kpi-value">{value_html}</div>
-      <div class="cvag-kpi-delta{tone_class}">{delta_text}</div>
-      {foot1_html}{foot2_html}
-    </div>
-    """
+    tooltip_html = ""
+    if tooltip:
+        tooltip_html = (
+            f'<div class="cvag-tooltip-trigger" title="{tooltip}">'
+            f'?<span class="cvag-tooltip-box">{tooltip}</span>'
+            f'</div>'
+        )
+    return (
+        f'<div class="cvag-kpi-card">'
+        f'<div class="cvag-kpi-title-row">'
+        f'<div class="cvag-kpi-title">{title}</div>'
+        f'{tooltip_html}'
+        f'</div>'
+        f'<div class="cvag-kpi-value">{value_html}</div>'
+        f'<div class="cvag-kpi-delta{tone_class}">{delta_text}</div>'
+        f'{foot1_html}{foot2_html}'
+        f'</div>'
+    )
 
 
 # -------------------------
@@ -372,6 +589,7 @@ def render_cycle_length_section(raw: pd.DataFrame, key_prefix: str = "cycle") ->
     # ---- Context values for header (static bits) ----
     raw = raw.copy()
     raw["local_datetime"] = pd.to_datetime(raw["local_datetime"], errors="coerce")
+    raw["total_volume"] = pd.to_numeric(raw.get("total_volume", 0), errors="coerce").fillna(0)
 
     start_dt = raw["local_datetime"].min()
     end_dt = raw["local_datetime"].max()
@@ -380,7 +598,7 @@ def render_cycle_length_section(raw: pd.DataFrame, key_prefix: str = "cycle") ->
 
     intersections = sorted(raw["intersection_name"].dropna().unique().tolist()) if "intersection_name" in raw else []
     if len(intersections) > 1:
-        st.warning(f"⚠️ **Note:** Cycle Length Recommendations are currently only supported for one intersection at a time to ensure accuracy. Analyzing **{intersections[0]}** only.")
+        st.warning(f"**Note:** Cycle Length Recommendations are currently only supported for one intersection at a time to ensure accuracy. Analyzing **{intersections[0]}** only.")
         raw = raw[raw["intersection_name"] == intersections[0]].copy()
         intersections = [intersections[0]]
 
@@ -417,13 +635,22 @@ def render_cycle_length_section(raw: pd.DataFrame, key_prefix: str = "cycle") ->
     # -------------------------
     # Controls (user selections)
     # -------------------------
+    # Initialize session state for widgets if not present to avoid warnings/collisions
+    if f"{key_prefix}_period" not in st.session_state:
+        st.session_state[f"{key_prefix}_period"] = "AM (05:00-10:00)"
+    if f"{key_prefix}_dir_selector" not in st.session_state:
+        st.session_state[f"{key_prefix}_dir_selector"] = "All Approaches"
+    if f"{key_prefix}_current" not in st.session_state:
+        st.session_state[f"{key_prefix}_current"] = "140 sec"
+    if f"{key_prefix}_theme" not in st.session_state:
+        st.session_state[f"{key_prefix}_theme"] = "Colorblind Safe"
+
     c1, c2, c3, c4 = st.columns([1.5, 1.5, 1.2, 1.3])
     with c1:
         time_period = st.selectbox(
-            "🕐 Time Period",
+            "Time Period",
             ["AM (05:00-10:00)", "MD (11:00-15:00)", "PM (16:00-20:00)", "All Day"],
-            index=0,
-            help="Filter to AM, Midday, PM, or all hours.",
+            help="Filter cycle recommendations to AM Peak (05:00–10:00), Midday MD (11:00–15:00), PM Peak (16:00–20:00), or All Day (00:00–23:00).",
             key=f"{key_prefix}_period",
         )
     with c2:
@@ -431,26 +658,23 @@ def render_cycle_length_section(raw: pd.DataFrame, key_prefix: str = "cycle") ->
         avail_dirs = sorted(raw["direction"].dropna().unique().tolist()) if "direction" in raw.columns else []
         dir_options = ["All Approaches"] + avail_dirs
         selected_dir = st.selectbox(
-            "🔄 Direction",
+            "Direction",
             dir_options,
-            index=0,
-            help="Filter cycle recommendations to a specific approach.",
+            help="Filter volume data to a specific approach direction (e.g., Northbound, Southbound) or analyze All Approaches combined.",
             key=f"{key_prefix}_dir_selector",
         )
     with c3:
         current_cycle = st.selectbox(
-            "⚙️ Current Cycle",
+            "Current Cycle",
             CYCLE_ORDER[::-1],  # 150, 140, 130, 120, 110, Free
-            index=1,
-            help="Sets the corridor's **current** cycle length used for comparison.",
+            help="Sets the corridor's active field cycle length used as a benchmark for comparison (e.g., 140 sec, 130 sec, 120 sec, 110 sec, Free mode).",
             key=f"{key_prefix}_current",
         )
     with c4:
         theme_choice = st.selectbox(
-            "🎨 Theme",
+            "Theme",
             ["Colorblind Safe", "High Contrast", "Greens → Red", "Monochrome + Accents"],
-            index=0,
-            help="Pick a palette that's easy to read for presentations and printouts.",
+            help="Select visual color palette for charts and status indicators (Colorblind Safe Okabe–Ito, High Contrast, Greens to Red, Monochrome).",
             key=f"{key_prefix}_theme",
         )
 
@@ -486,7 +710,7 @@ def render_cycle_length_section(raw: pd.DataFrame, key_prefix: str = "cycle") ->
             ),
             unsafe_allow_html=True,
         )
-        st.warning("⚠️ No data available for the selected time period. Check if Hourly Data is Available")
+        st.warning("No data available for the selected time period. Check if Hourly Data is Available")
         return
 
     # Now that we know the user's choices, render the header with the bubble
@@ -534,62 +758,108 @@ def render_cycle_length_section(raw: pd.DataFrame, key_prefix: str = "cycle") ->
     optimal_hours = int((hourly["Status"] == "🟢 OPTIMAL").sum())
     changes_needed = total_hours - optimal_hours
 
-    # Lists of hours needing changes (for display)
-    inc_hours_list = hourly.loc[hourly["Status"] == "⬆️ INCREASE", "Hour"].tolist()
-    red_hours_list = hourly.loc[hourly["Status"] == "🔽 REDUCE", "Hour"].tolist()
+    # Hour integers for increases and reductions
+    inc_hour_ids = hourly.loc[hourly["Status"] == "⬆️ INCREASE", "hour"].tolist()
+    red_hour_ids = hourly.loc[hourly["Status"] == "🔽 REDUCE", "hour"].tolist()
+
+    # Peak hour & volume in selected time period
+    if len(hourly) > 0:
+        peak_idx = hourly["Volume"].idxmax()
+        peak_volume = int(hourly.loc[peak_idx, "Volume"])
+        peak_hour = hourly.loc[peak_idx, "Hour"]
+    else:
+        peak_volume, peak_hour = 0, "N/A"
 
     # High-volume threshold KPI (based on raw rows in selected period)
     HIGH_VOLUME_THRESHOLD_VPH = 1200
-    period_data["total_volume"] = pd.to_numeric(period_data["total_volume"], errors="coerce")
     total_rows = int(period_data["total_volume"].count())
     high_rows = period_data.loc[period_data["total_volume"] > HIGH_VOLUME_THRESHOLD_VPH]
     high_hours = int(len(high_rows)) if total_rows > 0 else 0
     high_share = (high_hours / total_rows * 100) if total_rows > 0 else 0.0
 
-    # Unique hour-of-day labels that exceeded threshold
+    # Unique hour-of-day integer IDs that exceeded threshold
     exceed_hour_ids = sorted(high_rows["local_datetime"].dt.hour.unique().tolist()) if len(high_rows) else []
-    exceed_hour_labels = [(datetime.min + timedelta(hours=h)).strftime("%I:%M %p").lstrip("0") for h in exceed_hour_ids]
 
     # Peak capacity utilization
     INTERSECTION_CAPACITY_VPH = 1800
     peak_volume_pd = float(period_data["total_volume"].max()) if total_rows > 0 else 0.0
     peak_capacity_util = (peak_volume_pd / INTERSECTION_CAPACITY_VPH * 100) if INTERSECTION_CAPACITY_VPH else 0.0
 
-    # Helper to summarize lists
-    def _hours_preview(lst, max_items=8):
-        if not lst:
-            return "None"
-        tail = "" if len(lst) <= max_items else f" (+{len(lst)-max_items} more)"
-        return ", ".join(lst[:max_items]) + tail
-
     # -------------------------
     # BOXED KPIs (card grid)
     # -------------------------
-    system_eff = (optimal_hours / total_hours * 100) if total_hours else 0
-    tone_eff = "good" if system_eff >= 80 else ("warn" if system_eff >= 60 else "bad")
+    tone_peak = "warn" if peak_volume >= 1500 else ("good" if peak_volume >= 600 else "neutral")
     tone_changes = "good" if changes_needed == 0 else ("warn" if changes_needed <= (total_hours * 0.4) else "bad")
     tone_high = "bad" if high_share > 25 else ("warn" if high_share > 10 else "good")
     tone_util = "bad" if peak_capacity_util > 90 else ("warn" if peak_capacity_util > 75 else "good")
 
-    cards_html = f"""
-    <div class="cvag-kpi-grid">
-      {_kpi_card("📅 Hours Analyzed", f"{total_hours}", hours_window_str, "neutral")}
-      {_kpi_card("✅ Optimal Hours", f"{optimal_hours}", f"{system_eff:.0f}% efficiency", tone_eff)}
-      {_kpi_card("🔧 Changes Needed", f"{changes_needed}", f"↑ {len(inc_hours_list)} • ↓ {len(red_hours_list)}", tone_changes)}
-      {_kpi_card("⚠️ Hours Above High-Volume Threshold", f"{high_hours}", f"{high_share:.1f}% of time",
-                 tone_high, foot1=f"Threshold: > {HIGH_VOLUME_THRESHOLD_VPH:,} vehicles",
-                 foot2=f"Hours: {_hours_preview(exceed_hour_labels)}")}
-      {_kpi_card("🚦 Peak Capacity Utilization", f"{peak_capacity_util:.0f}%", f"Peak {int(peak_volume_pd):,} vehicles",
-                 tone_util, foot1=f"Capacity: {INTERSECTION_CAPACITY_VPH:,} vehicles")}
-    </div>
-    """
+    # Retiming footer text organized cleanly
+    if changes_needed > 0:
+        if inc_hour_ids and red_hour_ids:
+            retime_foot1 = f"Increase: {_format_hour_ranges(inc_hour_ids)}"
+            retime_foot2 = f"Reduce: {_format_hour_ranges(red_hour_ids)}"
+        elif inc_hour_ids:
+            retime_foot1 = f"Increase: {_format_hour_ranges(inc_hour_ids)}"
+            retime_foot2 = None
+        else:
+            retime_foot1 = f"Reduce: {_format_hour_ranges(red_hour_ids)}"
+            retime_foot2 = None
+    else:
+        retime_foot1 = "All hours operating at optimal cycle"
+        retime_foot2 = None
+
+    card1 = _kpi_card(
+        "Time Period",
+        f"{total_hours} Hours",
+        hours_window_str,
+        "neutral",
+        foot1=f"Active Window: {time_period}",
+        tooltip="Total operational hours evaluated within the selected time window (AM, MD, PM, or All Day)."
+    )
+    card2 = _kpi_card(
+        "Peak Hour",
+        peak_hour,
+        f"{peak_volume:,} Total Vehicles",
+        tone_peak,
+        foot1=f"Recommended: {get_hourly_cycle_length(peak_volume)}",
+        foot2=f"Max demand in {time_period.split()[0]} window",
+        tooltip="Peak traffic demand hour within the selected time period and its corresponding total vehicular volume."
+    )
+    card3 = _kpi_card(
+        "Hours That Need Retiming",
+        f"{changes_needed}",
+        f"Increase: {len(inc_hour_ids)} | Reduce: {len(red_hour_ids)}",
+        tone_changes,
+        foot1=retime_foot1,
+        foot2=retime_foot2,
+        tooltip="Hours where vehicular demand warrants either an increase (longer cycle) or reduction (shorter cycle/Free mode) relative to current timing."
+    )
+    card4 = _kpi_card(
+        "High Volume Hours above 1,200 vehicles",
+        f"{high_hours}",
+        f"{high_share:.1f}% of time",
+        tone_high,
+        foot1=f"Threshold: > {HIGH_VOLUME_THRESHOLD_VPH:,} vehicles",
+        foot2=f"Exceeded at: {_format_hour_ranges(exceed_hour_ids)}",
+        tooltip="Hours where total hourly volume exceeds 1,200 vehicles per hour (VPH), indicating high congestion and heavy coordination requirements."
+    )
+    card5 = _kpi_card(
+        "Peak Capacity Utilization",
+        f"{peak_capacity_util:.0f}%",
+        f"Peak {int(peak_volume_pd):,} vehicles",
+        tone_util,
+        foot1=f"Capacity Benchmark: {INTERSECTION_CAPACITY_VPH:,} vehicles",
+        foot2=f"Demand Ratio: {peak_volume_pd / INTERSECTION_CAPACITY_VPH:.2f}x benchmark" if INTERSECTION_CAPACITY_VPH else "",
+        tooltip="Peak hourly volume as a percentage of nominal intersection capacity (1,800 VPH threshold)."
+    )
+
+    cards_html = f'<div class="cvag-kpi-grid">{card1}{card2}{card3}{card4}{card5}</div>'
     st.markdown(cards_html, unsafe_allow_html=True)
 
     # -------------------------
-    # Charts
+    # Chart (Boxed Card Layout)
     # -------------------------
-    ch1, ch2 = st.columns([2.2, 1.8])
-    with ch1:
+    with st.container(border=True):
         # Bar chart colored by recommended cycle (palette + patterns + outlines)
         if start_dt == end_dt:
             date_display = start_dt.strftime('%B %d, %Y').replace(" 0", " ")
@@ -643,55 +913,36 @@ def render_cycle_length_section(raw: pd.DataFrame, key_prefix: str = "cycle") ->
         )
 
         fig.update_layout(
-            height=420,
-            title=dict(text=full_title, x=0, xanchor="left"),
-            xaxis=dict(title=dict(text="Hour of Day", font=dict(size=16, weight="bold")), tickfont=dict(size=14), tickangle=-45),
-            yaxis=dict(title=dict(text="Total Volume (vehicles)", font=dict(size=16, weight="bold")), tickfont=dict(size=14)),
+            height=460,
+            title=dict(text=full_title, x=0, xanchor="left", font=dict(color="#000000")),
+            xaxis=dict(
+                title=dict(text="Hour of Day", font=dict(size=15, weight="bold", color="#000000")),
+                tickfont=dict(size=13, color="#000000"),
+                tickangle=-45
+            ),
+            yaxis=dict(
+                title=dict(text="Total Volume (vehicles)", font=dict(size=15, weight="bold", color="#000000")),
+                tickfont=dict(size=13, color="#000000")
+            ),
             legend=dict(
                 orientation="v",
                 yanchor="top",
                 y=1.0,
                 xanchor="left",
-                x=1.02,
-                font=dict(size=13),
-                bgcolor="rgba(255,255,255,0.85)",
+                x=1.01,
+                font=dict(size=12, color="#000000"),
+                bgcolor="rgba(255,255,255,0.90)",
                 bordercolor="#cccccc",
                 borderwidth=1,
-                title=dict(text="Legend", font=dict(size=14))
+                title=dict(text="Legend", font=dict(size=13, weight="bold", color="#000000"))
             ),
-            margin=dict(l=10, r=150, t=110, b=80),
-            bargap=0.15, 
+            margin=dict(l=10, r=140, t=110, b=80),
+            bargap=0.18, 
             bargroupgap=0.05,
         )
         fig.update_xaxes(showgrid=False)
         fig.update_yaxes(gridcolor="rgba(0,0,0,0.08)")
         st.plotly_chart(fig, use_container_width=True)
-
-    with ch2:
-        status_counts = hourly["Status"].value_counts().reindex(["🟢 OPTIMAL", "⬆️ INCREASE", "🔽 REDUCE"], fill_value=0)
-        
-        pie_title = f"Hours by Status<br><span style='font-size:14px; color:#666;'>{int_subtitle}<br>Current Cycle: {current_cycle}</span>"
-        
-        pie = px.pie(
-            names=status_counts.index,
-            values=status_counts.values,
-            title=pie_title,
-            color=status_counts.index,
-            color_discrete_map={
-                "🟢 OPTIMAL": STATUS_COLORS["🟢 OPTIMAL"],
-                "⬆️ INCREASE": STATUS_COLORS["⬆️ INCREASE"],
-                "🔽 REDUCE": STATUS_COLORS["🔽 REDUCE"],
-            },
-            hole=0.35,
-            template="simple_white",
-        )
-        pie.update_traces(textposition="inside", textinfo="label+percent")
-        pie.update_layout(
-            height=420, 
-            margin=dict(l=10, r=10, t=110, b=10),
-            title=dict(text=pie_title, x=0, xanchor="left")
-        )
-        st.plotly_chart(pie, use_container_width=True)
 
     # -------------------------
     # TABLE (with requested tweaks)
@@ -744,15 +995,18 @@ def render_cycle_length_section(raw: pd.DataFrame, key_prefix: str = "cycle") ->
         peak_volume, peak_hour = 0, "—"
 
     st.markdown(
-        f"""
-        <div class="insight-box" style="margin-top:.5rem;">
-            <h4>💡 Cycle Length Optimization Insights</h4>
-            <p><strong>📊 System Efficiency:</strong> {optimal_hours}/{total_hours} hours optimal ({(optimal_hours/total_hours*100 if total_hours else 0):.0f}%)</p>
-            <p><strong>📈 Volume Profile:</strong> Peak {peak_volume:,} vehicles at {peak_hour} • Threshold exceedance: {high_hours} hours ({high_share:.1f}% of time)</p>
-            <p><strong>🔧 Actions:</strong> ↑ {int((hourly["Status"] == "⬆️ INCREASE").sum())} hours need longer cycles • ↓ {int((hourly["Status"] == "🔽 REDUCE").sum())} hours need shorter cycles</p>
-            <p><strong>🚦 Capacity:</strong> Peak utilization {peak_capacity_util:.0f}% of intersection capacity ({INTERSECTION_CAPACITY_VPH:,} vehicles)</p>
-        </div>
-        """,
+        f'<div class="insight-box" style="margin-top:.5rem;">'
+        f'<div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">'
+        f'<h4 style="margin:0; font-weight:800; color:#0f2f52;">Cycle Length Optimization Insights</h4>'
+        f'<div class="cvag-tooltip-trigger" title="Automated summary of signal timing performance, efficiency, peak volume demand, and retiming recommendations.">?'
+        f'<span class="cvag-tooltip-box" style="width:260px; right:0; left:auto; transform:none;">Summary of signal timing optimization results and recommendations for CVAG retiming studies.</span>'
+        f'</div>'
+        f'</div>'
+        f'<p><strong>System Efficiency:</strong> {optimal_hours}/{total_hours} hours optimal ({(optimal_hours/total_hours*100 if total_hours else 0):.0f}%) matching active {current_cycle} cycle.</p>'
+        f'<p><strong>Volume Profile:</strong> Peak {peak_volume:,} vehicles at {peak_hour} • High-volume threshold exceedance: {high_hours} hours ({high_share:.1f}% of evaluated period).</p>'
+        f'<p><strong>Actions Required:</strong> {len(inc_hour_ids)} hours warrant longer cycles • {len(red_hour_ids)} hours warrant shorter cycles or Free mode.</p>'
+        f'<p><strong>Capacity Benchmark:</strong> Peak utilization {peak_capacity_util:.0f}% of intersection benchmark capacity ({INTERSECTION_CAPACITY_VPH:,} vehicles/hr).</p>'
+        f'</div>',
         unsafe_allow_html=True,
     )
 
@@ -761,7 +1015,7 @@ def render_cycle_length_section(raw: pd.DataFrame, key_prefix: str = "cycle") ->
         hourly_display, on="Hour", how="right"
     )
     st.download_button(
-        "⬇️ Download Cycle Length Analysis (CSV)",
+        "Download Cycle Length Analysis (CSV)",
         data=download_df.to_csv(index=False).encode("utf-8"),
         file_name=f"cycle_length_recommendations_{selected_period.lower()}.csv",
         mime="text/csv",

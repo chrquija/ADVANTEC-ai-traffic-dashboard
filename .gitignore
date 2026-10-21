@@ -15,3 +15,5 @@ venv/
 core/users.json
 
 repro.py
+#Phase 2 acceptance matrix Bosch LOCAL REF ONLY
+reference_data/*.xlsm

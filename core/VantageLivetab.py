@@ -16,13 +16,14 @@ from sidebar_functions import (
     compute_data_availability,
 )
 from cycle_length_recommendations import render_cycle_length_section
-from Map import build_intersections_overview
+from intersection_metadata import format_intersection_display, get_intersection_metadata
+from Map import build_intersections_overview, INTERSECTION_TO_NODE
 
 # Shared UI utils (scoped loader and tab highlight)
 try:
-    from ui_utils import cad_loader as scoped_cad_loader, set_active_search_tab, is_active_tab, get_dynamic_xaxis_params
+    from ui_utils import cad_loader as scoped_cad_loader, set_active_search_tab, get_dynamic_xaxis_params, PerformanceMonitor, convert_df_to_csv
 except ModuleNotFoundError:
-    from core.ui_utils import cad_loader as scoped_cad_loader, set_active_search_tab, is_active_tab, get_dynamic_xaxis_params
+    from core.ui_utils import cad_loader as scoped_cad_loader, set_active_search_tab, get_dynamic_xaxis_params, PerformanceMonitor, convert_df_to_csv
 
 # =========================
 # Constants
@@ -128,7 +129,7 @@ PLOTLY_CONFIG = {
     "displayModeBar": True,
     "modeBarButtonsToRemove": ["lasso2d", "select2d", "toggleSpikelines"]
 }
-MAP_HEIGHT = 1100
+MAP_HEIGHT = 1200
 
 # ---------- Small helpers ----------
 def kpi_title(label: str, help_text: str):
@@ -145,6 +146,12 @@ def kpi_title(label: str, help_text: str):
         """,
         unsafe_allow_html=True,
     )
+
+def render_kpi_card(title: str, value: str, delta: str, badge_text: str, badge_class: str, help_text: str):
+    """Renders a single KPI card with title, value, delta, and status badge."""
+    safe_help = (help_text or "").replace('"', "&quot;")
+    badge_html = f'<div class="kpi-card-badge"><span class="performance-badge {badge_class}">{badge_text}</span></div>' if badge_text else ""
+    return f'<div class="kpi-card"><div class="kpi-card-title"><span>{title}</span><span class="kpi-help-icon" title="{safe_help}">?</span></div><div class="kpi-card-value">{value}</div><div class="kpi-card-delta">{delta}</div>{badge_html}</div>'
 
 def _canonicalize_intersection(name: str) -> str:
     if not isinstance(name, str):
@@ -181,10 +188,90 @@ def _mode_caps(mode_label: str):
     return VEH_CAPACITY_VPH, VEH_HIGH_THRESHOLD_VPH
 
 def _mode_noun(mode_label: str) -> str:
-    return "vehicles" if mode_label == "Vehicles" else ("bikes" if mode_label == "Bikes" else "pedestrians")
+    if mode_label == "Bikes":
+        return "bicycles"
+    if mode_label == "Pedestrians":
+        return "pedestrians"
+    if "All Modes" in mode_label:
+        return "movements"
+    return "vehicles"
 
 def _mode_emoji(mode_label: str) -> str:
     return "🚗" if mode_label == "Vehicles" else ("🚲" if mode_label == "Bikes" else ("🚶" if mode_label == "Pedestrians" else "📊"))
+
+@st.cache_data(show_spinner=False)
+def build_chart_context(mode_label, granularity, date_range, analysis_df, direction_filter, turn_filter, intersection_selection):
+    """Centralized logic for building dynamic chart titles and subtitles."""
+    # 1. Date Range String
+    date_str = ""
+    if date_range and len(date_range) == 2:
+        d1, d2 = date_range
+        if d1.month == d2.month and d1.year == d2.year:
+            date_str = f"{d1.strftime('%b %d')}–{d2.strftime('%d, %Y')}"
+        else:
+            date_str = f"{d1.strftime('%b %d, %Y')} – {d2.strftime('%b %d, %Y')}"
+
+    # 2. Intersection Count/Name
+    if intersection_selection and intersection_selection != "All Intersections":
+        intersection_str = format_intersection_display(intersection_selection)
+    else:
+        num_int = analysis_df["intersection_name"].nunique() if not analysis_df.empty else 0
+        intersection_str = f"{num_int} intersections"
+
+    # 3. Approach/Direction wording
+    if not direction_filter or direction_filter == "All Directions":
+        dir_str = "All approaches"
+    else:
+        # NORTHBOUND -> Northbound approach
+        dir_str = f"{direction_filter.title()} approach"
+
+    # 4. Turn wording
+    if not turn_filter or turn_filter == "All Turns":
+        turn_str = "All turns"
+    else:
+        if turn_filter == "Through":
+            turn_str = "Through movements"
+        elif turn_filter == "Left":
+            turn_str = "Left turns"
+        elif turn_filter == "Right":
+            turn_str = "Right turns"
+        else:
+            turn_str = turn_filter
+
+    # 5. Mode wording for Title
+    mode_w = {
+        "Combined (All Modes)": "Multimodal",
+        "Vehicles": "Vehicle",
+        "Bikes": "Bicycle",
+        "Pedestrians": "Pedestrian"
+    }.get(mode_label, mode_label)
+    
+    # 6. Specific Title/Subtitle Construction
+    common_sub = f"{date_str} • {intersection_str} • {dir_str} • {turn_str}"
+    
+    if mode_label == "Combined (All Modes)":
+        trend_title = f"Washington Street Corridor — {granularity} Multimodal Movement Volumes"
+        box_title = f"Washington Street Corridor — {granularity} Multimodal Volume Distribution by Intersection"
+        bar_title = f"Washington Street Corridor — {granularity} Multimodal Volume by Intersection"
+        y_label = "Movement Volume"
+        risk_mode = "Multimodal"
+    else:
+        trend_title = f"Washington Street Corridor — {granularity} {mode_w} Volumes"
+        box_title = f"Washington Street Corridor — {granularity} {mode_w} Volume Distribution by Intersection"
+        bar_title = f"Washington Street Corridor — {granularity} {mode_w} Volume by Intersection"
+        y_label = f"{mode_w} Volume"
+        risk_mode = mode_w
+
+    risk_title = "Washington Street Corridor — Intersection Volume & Capacity Risk Analysis"
+    risk_subtitle = f"{date_str} • {intersection_str} • {dir_str} • {risk_mode}"
+
+    return {
+        "trend": {"title": trend_title, "subtitle": common_sub},
+        "box": {"title": box_title, "subtitle": common_sub},
+        "bar": {"title": bar_title, "subtitle": common_sub},
+        "risk": {"title": risk_title, "subtitle": risk_subtitle},
+        "y_axis": y_label
+    }
 
 # =========================
 # Data Loading
@@ -251,6 +338,7 @@ def load_vantage_pedestrians() -> pd.DataFrame:
 # =========================
 # Processing Helpers
 # =========================
+@st.cache_data(show_spinner=False)
 def _prep_bucket(df: pd.DataFrame, granularity: str) -> pd.DataFrame:
     if df.empty:
         return df.copy()
@@ -283,6 +371,7 @@ def _prep_bucket(df: pd.DataFrame, granularity: str) -> pd.DataFrame:
         agg["bucket_hours"] = meta["fixed_hours"]
     return agg
 
+@st.cache_data(show_spinner=False)
 def _cap_series_for_x(x_df: pd.DataFrame, cap_vph: float, high_vph: float) -> pd.DataFrame:
     """Build capacity/threshold series aligned to unique time buckets only.
     Robust against duplicated rows from multiple directions/approaches.
@@ -304,6 +393,27 @@ def _cap_series_for_x(x_df: pd.DataFrame, cap_vph: float, high_vph: float) -> pd
     xs["high"] = xs["bucket_hours"].astype(float) * float(high_vph)
     return xs
 
+def _detect_data_resolution(df: pd.DataFrame) -> dict:
+    """Checks if the dataframe contains hourly-level variation."""
+    if df is None or df.empty:
+        return {"hourly": False, "daily": True}
+    
+    d = df.copy()
+    if not pd.api.types.is_datetime64_any_dtype(d["local_datetime"]):
+        d["local_datetime"] = pd.to_datetime(d["local_datetime"], errors='coerce')
+    
+    d = d.dropna(subset=["local_datetime"])
+    if d.empty:
+        return {"hourly": False, "daily": True}
+        
+    # Check if there are unique timestamps per intersection per day > 1
+    d["date"] = d["local_datetime"].dt.date
+    sample = d.head(5000) # Performance optimization
+    counts = sample.groupby(["intersection_name", "date"])["local_datetime"].nunique()
+    has_hourly = bool(counts.max() > 1)
+    
+    return {"hourly": has_hourly, "daily": True}
+
 # =========================
 # TMC Helpers
 # =========================
@@ -318,6 +428,7 @@ def _filter_for_tmc(df: pd.DataFrame, intersection: str, date_range):
         out = out[out["intersection_name"] == intersection]
     return out
 
+@st.cache_data(show_spinner=False)
 def _summarize_tmc(df: pd.DataFrame) -> pd.DataFrame:
     """
     Build a dense table of approach x turn_type with volumes and shares.
@@ -371,7 +482,8 @@ def _add_badge(fig: go.Figure, x0, y0, x1, y1, text, fill, border="#ffffff"):
         text=text, showarrow=False, font=dict(color="#000000", size=13)
     )
 
-def _tmc_figure(tmc_df: pd.DataFrame, intersection: str, date_range, mode_label: str) -> go.Figure:
+@st.cache_data(show_spinner=False)
+def _tmc_figure(tmc_df: pd.DataFrame, intersection: str, date_range, mode_label: str):
     """
     Draw a schematic TMC diagram with four approaches and L/T/R shares.
     Coordinates: 0..10 in both axes, center at (5,5).
@@ -397,11 +509,11 @@ def _tmc_figure(tmc_df: pd.DataFrame, intersection: str, date_range, mode_label:
     fig.add_shape(type="circle", x0=4.4, y0=4.4, x1=5.6, y1=5.6, line=dict(color="#888888", width=1))
     fig.add_annotation(x=5, y=5, text="N", showarrow=False, font=dict(size=12, color="#666"))
 
-    fig.update_xaxes(visible=False, range=[0, 10])
-    fig.update_yaxes(visible=False, range=[0, 10])
+    fig.update_xaxes(visible=False, range=[-0.8, 10.8])
+    fig.update_yaxes(visible=False, range=[-0.8, 10.8], scaleanchor="x")
     fig.update_layout(
         height=650,
-        margin=dict(l=20, r=20, t=80, b=30),
+        margin=dict(l=10, r=10, t=80, b=10),
         template="plotly_white",
         title=f"TMC — {mode_label} — {intersection}<br><sup>{date_range[0].strftime('%b %d, %Y')} to {date_range[1].strftime('%b %d, %Y')}</sup>"
     )
@@ -415,50 +527,50 @@ def _tmc_figure(tmc_df: pd.DataFrame, intersection: str, date_range, mode_label:
     # Approach labels (outside) with totals; EB/WB rotated
     # Southbound (top): push higher
     fig.add_annotation(
-        x=5.0, y=9.98, text="SOUTHBOUND", showarrow=False, xanchor="center",
-        font=dict(size=14, color="#2f2f2f"),
-        bgcolor="rgba(255,255,255,0.95)", bordercolor="#cfcfcf", borderwidth=1, borderpad=4
+        x=5.0, y=10.4, text="<b>SOUTHBOUND</b>", showarrow=False, xanchor="center",
+        font=dict(size=15, color="#1a1a1a"),
+        bgcolor="rgba(255,255,255,0.7)", borderpad=2
     )
     fig.add_annotation(
-        x=5.0, y=9.82, text=f"({int(tot_map.get('SB',0)):,} total {noun})", showarrow=False, xanchor="center",
-        font=dict(size=11, color="#666"),
-        bgcolor="rgba(255,255,255,0.90)", bordercolor="#e5e5e5", borderwidth=0.5, borderpad=2
+        x=5.0, y=10.05, text=f"({int(tot_map.get('SB',0)):,} total {noun})", showarrow=False, xanchor="center",
+        font=dict(size=11, color="#777"),
+        bgcolor="rgba(255,255,255,0.7)", borderpad=2
     )
 
     # Northbound (bottom): push lower
     fig.add_annotation(
-        x=5.0, y=0.02, text="NORTHBOUND", showarrow=False, xanchor="center",
-        font=dict(size=14, color="#2f2f2f"),
-        bgcolor="rgba(255,255,255,0.95)", bordercolor="#cfcfcf", borderwidth=1, borderpad=4
+        x=5.0, y=-0.4, text="<b>NORTHBOUND</b>", showarrow=False, xanchor="center",
+        font=dict(size=15, color="#1a1a1a"),
+        bgcolor="rgba(255,255,255,0.7)", borderpad=2
     )
     fig.add_annotation(
-        x=5.0, y=0.22, text=f"({int(tot_map.get('NB',0)):,} total {noun})", showarrow=False, xanchor="center",
-        font=dict(size=11, color="#666"),
-        bgcolor="rgba(255,255,255,0.90)", bordercolor="#e5e5e5", borderwidth=0.5, borderpad=2
+        x=5.0, y=-0.05, text=f"({int(tot_map.get('NB',0)):,} total {noun})", showarrow=False, xanchor="center",
+        font=dict(size=11, color="#777"),
+        bgcolor="rgba(255,255,255,0.7)", borderpad=2
     )
 
     # Eastbound (left side): move farther left & keep vertical text
     fig.add_annotation(
-        x=0.20, y=5.0, text="EASTBOUND", textangle=-90, showarrow=False, xanchor="center",
-        font=dict(size=14, color="#2f2f2f"),
-        bgcolor="rgba(255,255,255,0.95)", bordercolor="#cfcfcf", borderwidth=1, borderpad=4
+        x=-0.4, y=5.0, text="<b>EASTBOUND</b>", textangle=-90, showarrow=False, xanchor="center",
+        font=dict(size=15, color="#1a1a1a"),
+        bgcolor="rgba(255,255,255,0.7)", borderpad=2
     )
     fig.add_annotation(
-        x=0.38, y=5.0, text=f"({int(tot_map.get('EB',0)):,} total {noun})", textangle=-90,
-        showarrow=False, xanchor="center", font=dict(size=11, color="#666"),
-        bgcolor="rgba(255,255,255,0.90)", bordercolor="#e5e5e5", borderwidth=0.5, borderpad=2
+        x=-0.05, y=5.0, text=f"({int(tot_map.get('EB',0)):,} total {noun})", textangle=-90,
+        showarrow=False, xanchor="center", font=dict(size=11, color="#777"),
+        bgcolor="rgba(255,255,255,0.7)", borderpad=2
     )
 
     # Westbound (right side): move farther right & keep vertical text
     fig.add_annotation(
-        x=9.80, y=5.0, text="WESTBOUND", textangle=90, showarrow=False, xanchor="center",
-        font=dict(size=14, color="#2f2f2f"),
-        bgcolor="rgba(255,255,255,0.95)", bordercolor="#cfcfcf", borderwidth=1, borderpad=4
+        x=10.4, y=5.0, text="<b>WESTBOUND</b>", textangle=90, showarrow=False, xanchor="center",
+        font=dict(size=15, color="#1a1a1a"),
+        bgcolor="rgba(255,255,255,0.7)", borderpad=2
     )
     fig.add_annotation(
-        x=9.62, y=5.0, text=f"({int(tot_map.get('WB',0)):,} total {noun})", textangle=90,
-        showarrow=False, xanchor="center", font=dict(size=11, color="#666"),
-        bgcolor="rgba(255,255,255,0.90)", bordercolor="#e5e5e5", borderwidth=0.5, borderpad=2
+        x=10.05, y=5.0, text=f"({int(tot_map.get('WB',0)):,} total {noun})", textangle=90,
+        showarrow=False, xanchor="center", font=dict(size=11, color="#777"),
+        bgcolor="rgba(255,255,255,0.7)", borderpad=2
     )
 
     def draw_group(app_code, boxes):
@@ -487,8 +599,8 @@ def _tmc_figure(tmc_df: pd.DataFrame, intersection: str, date_range, mode_label:
                 ax, ay = x0 - 0.20, (y0 + y1) / 2.0
                 anchor = "right"
             fig.add_annotation(
-                x=ax, y=ay, text=f"({v:,})",
-                showarrow=False, font=dict(size=11, color="#777"),
+                x=ax, y=ay, text=f"<b>({v:,})</b>",
+                showarrow=False, font=dict(size=11, color="#555"),
                 xanchor=anchor, bgcolor="rgba(255,255,255,0.85)",
                 bordercolor="#e5e5e5", borderwidth=0.5, borderpad=2
             )
@@ -509,6 +621,88 @@ def _tmc_figure(tmc_df: pd.DataFrame, intersection: str, date_range, mode_label:
 # =========================
 # Trend/Share Chart Helpers
 # =========================
+@st.cache_data(show_spinner=False)
+def _calculate_kpis(df, granularity, mode_label, date_range, intersection, direction_filter, turn_filter):
+    if df.empty:
+        return None
+
+    # Redundant numeric conversion removed (done during load)
+    if not df["volume"].notna().any():
+        return None
+
+    # Optimization: Vectorized Link-Hour Counting
+    d_temp = df.copy()
+    d_temp["hour_bucket"] = d_temp["local_datetime"].dt.floor("H")
+    
+    # Define bucket for aggregation
+    if granularity == "Hourly":
+        d_temp["bucket"] = d_temp["hour_bucket"]
+    elif granularity == "Daily":
+        d_temp["bucket"] = d_temp["local_datetime"].dt.floor("D")
+    elif granularity == "Weekly":
+        d_temp["bucket"] = d_temp["local_datetime"].dt.to_period("W").dt.start_time
+    else: # Monthly
+        d_temp["bucket"] = d_temp["local_datetime"].dt.to_period("M").dt.start_time
+
+    # Calculate volumes per bucket
+    bucket_vol = d_temp.groupby("bucket")["volume"].sum()
+    
+    # Calculate unique link-hours per bucket efficiently
+    # A link-hour is a unique combination of intersection, direction, turn_type, and HOUR.
+    links = d_temp[["bucket", "intersection_name", "direction", "turn_type", "hour_bucket"]].drop_duplicates()
+    bucket_links = links.groupby("bucket").size()
+    
+    bucket_all = pd.DataFrame({
+        "volume": bucket_vol,
+        "link_count": bucket_links
+    }).reset_index().rename(columns={"bucket": "local_datetime"}).sort_values("local_datetime")
+
+    if granularity == "Monthly":
+        bucket_all["bucket_hours"] = pd.to_datetime(bucket_all["local_datetime"]).dt.days_in_month * 24
+    else:
+        bucket_all["bucket_hours"] = AGG_META[granularity]["fixed_hours"]
+
+    # choose capacity by mode
+    cap_key = "Vehicles" if mode_label == "All Modes" else mode_label
+    CAP_VPH, HIGH_VPH = _mode_caps(cap_key)
+
+    # Capacity scales by number of unique link-hours in the bucket
+    bucket_all["cap"] = bucket_all["link_count"] * CAP_VPH
+    bucket_all["threshold"] = bucket_all["link_count"] * HIGH_VPH
+    util_series = np.where(bucket_all["cap"] > 0, bucket_all["volume"] / bucket_all["cap"] * 100, np.nan)
+
+    peak_idx = int(bucket_all["volume"].idxmax())
+    peak_val = float(bucket_all.loc[peak_idx, "volume"])
+    peak_cap = float(bucket_all.loc[peak_idx, "cap"])
+    peak_date = pd.to_datetime(bucket_all.loc[peak_idx, "local_datetime"])
+    peak_util_pct = (peak_val / peak_cap * 100) if peak_cap > 0 else 0.0
+
+    p95_val = float(np.nanpercentile(bucket_all["volume"], 95)) if bucket_all["volume"].notna().any() else 0.0
+    avg_bucket_val = float(bucket_all["volume"].mean())
+    avg_util_pct = float(np.nanmean(util_series)) if np.isfinite(util_series).any() else 0.0
+
+    cv_bucket = (float(np.nanstd(bucket_all["volume"])) / avg_bucket_val * 100) if avg_bucket_val > 0 else 0.0
+    
+    bucket_all["threshold"] = bucket_all["bucket_hours"] * HIGH_VPH
+    high_periods_df = bucket_all[bucket_all["volume"] > bucket_all["threshold"]]
+    high_periods = int(len(high_periods_df))
+    total_periods = int(len(bucket_all))
+    risk_pct = (high_periods / total_periods * 100) if total_periods > 0 else 0.0
+
+    return {
+        "peak_val": peak_val,
+        "peak_date": peak_date,
+        "peak_util_pct": peak_util_pct,
+        "avg_bucket_val": avg_bucket_val,
+        "avg_util_pct": avg_util_pct,
+        "cv_bucket": cv_bucket,
+        "high_periods": high_periods,
+        "risk_pct": risk_pct,
+        "total_volume": float(bucket_all["volume"].sum()),
+        "cap_total": float(bucket_all["cap"].sum()),
+        "high_periods_df": high_periods_df[["local_datetime", "volume"]]
+    }
+
 def create_volume_charts(
     raw_df: pd.DataFrame,
     granularity: str,
@@ -517,14 +711,19 @@ def create_volume_charts(
     mode_label: str = "Vehicles",
     direction_label: str = "",
     intersections: str = "",
-    top_k: int = 10
+    top_k: int = 10,
+    date_range: tuple = None,
+    turn_filter: str = "All Turns"
 ):
     if raw_df.empty:
-        return None, None, None
+        return None, None, None, None, None, None, None
 
     agg_all = _prep_bucket(raw_df, granularity)
     if agg_all.empty:
-        return None, None, None
+        return None, None, None, None, None, None, None
+
+    # Context for Titles/Subtitles/Labels
+    ctx = build_chart_context(mode_label, granularity, date_range, raw_df, direction_label, turn_filter, intersections)
 
     agg_for_plot = (
         agg_all.groupby(["local_datetime", "intersection_name"], as_index=False)["volume"]
@@ -535,14 +734,20 @@ def create_volume_charts(
     keep = order.index[:max(1, min(top_k, len(order)))]
 
     plot_df = agg_for_plot[agg_for_plot["intersection_name"].isin(keep)].copy().sort_values("local_datetime")
-    unit = AGG_META[granularity]["unit"]
+    
+    # Optimization: Use mapping for formatting display names to avoid redundant work in loops
+    unique_names = plot_df["intersection_name"].unique()
+    name_map = {n: format_intersection_display(n) for n in unique_names}
+    plot_df["display_name"] = plot_df["intersection_name"].map(name_map)
+    
+    unit = _mode_noun(mode_label)
     label = AGG_META[granularity]["label"]
 
     fig_trend = go.Figure()
     mode = "lines" if granularity == "Hourly" else "lines+markers"
     xfmt = "%Y-%m-%d %I:%M %p" if granularity == "Hourly" else "%Y-%m-%d"
 
-    for name, g in plot_df.groupby("intersection_name"):
+    for name, g in plot_df.groupby("display_name"):
         fig_trend.add_trace(
             go.Scatter(
                 x=g["local_datetime"],
@@ -583,45 +788,58 @@ def create_volume_charts(
         xaxis_config["dtick"] = params["dtick"]
         xaxis_config["tickformat"] = params["tickformat"]
 
-    chart_title = f"{direction_label} {mode_label} Volume Trends - {granularity}".strip()
-    if intersections:
-        chart_title += f"<br><span style='font-size:14px; color:#666;'>{intersections}</span>"
+    main_title = ctx["trend"]["title"]
+    subtitle = ctx["trend"]["subtitle"]
+
+    # Legend Row Estimation: ~3 items per row for better space utilization
+    num_plotted = len(plot_df["intersection_name"].unique())
+    num_legend_items = num_plotted + 2 # + Theoretical Capacity and High Volume Threshold
+    estimated_legend_rows = max(1, (num_legend_items + 2) // 3)
+    legend_height = estimated_legend_rows * 25
+    top_margin = legend_height + 10
 
     fig_trend.update_layout(
-        title=dict(text=chart_title, x=0, xanchor="left"),
         xaxis=xaxis_config,
-        yaxis=dict(title=dict(text="Vehicle Volume Counts", font=dict(size=16, weight="bold")), tickfont=dict(size=14)),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0),
-        margin=dict(l=10, r=10, t=80, b=10),
+        yaxis=dict(title=dict(text=f"{ctx['y_axis']} Counts", font=dict(size=16, weight="bold")), tickfont=dict(size=14)),
+        legend=dict(
+            orientation="h", 
+            yanchor="bottom", 
+            y=1, 
+            x=0
+        ),
+        margin=dict(l=10, r=10, t=top_margin, b=10),
+        height=450 + (legend_height if estimated_legend_rows > 1 else 0),
         template="plotly_white",
     )
 
-    cat_order = order[order.index.isin(keep)].index.tolist()
+    cat_order = [format_intersection_display(n) for n in order[order.index.isin(keep)].index.tolist()]
     fig_box = px.box(
-        plot_df, x="intersection_name", y="volume",
-        category_orders={"intersection_name": cat_order},
+        plot_df, x="display_name", y="volume",
+        category_orders={"display_name": cat_order},
         points=False,
-        title=f"{mode_label} Volume Distribution by Intersection — {granularity}"
     )
+    box_title = ctx["box"]["title"]
+    box_subtitle = ctx["box"]["subtitle"]
     fig_box.update_layout(
         xaxis_title="Intersection",
-        yaxis_title=f"{mode_label} Volume per {label} ({unit})",
-        margin=dict(l=10, r=10, t=40, b=10),
+        yaxis_title=f"{ctx['y_axis']} per {label} ({unit})",
+        margin=dict(l=10, r=10, t=10, b=10),
         template="plotly_white",
     )
 
     mat = (
-        plot_df.groupby("intersection_name", as_index=False)["volume"]
+        plot_df.groupby("display_name", as_index=False)["volume"]
         .mean()
         .rename(columns={"volume": f"{label.capitalize()} Volume"})
     )
     mat["Rank"] = mat[f"{label.capitalize()} Volume"].rank(ascending=False, method="dense").astype(int)
     mat = mat.sort_values("Rank")
     fig_matrix = px.bar(
-        mat, y="intersection_name", x=f"{label.capitalize()} Volume",
+        mat, y="display_name", x=f"{label.capitalize()} Volume",
         orientation="h", text=f"{label.capitalize()} Volume",
-        title=f"{label.capitalize()} {mode_label} Volume by Intersection"
     )
+    matrix_title = ctx["bar"]["title"]
+    matrix_subtitle = ctx["bar"]["subtitle"]
     fig_matrix.update_traces(
         texttemplate="<b>%{text:,.0f}</b>", 
         textposition="outside", 
@@ -629,56 +847,317 @@ def create_volume_charts(
         textfont=dict(size=13, color="black")
     )
     fig_matrix.update_layout(
-        xaxis_title=f"{label.capitalize()} volume ({unit})",
+        xaxis_title=f"{label.capitalize()} {ctx['y_axis'].lower()} ({unit})",
         yaxis_title="",
         yaxis=dict(tickfont=dict(size=14)),
-        margin=dict(l=10, r=10, t=40, b=10),
+        margin=dict(l=10, r=10, t=10, b=10),
         template="plotly_white",
         height=max(500, 150 + 60 * len(keep)),
         bargap=0.15,
         bargroupgap=0.05,
         uniformtext=dict(minsize=12, mode='show')
     )
-    return fig_trend, fig_box, fig_matrix
+    return fig_trend, fig_box, fig_matrix, main_title, subtitle, box_title, box_subtitle, matrix_title, matrix_subtitle
+
+@st.cache_data(show_spinner=False)
+def _get_map_adt_data(df_vehicles, date_range):
+    if df_vehicles.empty or not date_range or len(date_range) < 2:
+        return pd.Series(dtype=float)
+    
+    d1, d2 = date_range
+    # Optimization: filter once
+    mask = (df_vehicles["local_datetime"].dt.date >= d1) & (df_vehicles["local_datetime"].dt.date <= d2)
+    subset = df_vehicles.loc[mask]
+    
+    if subset.empty:
+        return pd.Series(dtype=float)
+    
+    # Avoid extra copy if we can
+    subset = subset.copy()
+    subset["date_only"] = subset["local_datetime"].dt.date
+    daily_totals = subset.groupby(["intersection_name", "date_only"])["volume"].sum()
+    return daily_totals.groupby("intersection_name").mean()
+
+@st.fragment
+def render_vantage_map_fragment(vehicles_df, bikes_df, peds_df, intersection, date_range):
+    perf = PerformanceMonitor(enabled=st.session_state.get("show_perf", False))
+    
+    with perf.track("corridor map construction"):
+        st.markdown("##### Map Display Settings")
+        c1, c2 = st.columns(2)
+        with c1:
+            sat = st.toggle("🛰️ Satellite View", key="sat_toggle_frag", value=st.session_state.get("satellite_t4", False))
+            st.session_state["satellite_t4"] = sat
+            
+            show_labels = st.toggle("🏷️ Show Map Labels", key="vantage_show_map_labels_frag", value=st.session_state.get("vantage_show_map_labels", False))
+            st.session_state["vantage_show_map_labels"] = show_labels
+        
+        with c2:
+            if show_labels:
+                label_font_size = st.slider("Font Size", 8, 20, key="vantage_map_label_font_size_frag", value=st.session_state.get("vantage_map_label_font_size", 12))
+                st.session_state["vantage_map_label_font_size"] = label_font_size
+                
+                bold_labels = st.toggle("Bold Labels", key="vantage_bold_map_labels_frag", value=st.session_state.get("vantage_bold_map_labels", False))
+                st.session_state["vantage_bold_map_labels"] = bold_labels
+            else:
+                label_font_size = 12
+                bold_labels = False
+
+        try:
+            # 1. Generate Tooltip Map for all intersections
+            tooltip_map = {}
+            from Map import INTERSECTION_TO_NODE, get_node_coordinates
+            node_coords = get_node_coordinates()
+
+            # Optimized ADT calculation
+            adt_data = _get_map_adt_data(vehicles_df, date_range)
+
+            # Build tooltips for each known intersection in the map
+            cath_city_data = {
+                "Canyon Plaza Drive": {"no": "24", "phase": "1", "cycle": "140 sec"},
+                "Perez Road": {"no": "25", "phase": "1", "cycle": "140 sec"},
+                "Auto Park Drive": {"no": "26", "phase": "1", "cycle": "140 sec"},
+                "Bankside Drive": {"no": "27", "phase": "1", "cycle": "140 sec"},
+                "Cathedral Canyon Drive": {"no": "28", "phase": "1", "cycle": "140 sec"},
+                "Buddy Rogers Avenue": {"no": "29", "phase": "1", "cycle": "140 sec"},
+                "Van Fleet Street": {"no": "30", "phase": "1", "cycle": "140 sec"},
+                "Date Palm Drive": {"no": "32", "phase": "1", "cycle": "140 sec"},
+                "Sun Gate Way": {"no": "33", "phase": "1", "cycle": "140 sec"},
+                "Officer Jermain Gibson": {"no": "34", "phase": "1", "cycle": "140 sec"},
+            }
+
+            washington_st_data = {
+                "Washington St & Avenue 52": {"no": "102", "agency": "La Quinta", "cycle": "140 sec"},
+                "Washington St & Calle Tampico": {"no": "103", "agency": "La Quinta", "cycle": "140 sec"},
+                "Washington St & Village Shopping Center": {"no": "104", "agency": "La Quinta", "cycle": "140 sec"},
+                "Washington St & Avenue 50": {"no": "105", "agency": "La Quinta", "cycle": "140 sec"},
+                "Washington St & Sagebrush Avenue": {"no": "106", "agency": "La Quinta", "cycle": "140 sec"},
+                "Washington St & Eisenhower Drive": {"no": "107", "agency": "La Quinta", "cycle": "140 sec"},
+                "Washington St & Avenue 48": {"no": "108", "agency": "La Quinta", "cycle": "140 sec"},
+                "Washington St & Avenue 47": {"no": "109", "agency": "La Quinta", "cycle": "140 sec"},
+                "Washington St & Point Happy Simon": {"no": "110", "agency": "La Quinta", "cycle": "150 sec"},
+                "Washington St & Hwy 111": {"no": "111", "agency": "La Quinta", "cycle": "150 sec"},
+                "Washington St & Channel Drive": {"no": "112", "agency": "La Quinta", "cycle": "150 sec"},
+                "Washington St & Miles Avenue": {"no": "113", "agency": "La Quinta", "cycle": "150 sec"},
+                "Washington St & Via Sevilla": {"no": "114", "agency": "La Quinta", "cycle": "150 sec"},
+                "Washington St & Fred Waring Drive": {"no": "115", "agency": "Palm Desert", "cycle": "150 sec"},
+                "Washington St & Palm Royale Drive": {"no": "116", "agency": "Palm Desert", "cycle": "150 sec"},
+                "Washington St & Avenue of the States": {"no": "117", "agency": "Palm Desert", "cycle": "150 sec"},
+                "Washington St & Avenue 42": {"no": "118", "agency": "Palm Desert", "cycle": "150 sec"},
+                "Washington St & Avenue 41": {"no": "119", "agency": "Palm Desert", "cycle": "150 sec"},
+                "Washington St & Country Club Drive": {"no": "120", "agency": "Palm Desert", "cycle": "150 sec"},
+            }
+
+            all_corridor_nodes = []
+            for lbl in washington_st_data.keys():
+                nid = INTERSECTION_TO_NODE.get(lbl)
+                if nid and nid not in all_corridor_nodes:
+                    all_corridor_nodes.append(nid)
+            
+            # Add nodes that have data
+            vantage_intersection_names = set()
+            if not vehicles_df.empty: vantage_intersection_names.update(vehicles_df["intersection_name"].unique())
+            if not bikes_df.empty: vantage_intersection_names.update(bikes_df["intersection_name"].unique())
+            if not peds_df.empty: vantage_intersection_names.update(peds_df["intersection_name"].unique())
+            
+            vantage_nodes = []
+            vantage_map_labels_list = []
+            for lbl in vantage_intersection_names:
+                map_lbl = MAP_LABEL_ALIASES.get(lbl, lbl)
+                node_id = INTERSECTION_TO_NODE.get(map_lbl)
+                if node_id:
+                    vantage_nodes.append(node_id)
+                    vantage_map_labels_list.append(map_lbl)
+                    if node_id not in all_corridor_nodes:
+                        all_corridor_nodes.append(node_id)
+
+            washington_st_data.update({
+                "Washington St & Avenue50": washington_st_data["Washington St & Avenue 50"],
+                "Washington St & Ave48": washington_st_data["Washington St & Avenue 48"],
+                "Washington St & Ave47": washington_st_data["Washington St & Avenue 47"],
+                "Washington St & Eisenhower": washington_st_data["Washington St & Eisenhower Drive"],
+                "Washington St & Village Shop Ctr": washington_st_data["Washington St & Village Shopping Center"],
+                "Washington St & Sagebrush Ave": washington_st_data["Washington St & Sagebrush Avenue"],
+            })
+
+            for disp_label, node_id in INTERSECTION_TO_NODE.items():
+                canonical_name = _canonicalize_intersection(disp_label)
+                adt_val = adt_data.get(canonical_name, adt_data.get(disp_label, 0))
+                extra_info = f"ADT: {adt_val:,.0f}"
+                if disp_label in cath_city_data:
+                    extra_info += "<br>Agency: Cathedral City"
+                    if "cycle" in cath_city_data[disp_label]:
+                        extra_info += f"<br>Cycle Length: {cath_city_data[disp_label]['cycle']}"
+                if disp_label in washington_st_data:
+                    ws_d = washington_st_data[disp_label]
+                    if "agency" in ws_d:
+                        extra_info += f"<br>Agency: {ws_d['agency']}"
+                    if "cycle" in ws_d:
+                        extra_info += f"<br>Cycle Length: {ws_d['cycle']}"
+                tooltip_map[disp_label] = extra_info
+
+            if intersection == "All Intersections":
+                selected_map_label = vantage_map_labels_list if vantage_map_labels_list else ["__NONE__"]
+            else:
+                selected_map_label = _map_label_for(intersection)
+
+            fig_map = build_intersections_overview(
+                selected_label=selected_map_label,
+                corridor="Washington Street",
+                tooltip_map=tooltip_map,
+                satellite=sat,
+                filter_to_nodes=all_corridor_nodes,
+                show_labels=show_labels,
+                label_font_size=label_font_size,
+                bold_labels=bold_labels
+            )
+        except Exception:
+            fig_map = None
+
+        if fig_map:
+            try:
+                fig_map.update_layout(title="", height=MAP_HEIGHT, margin=dict(l=0, r=0, t=10, b=0))
+            except Exception:
+                pass
+            
+            if intersection == "All Intersections":
+                key_suffix = "all"
+            else:
+                key_suffix = str(intersection).replace(' ', '_').replace('+', 'plus')
+            
+            map_key = f"t4_map_{key_suffix}_{int(show_labels)}_{label_font_size}_{int(bold_labels)}_{int(sat)}"
+            st.plotly_chart(fig_map, use_container_width=True, config=PLOTLY_CONFIG, key=map_key)
+            if intersection != "All Intersections":
+                st.caption(f"Selected: **{intersection}**")
+        else:
+            st.caption("Map: Washington Street Corridor")
+    
+    perf.report()
 
 # =========================
 # Main Renderer
 # =========================
 def render_vantage_tab():
-    bikes_df = load_vantage_bikes()
-    vehicles_df = load_vantage_vehicles()
-    peds_df = load_vantage_pedestrians()
+    perf = PerformanceMonitor(enabled=st.session_state.get("show_perf", False))
+
+    st.markdown("""
+    <style>
+    .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 12px;
+        width: 100%;
+        margin: 10px 0 25px 0;
+    }
+    @media (max-width: 1200px) {
+        .kpi-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+    @media (max-width: 768px) {
+        .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 480px) {
+        .kpi-grid { grid-template-columns: 1fr; }
+    }
+    .kpi-card {
+        min-width: 0;
+        box-sizing: border-box;
+        background: white;
+        padding: 1.25rem;
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        border: 1px solid #eaedf2;
+        display: flex;
+        flex-direction: column;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        height: 100%;
+    }
+    .kpi-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+    }
+    .kpi-card-title {
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.75rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 2.5em;
+        line-height: 1.2;
+    }
+    .kpi-card-value {
+        font-size: 1.8rem;
+        font-weight: 800;
+        color: #1e293b;
+        margin-bottom: 0.25rem;
+        line-height: 1.1;
+    }
+    .kpi-card-delta {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #27ae60;
+        margin-bottom: 1.25rem;
+    }
+    .kpi-card-badge {
+        margin-top: auto;
+    }
+    .kpi-help-icon {
+        cursor: help;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: #f1f5f9;
+        color: #94a3b8;
+        font-size: 11px;
+        font-weight: bold;
+    }
+    /* Chart Card Styling via bordered containers */
+    [data-testid="stVerticalBlockBordered"] {
+        background: var(--secondary-background-color, white) !important;
+        border: 1px solid rgba(128, 128, 128, 0.2) !important;
+        border-radius: 14px !important;
+        padding: 24px !important;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.03) !important;
+        margin-bottom: 24px !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+    with perf.track("raw VantageLive data load"):
+        bikes_df = load_vantage_bikes()
+        vehicles_df = load_vantage_vehicles()
+        peds_df = load_vantage_pedestrians()
 
     # -------- Sidebar controls --------
     with st.sidebar:
-        with st.expander("⚙️ Pg.4 ITERIS VANTAGE LIVE SETTINGS", expanded=False):
+        with st.expander("Pg.4 Iteris VantageLive Settings", expanded=False):
             st.caption("Select Mode, Intersection(s) and Date Range")
             st.caption("Data: Bike, Vehicle, and Pedestrian Volume from Iteris VantageLive")
 
-            st.markdown("## 🚲 Select Mode")
+            st.markdown("## Select Mode")
             mode = st.selectbox(
                 "Analysis Mode",
                 ["Vehicles", "Bikes", "Pedestrians", "Combined (All Modes)"],
                 key="vantage_mode",
             )
 
-            st.markdown("## 🚦 Select Intersection")
+            st.markdown("## Select Intersection")
             intersection = st.selectbox(
                 "Intersection",
                 ["SELECT", "All Intersections"] + CANONICAL_INTERSECTIONS,
                 key="vantage_intersection",
+                format_func=lambda x: format_intersection_display(x) if x not in ["SELECT", "All Intersections"] else x
             )
 
             # Loading animation when a real selection is made (leaving 'Select')
             prev_vantage_intersection = st.session_state.get("vantage_intersection_prev")
             if prev_vantage_intersection != intersection:
                 st.session_state["vantage_intersection_prev"] = intersection
-                if intersection != "SELECT": 
-                    pb = st.progress(0, text="Loading Data availability info...")
-                    for i in range(0, 101, 10):
-                        time.sleep(0.02)
-                        pb.progress(i, text="Loading Data availability info...")
-                    pb.empty()
 
             # Availability preview for selected intersection (before date picker)
             try:
@@ -704,7 +1183,7 @@ def render_vantage_tab():
                     intersection_col="intersection_name",
                     intersection=intersection_for_avail,
                     max_gaps=3,
-                    current_date=datetime.now(),
+                    current_date=pd.Timestamp.now().floor("H"),
                 )
                 if avail.get("start") and avail.get("end"):
                     start_str = avail["start"].strftime("%b %d, %Y %I:%M %p")
@@ -747,7 +1226,7 @@ def render_vantage_tab():
                     min_date = datetime.today().date() - timedelta(days=7)
                     max_date = datetime.today().date()
 
-                st.markdown("## 📅 Date And Time")
+                st.markdown("## Date And Time")
                 date_range = date_range_preset_controls(min_date, max_date, key_prefix="vantage")
 
                 st.markdown("## Granularity")
@@ -757,6 +1236,20 @@ def render_vantage_tab():
                     index=1,  # Daily by default
                     key="granularity_vantage",
                 )
+
+                # Hourly support check
+                hourly_supported = True
+                check_df = pd.DataFrame()
+                if mode == "Vehicles": check_df = vehicles_df
+                elif mode == "Bikes": check_df = bikes_df
+                elif mode == "Pedestrians": check_df = peds_df
+                else: check_df = vehicles_df # Representative for Combined
+                
+                res = _detect_data_resolution(check_df)
+                if not res["hourly"]:
+                    hourly_supported = False
+                    if granularity == "Hourly":
+                        st.warning("⚠️ Hourly data is not available for this dataset.\nThe finest available resolution is Daily.")
 
                 # (cleaner sidebar) — no extra headings for filters
                 direction_filter = st.selectbox(
@@ -773,7 +1266,7 @@ def render_vantage_tab():
                         key="turn_filter_vantage",
                     )
 
-                st.markdown("## 📊 Chart Type")
+                st.markdown("## Chart Type")
                 chart_type = st.radio(
                     "Visualization",
                     ["Trend (Line)", "Share (Pie)", "TMC (Turning Movement Counts)"],
@@ -793,7 +1286,9 @@ def render_vantage_tab():
                 }
                 st.session_state["vantage_current"] = vantage_current
 
-                if st.button("🔍 **Generate**", key="search_vantage", type="primary", use_container_width=True):
+                # Block generate if Hourly is unsupported
+                gen_disabled = (granularity == "Hourly" and not hourly_supported)
+                if st.button("**Generate**", key="search_vantage", type="primary", use_container_width=True, disabled=gen_disabled):
                     st.session_state["vantage_params"] = vantage_current
                     st.session_state["vantage_ready"] = True
                     set_active_search_tab("t4")
@@ -838,10 +1333,10 @@ def render_vantage_tab():
         params != st.session_state.get("vantage_current", {})
     )
     if t4_pending:
-        st.warning("⚙️ Press **Generate** to refresh.")
+        st.warning("Press **Generate** to refresh.")
 
     if not date_range or len(date_range) != 2:
-        st.warning("⚠️ Please select both start and end dates to proceed.")
+        st.warning("Please select both start and end dates to proceed.")
         return
 
     try:
@@ -860,212 +1355,108 @@ def render_vantage_tab():
             return out
 
         with scoped_cad_loader("Fetching Data...", tab_id="t4") as step:
-            step("Applying filters", 20)
-            working_bikes = apply_filters(bikes_df.copy()) if not bikes_df.empty else pd.DataFrame()
-            working_vehicles = apply_filters(vehicles_df.copy()) if not vehicles_df.empty else pd.DataFrame()
-            working_peds = apply_filters(peds_df.copy()) if not peds_df.empty else pd.DataFrame()
+            with perf.track("date/mode/direction/turn filtering"):
+                step("Applying filters", 20)
+                working_bikes = apply_filters(bikes_df.copy()) if not bikes_df.empty else pd.DataFrame()
+                working_vehicles = apply_filters(vehicles_df.copy()) if not vehicles_df.empty else pd.DataFrame()
+                working_peds = apply_filters(peds_df.copy()) if not peds_df.empty else pd.DataFrame()
 
-            if turn_filter and turn_filter != "All Turns" and not working_vehicles.empty and "turn_type" in working_vehicles.columns:
-                working_vehicles = working_vehicles[working_vehicles["turn_type"] == turn_filter]
+                if turn_filter and turn_filter != "All Turns" and not working_vehicles.empty and "turn_type" in working_vehicles.columns:
+                    working_vehicles = working_vehicles[working_vehicles["turn_type"] == turn_filter]
 
-            # Mode pick for non-TMC
-            if mode == "Bikes":
-                analysis_df = working_bikes
-                mode_label = "Bikes"
-            elif mode == "Vehicles":
-                analysis_df = working_vehicles
-                mode_label = "Vehicles"
-            elif mode == "Pedestrians":
-                analysis_df = working_peds
-                mode_label = "Pedestrians"
-            else:  # Combined (All Modes)
-                dfs = []
-                if not working_bikes.empty:
-                    dfs.append(working_bikes.assign(mode="Bikes"))
-                if not working_vehicles.empty:
-                    dfs.append(working_vehicles.assign(mode="Vehicles"))
-                if not working_peds.empty:
-                    dfs.append(working_peds.assign(mode="Pedestrians"))
-                analysis_df = pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame()
-                mode_label = "All Modes"
+                # Mode pick for non-TMC
+                if mode == "Bikes":
+                    analysis_df = working_bikes
+                    mode_label = "Bikes"
+                elif mode == "Vehicles":
+                    analysis_df = working_vehicles
+                    mode_label = "Vehicles"
+                elif mode == "Pedestrians":
+                    analysis_df = working_peds
+                    mode_label = "Pedestrians"
+                else:  # Combined (All Modes)
+                    dfs = []
+                    if not working_bikes.empty:
+                        dfs.append(working_bikes.assign(mode="Bikes"))
+                    if not working_vehicles.empty:
+                        dfs.append(working_vehicles.assign(mode="Vehicles"))
+                    if not working_peds.empty:
+                        dfs.append(working_peds.assign(mode="Pedestrians"))
+                    analysis_df = pd.concat(dfs, ignore_index=True) if dfs else pd.DataFrame()
+                    mode_label = "All Modes"
 
             step("Preparing layout", 55)
 
         # ---------- Right rail map ----------
+        # Derive valid VantageLive intersections for the header and map
+        vantage_intersection_names = set()
+        if not vehicles_df.empty: vantage_intersection_names.update(vehicles_df["intersection_name"].unique())
+        if not bikes_df.empty: vantage_intersection_names.update(bikes_df["intersection_name"].unique())
+        if not peds_df.empty: vantage_intersection_names.update(peds_df["intersection_name"].unique())
+        
+        vantage_map_labels = []
+        for lbl in vantage_intersection_names:
+            map_lbl = MAP_LABEL_ALIASES.get(lbl, lbl)
+            if map_lbl in INTERSECTION_TO_NODE:
+                vantage_map_labels.append(map_lbl)
+
         content_col, right_col = st.columns([7, 3.5], gap="large")
         with right_col:
             st.markdown('<div id="vantage-map-anchor"></div>', unsafe_allow_html=True)
             st.markdown("##### Corridor Map", help="Stays visible while you scroll the analysis on the left.")
 
-            satellite_t4 = st.toggle("🛰️ Satellite View", key="satellite_t4", value=False)
-            try:
-                # 1. Generate Tooltip Map for all intersections
-                tooltip_map = {}
-                from Map import INTERSECTION_TO_NODE, get_node_coordinates
-                node_coords = get_node_coordinates()
-
-                # Calculate ADTs for ALL intersections in the full vehicles_df for the date range
-                # to ensure "blue dots" show data regardless of corridor/direction filters.
-                full_range_veh = vehicles_df[
-                    (vehicles_df["local_datetime"].dt.date >= date_range[0]) &
-                    (vehicles_df["local_datetime"].dt.date <= date_range[1])
-                ].copy()
-
-                if not full_range_veh.empty:
-                    # Calculate ADT as the average of daily totals for each intersection
-                    # This matches the KPI logic (Average Daily Traffic)
-                    full_range_veh["date_only"] = full_range_veh["local_datetime"].dt.date
-                    daily_totals = full_range_veh.groupby(["intersection_name", "date_only"])["volume"].sum()
-                    adt_data = daily_totals.groupby("intersection_name").mean()
-                else:
-                    adt_data = pd.Series()
-
-                # Build tooltips for each known intersection in the map
-                # Mapping for Cathedral City intersections
-                cath_city_data = {
-                    "Canyon Plaza Drive": {"no": "24", "phase": "1", "cycle": "140 sec"},
-                    "Perez Road": {"no": "25", "phase": "1", "cycle": "140 sec"},
-                    "Auto Park Drive": {"no": "26", "phase": "1", "cycle": "140 sec"},
-                    "Bankside Drive": {"no": "27", "phase": "1", "cycle": "140 sec"},
-                    "Cathedral Canyon Drive": {"no": "28", "phase": "1", "cycle": "140 sec"},
-                    "Buddy Rogers Avenue": {"no": "29", "phase": "1", "cycle": "140 sec"},
-                    "Van Fleet Street": {"no": "30", "phase": "1", "cycle": "140 sec"},
-                    "Date Palm Drive": {"no": "32", "phase": "1", "cycle": "140 sec"},
-                    "Sun Gate Way": {"no": "33", "phase": "1", "cycle": "140 sec"},
-                    "Officer Jermain Gibson": {"no": "34", "phase": "1", "cycle": "140 sec"},
-                }
-
-                # Mapping for Washington St corridor
-                washington_st_data = {
-                    "Washington St & Avenue 52": {"no": "102", "agency": "La Quinta", "cycle": "140 sec"},
-                    "Washington St & Calle Tampico": {"no": "103", "agency": "La Quinta", "cycle": "140 sec"},
-                    "Washington St & Village Shopping Center": {"no": "104", "agency": "La Quinta", "cycle": "140 sec"},
-                    "Washington St & Avenue 50": {"no": "105", "agency": "La Quinta", "cycle": "140 sec"},
-                    "Washington St & Sagebrush Avenue": {"no": "106", "agency": "La Quinta", "cycle": "140 sec"},
-                    "Washington St & Eisenhower Drive": {"no": "107", "agency": "La Quinta", "cycle": "140 sec"},
-                    "Washington St & Avenue 48": {"no": "108", "agency": "La Quinta", "cycle": "140 sec"},
-                    "Washington St & Avenue 47": {"no": "109", "agency": "La Quinta", "cycle": "140 sec"},
-                    "Washington St & Point Happy Simon": {"no": "110", "agency": "La Quinta", "cycle": "150 sec"},
-                    "Washington St & Hwy 111": {"no": "111", "agency": "La Quinta", "cycle": "150 sec"},
-                    "Washington St & Channel Drive": {"no": "112", "agency": "La Quinta", "cycle": "150 sec"},
-                    "Washington St & Miles Avenue": {"no": "113", "agency": "La Quinta", "cycle": "150 sec"},
-                    "Washington St & Via Sevilla": {"no": "114", "agency": "La Quinta", "cycle": "150 sec"},
-                    "Washington St & Fred Waring Drive": {"no": "115", "agency": "Palm Desert", "cycle": "150 sec"},
-                    "Washington St & Palm Royale Drive": {"no": "116", "agency": "Palm Desert", "cycle": "150 sec"},
-                    "Washington St & Avenue of the States": {"no": "117", "agency": "Palm Desert", "cycle": "150 sec"},
-                    "Washington St & Avenue 42": {"no": "118", "agency": "Palm Desert", "cycle": "150 sec"},
-                    "Washington St & Avenue 41": {"no": "119", "agency": "Palm Desert", "cycle": "150 sec"},
-                    "Washington St & Country Club Drive": {"no": "120", "agency": "Palm Desert", "cycle": "150 sec"},
-                }
-
-                # Add aliases to ensure mapping works regardless of normalization
-                washington_st_data.update({
-                    "Washington St & Avenue50": washington_st_data["Washington St & Avenue 50"],
-                    "Washington St & Ave48": washington_st_data["Washington St & Avenue 48"],
-                    "Washington St & Ave47": washington_st_data["Washington St & Avenue 47"],
-                    "Washington St & Eisenhower": washington_st_data["Washington St & Eisenhower Drive"],
-                    "Washington St & Village Shop Ctr": washington_st_data["Washington St & Village Shopping Center"],
-                    "Washington St & Sagebrush Ave": washington_st_data["Washington St & Sagebrush Avenue"],
-                })
-
-                for disp_label, node_id in INTERSECTION_TO_NODE.items():
-                    # Find the canonical name for this display label to match with adt_data
-                    canonical_name = _canonicalize_intersection(disp_label)
-                    
-                    coords = node_coords.get(node_id)
-                    gps_str = f"{coords[0]:.5f}, {coords[1]:.5f}" if coords else "Unknown"
-                    
-                    # Try fetching ADT using canonical name, or display label as fallback
-                    adt_val = adt_data.get(canonical_name, adt_data.get(disp_label, 0))
-
-                    # Default values
-                    protocol = "Iteris Vantage API Detector"
-                    agency = "CVAG"
-                    cvag_phase = "N/A"
-                    intersection_no = "N/A"
-                    cycle_length = "N/A"
-
-                    # Apply Cathedral City updates
-                    if disp_label in cath_city_data:
-                        data = cath_city_data[disp_label]
-                        agency = "Cathedral City"
-                        cvag_phase = data["phase"]
-                        intersection_no = data["no"]
-                        cycle_length = data["cycle"]
-
-                    # Apply Washington St updates
-                    if disp_label in washington_st_data:
-                        data = washington_st_data[disp_label]
-                        agency = data.get("agency", agency)
-                        intersection_no = data["no"]
-                        cycle_length = data["cycle"]
-                        if disp_label == "Washington St & Avenue 52":
-                            cvag_phase = "1"
-
-                    tt_html = f"""
-                    <b>{disp_label}</b><br>
-                    GPS Location: {gps_str}<br>
-                    Protocol: {protocol}<br>
-                    Agency: {agency}<br>
-                    CVAG Phase: {cvag_phase}<br>
-                    Intersection No.: {intersection_no}<br>
-                    Cycle Length: {cycle_length}<br>
-                    ADT: {adt_val:,.0f}
-                    """
-                    tooltip_map[disp_label] = tt_html
-
-                selected_map_label = None if intersection == "All Intersections" else _map_label_for(intersection)
-                fig_map = build_intersections_overview(
-                    selected_label=selected_map_label,
-                    corridor="Washington Street",
-                    tooltip_map=tooltip_map,
-                    satellite=satellite_t4
-                )
-            except Exception:
-                fig_map = None
-            if fig_map:
-                try:
-                    fig_map.update_layout(height=MAP_HEIGHT, margin=dict(l=0, r=0, t=32, b=0))
-                except Exception:
-                    pass
-                st.markdown('<div class="cvag-map-card">', unsafe_allow_html=True)
-                map_key = f"t4_map_{(selected_map_label or 'all').replace(' ', '_').replace('+','plus')}"
-                st.plotly_chart(fig_map, use_container_width=True, config=PLOTLY_CONFIG, key=map_key)
-                if intersection != "All Intersections":
-                    st.caption(f"Selected: **{intersection}**")
-                st.markdown('</div>', unsafe_allow_html=True)
-            else:
-                st.markdown('<div class="cvag-map-card">', unsafe_allow_html=True)
-                st.caption("Map: Washington Street Corridor")
-                st.markdown('</div>', unsafe_allow_html=True)
+            # Call the optimized fragment for the map
+            render_vantage_map_fragment(
+                vehicles_df=vehicles_df, 
+                bikes_df=bikes_df, 
+                peds_df=peds_df, 
+                intersection=intersection, 
+                date_range=date_range
+            )
 
         # ---------- Main content ----------
         with content_col:
             span = (date_range[1] - date_range[0]).days + 1
             total_obs = len(analysis_df)
-            header_title = (
-                f"Iteris Vantagelive {mode_label} Volume Analysis: {intersection}"
-                if intersection != "All Intersections"
-                else f"Iteris Vantagelive {mode_label} Volume Analysis: Washington Street Corridor"
+            
+            logo_url = "https://raw.githubusercontent.com/chrquija/ADVANTEC-ai-traffic-dashboard/main/Logos/Iteris%20Vantage%20Live%20Logo%20TRANSPARENT.png"
+            num_int = len(vantage_map_labels)
+            intersection_display = (
+                format_intersection_display(intersection) if intersection != "All Intersections" 
+                else f"Washington Street Corridor — {num_int} {'Intersection' if num_int == 1 else 'Intersections'}"
             )
-            emoji = _mode_emoji("Vehicles" if mode_label == "All Modes" else mode_label)
+
             st.markdown(
                 f"""
-                <div style="
-                    background: linear-gradient(135deg, #2b77e5 0%, #19c3e6 100%);
-                    border-radius:16px; padding:18px 20px; color:#fff; margin:8px 0 14px;
-                    box-shadow:0 10px 26px rgba(25,115,210,.25); text-align:left;">
-                  <div style="display:flex; align-items:center; gap:10px;">
-                    <div style="width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,.18);
-                                display:flex;align-items:center;justify-content:center;
-                                box-shadow:inset 0 0 0 1px rgba(255,255,255,.15);">{emoji}</div>
-                    <div style="font-size:1.9rem;font-weight:800; letter-spacing:.2px;">
-                      {header_title}
+                <div class="cvag-header-banner">
+                  <div class="cvag-header-top">
+                    <div>
+                      <div class="cvag-header-title">Advantec Consulting Engineers <span style="font-weight:400; opacity:0.85; border-left:1px solid rgba(255,255,255,0.35); padding-left:12px; margin-left:10px; font-size:1.45rem;">Iteris VantageLive Volume Analysis</span></div>
+                      <div class="cvag-header-subtitle">Multi-Modal Intersection Volume & Traffic Signal Performance</div>
+                    </div>
+                    <div class="cvag-tooltip-trigger" title="Iteris VantageLive high-resolution multi-modal vehicular, bicycle, and pedestrian volume monitoring for CVAG corridors.">?
+                      <span class="cvag-tooltip-box">Iteris VantageLive high-resolution multi-modal vehicular, bicycle, and pedestrian volume monitoring for CVAG corridors.</span>
                     </div>
                   </div>
-                  <div style="margin-top:10px;display:flex;flex-direction:column;gap:6px;">
-                    <div>📅 {date_range[0].strftime('%b %d, %Y')} to {date_range[1].strftime('%b %d, %Y')} ({span} days) • {granularity} Aggregation</div>
-                    <div>✅ {total_obs:,} observations • Direction: {direction_filter}</div>
+                  <div class="cvag-header-meta-grid">
+                    <div class="cvag-meta-card cvag-cycle-card">
+                      <div class="cvag-meta-card-label">Date Range</div>
+                      <div class="cvag-meta-card-val" title="{date_range[0].strftime('%b %d, %Y')} — {date_range[1].strftime('%b %d, %Y')} ({span} days)">{date_range[0].strftime('%b %d, %Y')} — {date_range[1].strftime('%b %d, %Y')}</div>
+                    </div>
+                    <div class="cvag-meta-card">
+                      <div class="cvag-meta-card-label">Intersection(s)</div>
+                      <div class="cvag-meta-card-val" title="{intersection_display}">{intersection_display}</div>
+                    </div>
+                    <div class="cvag-meta-card">
+                      <div class="cvag-meta-card-label">Mode</div>
+                      <div class="cvag-meta-card-val" title="{mode_label} Volume">{mode_label} Volume</div>
+                    </div>
+                  </div>
+                  <div class="cvag-header-chips-row">
+                    <span class="cvag-sub-chip"><strong>Direction:</strong> {direction_filter}</span>
+                    <span class="cvag-sub-chip"><strong>Granularity:</strong> {granularity} Aggregation</span>
+                    <span class="cvag-sub-chip"><strong>Region:</strong> Coachella Valley</span>
+                    <span class="cvag-sub-chip"><strong>Observations:</strong> {total_obs:,}</span>
                   </div>
                 </div>
                 """,
@@ -1075,10 +1466,10 @@ def render_vantage_tab():
             # ============= TMC VIEW =============
             if chart_type == "TMC (Turning Movement Counts)":
                 if intersection == "All Intersections":
-                    st.info("ℹ️ TMC requires a single intersection. Please pick one in the sidebar.")
+                    st.info("TMC requires a single intersection. Please pick one in the sidebar.")
                     return
                 if mode == "Combined (All Modes)":
-                    st.info("ℹ️ TMC is designed for a single mode. Please select **Vehicles**, **Bikes**, or **Pedestrians**.")
+                    st.info("TMC is designed for a single mode. Please select **Vehicles**, **Bikes**, or **Pedestrians**.")
                     return
 
                 base_df = _filter_for_tmc(
@@ -1090,7 +1481,7 @@ def render_vantage_tab():
                     return
 
                 tmc_table = _summarize_tmc(base_df)
-                fig_tmc = _tmc_figure(tmc_table, intersection, date_range, "Vehicles" if mode=="Vehicles" else ("Bikes" if mode=="Bikes" else "Pedestrians"))
+                fig_tmc = _tmc_figure(tmc_table, intersection, date_range, mode_label)
                 st.plotly_chart(
                     fig_tmc,
                     use_container_width=True,
@@ -1106,7 +1497,7 @@ def render_vantage_tab():
                     show["Approach volume (%)"] = (show["Approach volume (%)"] * 100).round(1)
 
                     # append units for volume + totals
-                    noun = _mode_noun("Vehicles" if mode=="Vehicles" else ("Bikes" if mode=="Bikes" else "Pedestrians"))
+                    noun = _mode_noun(mode_label)
                     show["Volume"] = (
                         show["Volume"].astype(float).round(0).astype(int).map(lambda v: f"{v:,.0f} {noun.lower()}")
                     )
@@ -1122,198 +1513,222 @@ def render_vantage_tab():
                         }
                     )
                     st.download_button(
-                        "⬇️ Download TMC Summary (CSV)",
-                        data=show.to_csv(index=False).encode("utf-8"),
+                        "Download TMC Summary (CSV)",
+                        data=convert_df_to_csv(show),
                         file_name=f"tmc_{mode.lower()}_{intersection.replace(' ','_')}_{date_range[0]}_{date_range[1]}.csv",
                         mime="text/csv",
                     )
                 return  # end TMC view
 
-            # ---------- KPIs ----------
-            raw = analysis_df.copy()
-            raw["volume"] = pd.to_numeric(raw["volume"], errors="coerce")
-            raw["local_datetime"] = pd.to_datetime(raw["local_datetime"])
+            # ---------- Analysis Context (Consolidated) ----------
+            with perf.track("analysis context generation"):
+                bucketed_df = _prep_bucket(analysis_df, granularity)
+                chart_ctx = build_chart_context(mode_label, granularity, date_range, analysis_df, direction_filter, turn_filter, intersection)
+                risk_ctx = chart_ctx # reuse for risk section
 
-            st.subheader(f" {mode_label} Demand Performance Indicators")
-            if not raw.empty and raw["volume"].notna().any():
-                # Fix: Use nunique of intersection+direction+turn+hour to correctly scale capacity
-                _b_temp = raw.copy()
-                _b_temp["link_hour"] = (
-                    _b_temp["intersection_name"].astype(str) +
-                    _b_temp["direction"].astype(str) +
-                    _b_temp["turn_type"].astype(str) +
-                    _b_temp["local_datetime"].dt.floor("H").astype(str)
+            # ---------- KPIs ----------
+            # Note: analysis_df already has correct numeric/datetime types from load functions
+            raw = analysis_df 
+
+            st.subheader(f"{mode_label} Demand Performance Indicators")
+            with perf.track("KPI calculation"):
+                res = _calculate_kpis(analysis_df, granularity, mode_label, date_range, intersection, direction_filter, turn_filter)
+            if res:
+                peak_val = res["peak_val"]
+                peak_date = res["peak_date"]
+                peak_util_pct = res["peak_util_pct"]
+                avg_bucket_val = res["avg_bucket_val"]
+                avg_util_pct = res["avg_util_pct"]
+                cv_bucket = res["cv_bucket"]
+                high_periods = res["high_periods"]
+                risk_pct = res["risk_pct"]
+                total_volume = res["total_volume"]
+                cap_total = res["cap_total"]
+                high_dates_df = res["high_periods_df"]
+
+                unit = _mode_noun(mode_label)
+                label = AGG_META[granularity]["label"]
+                avg_suffix = _mode_noun(mode_label)
+
+                cap_key = "Vehicles" if mode_label == "All Modes" else mode_label
+                _, HIGH_VPH = _mode_caps(cap_key)
+
+                if granularity == "Hourly":
+                    label = "hour"
+                    avg_label = f"Hourly {mode_label}"
+                    if mode_label == "All Modes":
+                        avg_title = "AVERAGE HOURLY MOVEMENTS"
+                        peak_title = "Peak Hourly Movements"
+                    elif mode_label == "Vehicles":
+                        avg_title = "Average Hourly Traffic"
+                        peak_title = "Peak Hourly Traffic"
+                    else:
+                        avg_title = avg_label
+                        peak_title = f"Peak Hourly {mode_label}"
+                    display_threshold = HIGH_VPH
+                    threshold_help = f"High-Volume Threshold: > {display_threshold:,} {avg_suffix}."
+                elif granularity == "Daily":
+                    label = "day"
+                    avg_label = f"Daily {mode_label}"
+                    if mode_label == "All Modes":
+                        avg_title = "AVERAGE DAILY MOVEMENTS"
+                        peak_title = "Maximum Daily Volume (Multi-Modal)"
+                    elif mode_label == "Vehicles":
+                        avg_title = "Average Daily Traffic (ADT)"
+                        peak_title = "Peak Daily Traffic"
+                    elif mode_label == "Bikes":
+                        avg_title = "Average Daily Bicycle Volume"
+                        peak_title = "Peak Daily Bicycles"
+                    elif mode_label == "Pedestrians":
+                        avg_title = "Average Daily Pedestrian Volume"
+                        peak_title = "Peak Daily Pedestrians"
+                    else:
+                        avg_title = avg_label
+                        peak_title = f"Peak Daily {mode_label}"
+                    display_threshold = HIGH_VPH * 24
+                    threshold_help = f"High-Volume Threshold (daily): > {display_threshold:,} {avg_suffix} (scaled from {HIGH_VPH:,} {avg_suffix} × 24h)."
+                elif granularity == "Weekly":
+                    label = "week"
+                    avg_label = f"Weekly {mode_label}"
+                    if mode_label == "All Modes":
+                        avg_title = "AVERAGE WEEKLY MOVEMENTS"
+                        peak_title = "Peak Weekly Movements"
+                    else:
+                        avg_title = avg_label
+                        peak_title = f"Peak Weekly {mode_label}"
+                    display_threshold = HIGH_VPH * 24 * 7
+                    threshold_help = f"High-Volume Threshold (weekly): > {display_threshold:,} {avg_suffix} (scaled from {HIGH_VPH:,} {avg_suffix} × 168h)."
+                else:
+                    label = "month"
+                    avg_label = f"Monthly {mode_label}"
+                    if mode_label == "All Modes":
+                        avg_title = "AVERAGE MONTHLY MOVEMENTS"
+                        peak_title = "Peak Monthly Movements"
+                    else:
+                        avg_title = avg_label
+                        peak_title = f"Peak Monthly {mode_label}"
+                    display_threshold = HIGH_VPH * 24 * 30
+                    threshold_help = f"High-Volume Threshold (monthly): > ~{display_threshold:,} {avg_suffix} (scaled from {HIGH_VPH:,} {avg_suffix} × hours in month)."
+
+                # --- KPI Card 1: Peak ---
+                badge_peak = (
+                    "badge-critical" if peak_util_pct > 90 else
+                    "badge-poor" if peak_util_pct > 75 else
+                    "badge-fair" if peak_util_pct > 60 else
+                    "badge-good"
+                )
+                if granularity == "Hourly":
+                    peak_period_str = f"{peak_date.strftime('%A')}, {peak_date.strftime('%m/%d/%Y %H:00')}"
+                elif granularity == "Daily":
+                    peak_period_str = f"{peak_date.strftime('%A')}, {peak_date.strftime('%m/%d/%Y')}"
+                elif granularity == "Weekly":
+                    p = pd.Period(peak_date, freq='W')
+                    ws, we = p.start_time, p.end_time
+                    peak_period_str = f"{ws.strftime('%m/%d/%Y')} – {we.strftime('%m/%d/%Y')}"
+                else:  # Monthly
+                    peak_period_str = peak_date.strftime('%B %Y')
+
+                card1 = render_kpi_card(
+                    peak_title,
+                    f"{peak_val:,.0f} {avg_suffix}",
+                    peak_period_str,
+                    f"{peak_util_pct:.0f}% of Capacity",
+                    badge_peak,
+                    f"Highest {mode_label} total within the selected period. Shows the exact peak period below."
+                )
+
+                # --- KPI Card 2: Average ---
+                card2 = render_kpi_card(
+                    avg_title,
+                    f"{avg_bucket_val:,.0f} {avg_suffix}",
+                    f"Average utilization: {avg_util_pct:.0f}%",
+                    "",
+                    "",
+                    f"Mean of {mode_label} totals across the selected period (after all filters). Delta shows average utilization vs capacity."
+                )
+
+                # --- KPI Card 3: Total ---
+                ratio = (total_volume / cap_total) if cap_total > 0 else 0.0
+                state_badge = "badge-good" if ratio < 0.40 else ("badge-fair" if ratio < 0.70 else "badge-poor")
+                
+                if mode_label == "All Modes":
+                    total_title = "TOTAL MOVEMENTS IN PERIOD"
+                    badge_text = f"Vehicle Util: {ratio*100:.0f}%"
+                else:
+                    total_title = f"TOTAL {mode_label.upper()} IN PERIOD"
+                    badge_text = f"Period utilization: {ratio*100:.0f}%"
+                
+                period_str = f"{date_range[0].strftime('%b %d')} – {date_range[1].strftime('%d, %Y')} • {span} days"
+                if date_range[0].month != date_range[1].month or date_range[0].year != date_range[1].year:
+                    period_str = f"{date_range[0].strftime('%b %d')} – {date_range[1].strftime('%b %d, %Y')} • {span} days"
+
+                card3 = render_kpi_card(
+                    total_title,
+                    f"{total_volume:,.0f} {avg_suffix}",
+                    f'<div style="font-size:0.8rem; opacity:0.8; margin-top:2px;">{period_str}</div>',
+                    badge_text,
+                    state_badge,
+                    "Sum of all volumes across the selected time window and filters. The pill compares this against the period’s total theoretical capacity."
+                )
+
+                # --- KPI Card 4: Demand Consistency ---
+                label_cons = "Consistent" if cv_bucket < 30 else ("Variable" if cv_bucket < 50 else "Highly Variable")
+                badge_cons = "badge-good" if cv_bucket < 30 else ("badge-fair" if cv_bucket < 50 else "badge-poor")
+                consistency_val = max(0, 100 - cv_bucket)
+                card4 = render_kpi_card(
+                    "DAILY DEMAND CONSISTENCY",
+                    f"{consistency_val:.0f}%",
+                    f"CV: {cv_bucket:.1f}%",
+                    label_cons,
+                    badge_cons,
+                    "Measures day-to-day demand stability. Calculated as 100% minus the coefficient of variation (CV), with a minimum value of 0%. Higher values indicate more predictable daily demand."
+                )
+
+                # --- KPI Card 5: High Volume ---
+                level_badge = (
+                    "badge-critical" if risk_pct > 25 else
+                    "badge-poor" if risk_pct > 15 else
+                    "badge-fair" if risk_pct > 5 else
+                    "badge-good"
                 )
                 
-                # Apply granularity bucketing to _b_temp
-                if granularity == "Hourly":
-                    _b_temp["bucket"] = _b_temp["local_datetime"].dt.floor("H")
-                elif granularity == "Daily":
-                    _b_temp["bucket"] = _b_temp["local_datetime"].dt.floor("D")
-                elif granularity == "Weekly":
-                    _b_temp["bucket"] = _b_temp["local_datetime"].dt.to_period("W").dt.start_time
-                else: # Monthly
-                    _b_temp["bucket"] = _b_temp["local_datetime"].dt.to_period("M").dt.start_time
+                label_plural = label + "s"
+                card5_title = f"HIGH-VOLUME {label_plural.upper()}"
+                
+                details_html = ""
+                if not high_dates_df.empty:
+                    details_lines = []
+                    for _, row in high_dates_df.head(30).iterrows():
+                        dt = pd.to_datetime(row["local_datetime"])
+                        if granularity == "Hourly":
+                            d_str = dt.strftime('%b %d, %H:00')
+                        elif granularity == "Daily":
+                            d_str = dt.strftime('%b %d, %Y')
+                        elif granularity == "Weekly":
+                            d_str = f"Week of {dt.strftime('%b %d')}"
+                        else:
+                            d_str = dt.strftime('%b %Y')
+                        v_str = f"{row['volume']:,.0f}"
+                        details_lines.append(f"{d_str}: {v_str}")
+                    
+                    summary_text = f"View {high_periods} high-volume {label_plural}"
+                    content_html = "<br>".join(details_lines)
+                    if high_periods > 30:
+                        content_html += "<br>..."
+                    
+                    details_html = f'<details style="font-size:0.75rem; margin-top:6px; color:inherit;"><summary style="cursor:pointer; text-decoration:underline; opacity:0.9;">{summary_text}</summary><div style="max-height:80px; overflow-y:auto; margin-top:4px; border-top:1px solid rgba(128,128,128,0.2); padding-top:4px; line-height:1.2;">{content_html}</div></details>'
 
-                bucket_all = _b_temp.groupby("bucket", as_index=False).agg(
-                    volume=("volume", "sum"),
-                    link_count=("link_hour", "nunique")
-                ).rename(columns={"bucket": "local_datetime"}).sort_values("local_datetime")
+                card5 = render_kpi_card(
+                    card5_title,
+                    f"{high_periods} {label_plural}",
+                    f'Threshold: {display_threshold:,.0f} {avg_suffix}/{label}{details_html}',
+                    f"{risk_pct:.1f}% of {label_plural}",
+                    level_badge,
+                    f"{threshold_help} Count and share of {label_plural} exceeding the threshold."
+                )
 
-                if granularity == "Monthly":
-                    bucket_all["bucket_hours"] = pd.to_datetime(bucket_all["local_datetime"]).dt.days_in_month * 24
-                else:
-                    bucket_all["bucket_hours"] = AGG_META[granularity]["fixed_hours"]
-
-                # choose capacity by mode
-                cap_key = "Vehicles" if mode_label == "All Modes" else mode_label
-                CAP_VPH, HIGH_VPH = _mode_caps(cap_key)
-
-                # Capacity scales by number of unique link-hours in the bucket
-                bucket_all["cap"] = bucket_all["link_count"] * CAP_VPH
-                bucket_all["threshold"] = bucket_all["link_count"] * HIGH_VPH
-                util_series = np.where(bucket_all["cap"] > 0, bucket_all["volume"] / bucket_all["cap"] * 100, np.nan)
-
-                peak_idx = int(bucket_all["volume"].idxmax())
-                peak_val = float(bucket_all.loc[peak_idx, "volume"])
-                peak_cap = float(bucket_all.loc[peak_idx, "cap"])
-                peak_date = pd.to_datetime(bucket_all.loc[peak_idx, "local_datetime"])
-                peak_util_pct = (peak_val / peak_cap * 100) if peak_cap > 0 else 0.0
-
-                p95_val = float(np.nanpercentile(bucket_all["volume"], 95)) if bucket_all["volume"].notna().any() else 0.0
-                avg_bucket_val = float(bucket_all["volume"].mean())
-                avg_util_pct = float(np.nanmean(util_series)) if np.isfinite(util_series).any() else 0.0
-
-                cv_bucket = (float(np.nanstd(bucket_all["volume"])) / avg_bucket_val * 100) if avg_bucket_val > 0 else 0.0
-
-                unit = AGG_META[granularity]["unit"]
-                label = AGG_META[granularity]["label"]
-                bucket_all["threshold"] = bucket_all["bucket_hours"] * HIGH_VPH
-                high_periods = int((bucket_all["volume"] > bucket_all["threshold"]).sum())
-                total_periods = int(len(bucket_all))
-                risk_pct = (high_periods / total_periods * 100) if total_periods > 0 else 0.0
-
-                if granularity == "Hourly":
-                    avg_label = f"Hourly {mode_label}"
-                    peak_label = f"🔥 Peak Hourly {mode_label}"
-                    avg_suffix = "vehicles"
-                    display_threshold = HIGH_VPH
-                    threshold_help = f"High-Volume Threshold: > {display_threshold:,} vehicles."
-                elif granularity == "Daily":
-                    avg_label = f"Daily {mode_label}"
-                    peak_label = f"🔥 Peak Daily {mode_label}"
-                    avg_suffix = "vehicles"
-                    display_threshold = HIGH_VPH * 24
-                    threshold_help = f"High-Volume Threshold (daily): > {display_threshold:,} vehicles (scaled from {HIGH_VPH:,} vehicles × 24h)."
-                elif granularity == "Weekly":
-                    avg_label = f"Weekly {mode_label}"
-                    peak_label = f"🔥 Peak Weekly {mode_label}"
-                    avg_suffix = "vehicles"
-                    display_threshold = HIGH_VPH * 24 * 7
-                    threshold_help = f"High-Volume Threshold (weekly): > {display_threshold:,} vehicles (scaled from {HIGH_VPH:,} vehicles × 168h)."
-                else:
-                    avg_label = f"Monthly {mode_label}"
-                    peak_label = f"🔥 Peak Monthly {mode_label}"
-                    avg_suffix = "vehicles"
-                    display_threshold = HIGH_VPH * 24 * 30
-                    threshold_help = f"High-Volume Threshold (monthly): > ~{display_threshold:,} vehicles (scaled from {HIGH_VPH:,} vehicles × hours in month)."
-
-                col1, col2, col3, col4, col5 = st.columns(5)
-
-                with col1:
-                    # Format the exact peak period label based on granularity
-                    if granularity == "Hourly":
-                        peak_period_str = f"{peak_date.strftime('%A')}, {peak_date.strftime('%m/%d/%Y %H:00')}"
-                    elif granularity == "Daily":
-                        peak_period_str = f"{peak_date.strftime('%A')}, {peak_date.strftime('%m/%d/%Y')}"
-                    elif granularity == "Weekly":
-                        p = pd.Period(peak_date, freq='W')
-                        ws, we = p.start_time, p.end_time
-                        peak_period_str = f"{ws.strftime('%m/%d/%Y')} – {we.strftime('%m/%d/%Y')}"
-                    else:  # Monthly
-                        peak_period_str = peak_date.strftime('%B %Y')
-
-                    kpi_title(
-                        peak_label,
-                        f"Highest {label} total within the selected period. Shows the exact peak period below."
-                    )
-                    # Always show 'vehicles' as the unit for peak, regardless of granularity
-                    st.metric("", f"{peak_val:,.0f} vehicles", delta=peak_period_str)
-                    badge = (
-                        "badge-critical" if peak_util_pct > 90 else
-                        "badge-poor" if peak_util_pct > 75 else
-                        "badge-fair" if peak_util_pct > 60 else
-                        "badge-good"
-                    )
-                    st.markdown(
-                        f'<span class="performance-badge {badge}">{peak_util_pct:.0f}% of Capacity</span>',
-                        unsafe_allow_html=True,
-                    )
-
-                with col2:
-                    kpi_title(
-                        f"📊 {avg_label}",
-                        f"Mean of {label} totals across the selected period (after all filters). Delta shows average utilization vs capacity."
-                    )
-                    st.metric("", f"{avg_bucket_val:,.0f} {avg_suffix}", delta=f"{avg_util_pct:.0f}% Avg Util")
-
-                with col3:
-                    total_volume = float(np.nansum(raw["volume"]))
-                    cap_total = float(bucket_all["cap"].sum())
-                    kpi_title(
-                        f"🚗 Total {mode_label} (period)",
-                        "Sum of all volumes across the selected time window and filters. The pill compares this against the period’s total theoretical capacity."
-                    )
-                    st.metric("", f"{total_volume:,.0f}")
-                    if cap_total > 0:
-                        ratio = total_volume / cap_total
-                        state_badge = "badge-good" if ratio < 0.40 else ("badge-fair" if ratio < 0.70 else "badge-poor")
-                    else:
-                        state_badge = "badge-good"
-                    st.markdown(
-                        f'<span class="performance-badge {state_badge}">vs. period capacity</span>',
-                        unsafe_allow_html=True,
-                    )
-
-                with col4:
-                    kpi_title(
-                        "🎯 Demand Consistency",
-                        "Consistency is 100 − CV%, where CV is coefficient of variation of bucket totals (std ÷ mean). Higher → more consistent."
-                    )
-                    st.metric("", f"{max(0, 100 - cv_bucket):.0f}%", delta=f"CV: {cv_bucket:.1f}%")
-                    label_cons = "Consistent" if cv_bucket < 30 else ("Variable" if cv_bucket < 50 else "Highly Variable")
-                    badge_cons = "badge-good" if cv_bucket < 30 else ("badge-fair" if cv_bucket < 50 else "badge-poor")
-                    st.markdown(
-                        f'<span class="performance-badge {badge_cons}">{label_cons}</span>',
-                        unsafe_allow_html=True,
-                    )
-
-                with col5:
-                    kpi_title(
-                        f"⚠️ High Volume {label.capitalize()}s",
-                        f"{threshold_help} Count and share of {label}s exceeding the threshold."
-                    )
-                    st.metric("", f"{high_periods}", delta=f"{risk_pct:.1f}% of {label}s")
-                    level_badge = (
-                        "badge-critical" if risk_pct > 25 else
-                        "badge-poor" if risk_pct > 15 else
-                        "badge-fair" if risk_pct > 5 else
-                        "badge-good"
-                    )
-                    level = (
-                        "Very High" if risk_pct > 25 else
-                        "High" if risk_pct > 15 else
-                        "Moderate" if risk_pct > 5 else
-                        "Low"
-                    )
-                    st.markdown(
-                        f'<span class="performance-badge {level_badge}">{level} Risk</span>',
-                        unsafe_allow_html=True,
-                    )
-
+                st.markdown(f'<div class="kpi-grid">{card1}{card2}{card3}{card4}{card5}</div>', unsafe_allow_html=True)
             # ---------- Visualizations ----------
-            st.subheader(f"📈 {mode_label} Volume Visualizations")
-
             if chart_type == "Share (Pie)":
                 if intersection == "All Intersections":
                     pie_df = raw.groupby("intersection_name", as_index=False)["volume"].sum()
@@ -1417,150 +1832,174 @@ def render_vantage_tab():
                         CAP_VPH, HIGH_VPH = _mode_caps(cap_key)
                         dir_label_arg = "" if direction_filter == "All Directions" else direction_filter
 
-                        # Determine primary street for the caption
-                        primary_street = "Washington Street" # VantageLive is Washington St only
-                        if intersection == "All Intersections":
-                            int_label_arg = "Washington Street Corridor"
-                        else:
-                            int_label_arg = f"{primary_street} & {intersection}"
-
-                        fig_trend, fig_box, fig_matrix = create_volume_charts(
-                            raw_df=raw,
-                            granularity=granularity,
-                            cap_vph=CAP_VPH,
-                            high_vph=HIGH_VPH,
-                            mode_label=mode_label,
-                            direction_label=dir_label_arg,
-                            intersections=int_label_arg,
-                        )
-                        if fig_trend:
-                            st.plotly_chart(
-                                fig_trend,
-                                use_container_width=True,
-                                config=PLOTLY_CONFIG,
-                                key=f"t4_trend_{mode}_{granularity}_{(intersection or 'all').replace(' ', '_').replace('+','plus')}"
+                        # Trends and Distribution Charts
+                        with perf.track("main charts"):
+                            fig_trend, fig_box, fig_matrix, m_title, s_title, b_title, b_subtitle, x_title, x_subtitle = create_volume_charts(
+                                raw_df=raw,
+                                granularity=granularity,
+                                cap_vph=CAP_VPH,
+                                high_vph=HIGH_VPH,
+                                mode_label=mode_label,
+                                direction_label=direction_filter,
+                                intersections=intersection,
+                                date_range=date_range,
+                                turn_filter=turn_filter,
+                                top_k=20
                             )
+                        if fig_trend:
+                            with st.container(border=True):
+                                st.markdown(f"<h3 style='margin-bottom:0px;'>{m_title}</h3>", unsafe_allow_html=True)
+                                if s_title:
+                                    st.markdown(f"<div style='font-size:16px; color:#666; margin-bottom:5px;'>{s_title}</div>", unsafe_allow_html=True)
+
+                                st.plotly_chart(
+                                    fig_trend,
+                                    use_container_width=True,
+                                    config=PLOTLY_CONFIG,
+                                    key=f"t4_trend_{mode}_{granularity}_{(intersection or 'all').replace(' ', '_').replace('+','plus')}"
+                                )
                         colA, colB = st.columns(2)
                         with colA:
                             if fig_box:
-                                st.plotly_chart(
-                                    fig_box,
-                                    use_container_width=True,
-                                    config=PLOTLY_CONFIG,
-                                    key=f"t4_box_{mode}_{granularity}_{(intersection or 'all').replace(' ', '_').replace('+','plus')}"
-                                )
+                                with st.container(border=True):
+                                    st.markdown(f"<h5 style='margin-bottom:0px;'>{b_title}</h5>", unsafe_allow_html=True)
+                                    if b_subtitle:
+                                        st.markdown(f"<div style='font-size:14px; color:#666; margin-bottom:5px;'>{b_subtitle}</div>", unsafe_allow_html=True)
+                                    st.plotly_chart(
+                                        fig_box,
+                                        use_container_width=True,
+                                        config=PLOTLY_CONFIG,
+                                        key=f"t4_box_{mode}_{granularity}_{(intersection or 'all').replace(' ', '_').replace('+','plus')}"
+                                    )
                         with colB:
                             if fig_matrix:
-                                st.plotly_chart(
-                                    fig_matrix,
-                                    use_container_width=True,
-                                    config=PLOTLY_CONFIG,
-                                    key=f"t4_matrix_{mode}_{granularity}_{(intersection or 'all').replace(' ', '_').replace('+','plus')}"
-                                )
+                                with st.container(border=True):
+                                    st.markdown(f"<h5 style='margin-bottom:0px;'>{x_title}</h5>", unsafe_allow_html=True)
+                                    if x_subtitle:
+                                        st.markdown(f"<div style='font-size:14px; color:#666; margin-bottom:5px;'>{x_subtitle}</div>", unsafe_allow_html=True)
+                                    st.plotly_chart(
+                                        fig_matrix,
+                                        use_container_width=True,
+                                        config=PLOTLY_CONFIG,
+                                        key=f"t4_matrix_{mode}_{granularity}_{(intersection or 'all').replace(' ', '_').replace('+','plus')}"
+                                    )
                     except Exception as e:
                         st.error(f"❌ Error creating volume charts: {e}")
 
-            # ---------- Risk table ----------
-            st.subheader(f"🚨 Intersection Volume & Capacity Risk Analysis ({mode_label})")
-            try:
-                cap_key = "Vehicles" if mode_label == "All Modes" else mode_label
-                CAP_VPH, _ = _mode_caps(cap_key)
-                bucketed = _prep_bucket(raw, granularity)
-                bucketed["per_hour_equiv"] = np.where(
-                    bucketed["bucket_hours"] > 0,
-                    bucketed["volume"] / bucketed["bucket_hours"],
-                    np.nan
-                )
+            # ---------- Risk Analysis ----------
+            with st.expander(f"⚠️ {risk_ctx['risk']['title']}", expanded=False):
+                st.markdown(f"<div style='font-size:16px; color:#666; margin-bottom:15px;'>{risk_ctx['risk']['subtitle']}</div>", unsafe_allow_html=True)
+                try:
+                    cap_key = "Vehicles" if mode_label == "All Modes" else mode_label
+                    CAP_VPH, _ = _mode_caps(cap_key)
+                    
+                    # Optimization: Use already computed bucketed_df
+                    bucketed = bucketed_df.copy()
+                    bucketed["per_hour_equiv"] = np.where(
+                        bucketed["bucket_hours"] > 0,
+                        bucketed["volume"] / bucketed["bucket_hours"],
+                        np.nan
+                    )
 
-                group_cols = ["intersection_name"]
-                if "direction" in bucketed.columns:
-                    group_cols.append("direction")
+                    group_cols = ["intersection_name"]
+                    if "direction" in bucketed.columns:
+                        group_cols.append("direction")
 
-                g = bucketed.groupby(group_cols).agg(
-                    volume_mean=("volume", "mean"),
-                    volume_max=("volume", "max"),
-                    volume_std=("volume", "std"),
-                    volume_count=("volume", "count"),
-                    hr_mean=("per_hour_equiv", "mean"),
-                    hr_max=("per_hour_equiv", "max"),
-                ).reset_index()
+                    g = bucketed.groupby(group_cols).agg(
+                        volume_mean=("volume", "mean"),
+                        volume_max=("volume", "max"),
+                        volume_std=("volume", "std"),
+                        volume_count=("volume", "count"),
+                        hr_mean=("per_hour_equiv", "mean"),
+                        hr_max=("per_hour_equiv", "max"),
+                    ).reset_index()
 
-                g["Peak_Capacity_Util"] = (g["hr_max"] / CAP_VPH * 100).round(1)
-                g["Avg_Capacity_Util"] = (g["hr_mean"] / CAP_VPH * 100).round(1)
-                g["Volume_Variability"] = (g["volume_std"] / g["volume_mean"] * 100).replace([np.inf, -np.inf], np.nan).fillna(0).round(1)
-                g["Peak_Avg_Ratio"] = (g["volume_max"] / g["volume_mean"]).replace([np.inf, -np.inf], 0).fillna(0).round(2)
+                    g["Peak_Capacity_Util"] = (g["hr_max"] / CAP_VPH * 100).round(1)
+                    g["Avg_Capacity_Util"] = (g["hr_mean"] / CAP_VPH * 100).round(1)
+                    g["Volume_Variability"] = (g["volume_std"] / g["volume_mean"] * 100).replace([np.inf, -np.inf], np.nan).fillna(0).round(1)
+                    g["Peak_Avg_Ratio"] = (g["volume_max"] / g["volume_mean"]).replace([np.inf, -np.inf], 0).fillna(0).round(2)
 
-                g["🚨 Risk Score"] = (0.5*g["Peak_Capacity_Util"] + 0.3*g["Avg_Capacity_Util"] + 0.2*(g["Peak_Avg_Ratio"]*10)).round(1)
-                g["⚠️ Risk Level"] = pd.cut(
-                    g["🚨 Risk Score"],
-                    bins=[0, 40, 60, 80, 90, 999],
-                    labels=["🟢 Low Risk", "🟡 Moderate Risk", "🟠 High Risk", "🔴 Critical Risk", "🚨 Severe Risk"],
-                    include_lowest=True,
-                )
-                g["🎯 Action Priority"] = pd.cut(
-                    g["Peak_Capacity_Util"],
-                    bins=[0, 60, 75, 90, 999],
-                    labels=["🟢 Monitor", "🟡 Optimize", "🟠 Upgrade", "🔴 Urgent"],
-                    include_lowest=True,
-                )
+                    g["🚨 Risk Score"] = (0.5*g["Peak_Capacity_Util"] + 0.3*g["Avg_Capacity_Util"] + 0.2*(g["Peak_Avg_Ratio"]*10)).round(1)
+                    g["⚠️ Risk Level"] = pd.cut(
+                        g["🚨 Risk Score"],
+                        bins=[0, 40, 60, 80, 90, 999],
+                        labels=["🟢 Low Risk", "🟡 Moderate Risk", "🟠 High Risk", "🔴 Critical Risk", "🚨 Severe Risk"],
+                        include_lowest=True,
+                    )
+                    g["🎯 Action Priority"] = pd.cut(
+                        g["Peak_Capacity_Util"],
+                        bins=[0, 60, 75, 90, 999],
+                        labels=["🟢 Monitor", "🟡 Optimize", "🟠 Upgrade", "🔴 Urgent"],
+                        include_lowest=True,
+                    )
 
-                unit = AGG_META[granularity]["unit"]
-                label = AGG_META[granularity]["label"]
+                    unit = _mode_noun(mode_label)
+                    label = AGG_META[granularity]["label"]
 
-                cols = ["intersection_name"]
-                if "direction" in g.columns:
-                    cols.append("direction")
-                cols += [
-                    "⚠️ Risk Level","🎯 Action Priority","🚨 Risk Score",
-                    "Peak_Capacity_Util","Avg_Capacity_Util",
-                    "volume_mean","volume_max","Peak_Avg_Ratio","volume_count",
-                ]
+                    cols = ["intersection_name"]
+                    if "direction" in g.columns:
+                        cols.append("direction")
+                    cols += [
+                        "⚠️ Risk Level","🎯 Action Priority","🚨 Risk Score",
+                        "Peak_Capacity_Util","Avg_Capacity_Util",
+                        "volume_mean","volume_max","Peak_Avg_Ratio","volume_count",
+                    ]
 
-                final = g[cols].rename(columns={
-                    "intersection_name": "Intersection",
-                    **({"direction": "Dir"} if "direction" in g.columns else {}),
-                    "Peak_Capacity_Util": "📊 Peak Capacity %",
-                    "Avg_Capacity_Util": "📊 Avg Capacity %",
-                    "volume_mean": f"Avg {mode_label} ({unit})",
-                    "volume_max": f"Peak {mode_label} ({unit})",
-                    "volume_count": f"{label.capitalize()}s",
-                }).sort_values("🚨 Risk Score", ascending=False)
+                    final = g[cols].rename(columns={
+                        "intersection_name": "Intersection",
+                        **({"direction": "Dir"} if "direction" in g.columns else {}),
+                        "Peak_Capacity_Util": "📊 Peak Capacity %",
+                        "Avg_Capacity_Util": "📊 Avg Capacity %",
+                        "volume_mean": f"Avg {mode_label} ({unit})",
+                        "volume_max": f"Peak {mode_label} ({unit})",
+                        "volume_count": f"{label.capitalize()}s",
+                    }).sort_values("🚨 Risk Score", ascending=False)
+                    
+                    # Optimization: Use mapping for formatting display names
+                    unique_ints = final["Intersection"].unique()
+                    disp_map = {n: format_intersection_display(n) for n in unique_ints}
+                    final["Intersection"] = final["Intersection"].map(disp_map)
 
-                st.dataframe(
-                    final.head(15),
-                    use_container_width=True,
-                    column_config={
-                        "🚨 Risk Score": st.column_config.NumberColumn("🚨 Capacity Risk Score", help="Composite of peak/avg utilization and peaking severity.", format="%.1f", min_value=0, max_value=120),
-                        "📊 Peak Capacity %": st.column_config.NumberColumn("📊 Peak Capacity %", format="%.1f%%"),
-                        "📊 Avg Capacity %": st.column_config.NumberColumn("📊 Avg Capacity %", format="%.1f%%"),
-                    },
-                )
+                    st.dataframe(
+                        final.head(20),
+                        use_container_width=True,
+                        column_config={
+                            "🚨 Risk Score": st.column_config.NumberColumn("🚨 Capacity Risk Score", help="Composite of peak/avg utilization and peaking severity.", format="%.1f", min_value=0, max_value=120),
+                            "📊 Peak Capacity %": st.column_config.NumberColumn("📊 Peak Capacity %", format="%.1f%%"),
+                            "📊 Avg Capacity %": st.column_config.NumberColumn("📊 Avg Capacity %", format="%.1f%%"),
+                        },
+                    )
 
-                st.download_button(
-                    "⬇️ Download Risk Analysis Table (CSV)",
-                    data=final.to_csv(index=False).encode("utf-8"),
-                    file_name=f"vantage_{mode.lower().replace(' ','_')}_risk.csv",
-                    mime="text/csv",
-                )
-            except Exception as e:
-                st.error(f"❌ Error in risk analysis: {e}")
+                    st.download_button(
+                        "⬇️ Download Full Risk Analysis Table (CSV)",
+                        data=convert_df_to_csv(final),
+                        file_name=f"vantage_{mode.lower().replace(' ','_')}_risk.csv",
+                        mime="text/csv",
+                        key="vantage_risk_download"
+                    )
+                except Exception as e:
+                    st.error(f"❌ Error in risk analysis: {e}")
 
             # ---------- Cycle length ----------
-            st.subheader("🔄 Cycle Length Recommendations for CVAG")
-            try:
-                cycle_bucketed = _prep_bucket(raw, granularity)
-                cycle_bucketed["total_volume"] = np.where(
-                    cycle_bucketed["bucket_hours"] > 0,
-                    cycle_bucketed["volume"] / cycle_bucketed["bucket_hours"],
-                    cycle_bucketed["volume"]
-                )
-                st.caption("Note: Using hourly-equivalent demand (bucket total ÷ hours in bucket) for cycle estimation.")
-                render_cycle_length_section(cycle_bucketed)
-            except Exception as e:
-                st.error(f"❌ Error rendering cycle length section: {e}")
+            st.subheader("Cycle Length Recommendations for CVAG")
+            with perf.track("cycle length section"):
+                try:
+                    # Optimization: Use already computed bucketed_df
+                    cycle_bucketed = bucketed_df.copy()
+                    cycle_bucketed["total_volume"] = np.where(
+                        cycle_bucketed["bucket_hours"] > 0,
+                        cycle_bucketed["volume"] / cycle_bucketed["bucket_hours"],
+                        cycle_bucketed["volume"]
+                    )
+                    st.caption("Note: Using hourly-equivalent demand (bucket total ÷ hours in bucket) for cycle estimation.")
+                    render_cycle_length_section(cycle_bucketed, key_prefix="vantage_cl")
+                except Exception as e:
+                    st.error(f"❌ Error rendering cycle length section: {e}")
 
     except Exception as e:
         st.error(f"❌ Error processing VantageLive data: {e}")
         import traceback
         st.text("Debug info:")
         st.text(traceback.format_exc())
+
+    perf.report()
